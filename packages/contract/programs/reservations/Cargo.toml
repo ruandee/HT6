@@ -1,0 +1,21 @@
+[package]
+name = "reservations"
+version = "0.1.0"
+description = "Tokenized restaurant reservations — AMM bonding curve with theta decay (BUILD_SPEC §4/§7b/§7c)"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "reservations"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang = "0.30.1"
+anchor-spl = "0.30.1"
