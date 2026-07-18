@@ -43,6 +43,8 @@ interface PendingBuy {
   userId: UserId;
   poolId: PoolId;
   maxPrice: UsdcBaseUnits;
+  /** epoch ms when the locked quote lapses; past this the intent no longer blocks a rebuy. */
+  expiresAt: number;
 }
 
 export class Orchestrator {
@@ -86,8 +88,14 @@ export class Orchestrator {
     ) {
       throw new Error('you already have a table for this night');
     }
-    // ...and don't let a second checkout open while one is still pending (double-click / two
-    // tabs / one tab per band).
+    // ...and don't let a second checkout open while one is still LIVE (double-click / two tabs /
+    // one tab per band). Lapsed intents are swept first: an abandoned checkout must not lock the
+    // diner out of the night forever — the quote lock is time-bounded (§7c-A), so once it expires
+    // the diner is free to re-quote.
+    const now = Date.now();
+    for (const [id, p] of this.pendingBuys) {
+      if (p.expiresAt <= now) this.pendingBuys.delete(id);
+    }
     for (const p of this.pendingBuys.values()) {
       if (p.userId === userId && window.has(p.poolId)) {
         throw new Error('you already have a checkout open for this night');
@@ -102,7 +110,12 @@ export class Orchestrator {
       QUOTE_WINDOW_SECONDS,
       { kind: 'buy', pool_id: poolId },
     );
-    this.pendingBuys.set(dep.deposit_intent_id, { userId, poolId, maxPrice });
+    this.pendingBuys.set(dep.deposit_intent_id, {
+      userId,
+      poolId,
+      maxPrice,
+      expiresAt: Date.parse(dep.quote_expires_at) || Date.now() + QUOTE_WINDOW_SECONDS * 1000,
+    });
     return {
       deposit_intent_id: dep.deposit_intent_id,
       max_price: maxPrice,

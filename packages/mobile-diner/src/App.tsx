@@ -155,7 +155,6 @@ export default function App() {
   }
 
   const nightLabel = current?.label ?? '';
-  const soonest = nights[0];
 
   return (
     <div className="app">
