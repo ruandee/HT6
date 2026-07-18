@@ -1,0 +1,24 @@
+{
+  "name": "HT6 — Solana/Anchor (x86_64)",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "22" },
+    "ghcr.io/devcontainers/features/rust:1": { "version": "1.79" }
+  },
+  "onCreateCommand": "bash .devcontainer/setup.sh",
+  "forwardPorts": [8080, 5173, 5174, 5175, 8899],
+  "portsAttributes": {
+    "8080": { "label": "app-services" },
+    "5173": { "label": "diner web" },
+    "5174": { "label": "restaurant dashboard" },
+    "5175": { "label": "mobile" },
+    "8899": { "label": "solana-test-validator" }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["rust-lang.rust-analyzer", "esbenp.prettier-vscode"]
+    }
+  },
+  "hostRequirements": { "cpus": 4 },
+  "remoteUser": "vscode"
+}
