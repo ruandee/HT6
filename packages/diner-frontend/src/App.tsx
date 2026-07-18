@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, splitUsdc, usdc, type Holding, type Quote } from './api';
+import { api, splitUsdc, usdc, type Holding, type PoolSummary, type Quote } from './api';
 import { CurveChart } from './CurveChart';
 import { BuySheet } from './BuySheet';
+import { DatePicker } from './DatePicker';
 
 // demo pool params (§7d) — mirrors what app-services seeds.
 const P0 = '40000000';
@@ -9,6 +10,7 @@ const K = '3000000';
 
 export default function App() {
   const [poolId, setPoolId] = useState('');
+  const [pools, setPools] = useState<PoolSummary[]>([]);
   const [q, setQ] = useState<Quote | null>(null);
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [sheet, setSheet] = useState<null | { intentId: string; price: string; expires: string }>(
@@ -18,9 +20,10 @@ export default function App() {
   const prevN = useRef(0);
 
   const refresh = useCallback(async (id: string) => {
-    const [quote, hs] = await Promise.all([api.quote(id), api.holdings()]);
+    const [quote, hs, ps] = await Promise.all([api.quote(id), api.holdings(), api.pools()]);
     setQ(quote);
     setHoldings(hs);
+    setPools(ps);
     return quote;
   }, []);
 
@@ -30,6 +33,12 @@ export default function App() {
       refresh(pool_id);
     });
   }, [refresh]);
+
+  function selectPool(id: string) {
+    setPoolId(id);
+    setQ(null); // avoid showing the previous night's curve while the new one loads
+    refresh(id);
+  }
 
   // poll so the curve moves when other sessions buy (the §11 "ticks up" moment)
   useEffect(() => {
@@ -62,7 +71,9 @@ export default function App() {
     setTimeout(() => setFlash(null), 4200);
   }
 
-  const held = holdings.filter((h) => h.status === 'held');
+  // scope to the night being viewed — sell-back acts on this pool's token.
+  const held = holdings.filter((h) => h.status === 'held' && h.pool_id === poolId);
+  const heldElsewhere = holdings.filter((h) => h.status === 'held' && h.pool_id !== poolId);
   const price = q ? splitUsdc(q.buy_price) : { dollars: '—', cents: '00' };
   const left = q ? q.n_max - q.n_sold : 0;
 
@@ -82,9 +93,7 @@ export default function App() {
             </span>
             Prime
           </div>
-          <div className="eyebrow" style={{ width: 210 }}>
-            Fri 7–9pm
-          </div>
+          <DatePicker pools={pools} selected={poolId} onSelect={selectPool} />
         </header>
 
         <h1 className="headline">
@@ -109,17 +118,33 @@ export default function App() {
         >
           {/* curve panel */}
           <section className="glass" style={{ padding: 26 }}>
-            <div className="eyebrow" style={{ marginBottom: 18 }}>
-              Live price curve
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 18,
+                gap: 16,
+              }}
+            >
+              <div className="eyebrow" style={{ flex: 1 }}>
+                Live price curve
+              </div>
+              <span style={{ fontSize: 11, color: 'var(--ink-45)', whiteSpace: 'nowrap' }}>
+                hover any table
+              </span>
             </div>
-            {q && (
+            {q ? (
               <CurveChart
                 p0={P0}
                 k={K}
                 nMax={q.n_max}
                 nSold={q.n_sold}
                 thetaBps={q.theta_bps}
+                phiBps={500}
               />
+            ) : (
+              <div style={{ height: 260 }} />
             )}
             <div style={{ marginTop: 20 }}>
               <div className="stat-label" style={{ marginBottom: 9 }}>
@@ -186,6 +211,20 @@ export default function App() {
                   Can&apos;t make it? Sell back
                 </button>
               </>
+            )}
+
+            {heldElsewhere.length > 0 && (
+              <div
+                className="muted"
+                style={{ fontSize: 12.5, marginTop: 18, color: 'var(--ink-45)' }}
+              >
+                You also hold {heldElsewhere.length} table
+                {heldElsewhere.length > 1 ? 's' : ''} on{' '}
+                {heldElsewhere
+                  .map((h) => pools.find((p) => p.pool_id === h.pool_id)?.label ?? 'another night')
+                  .join(', ')}
+                .
+              </div>
             )}
           </section>
         </div>

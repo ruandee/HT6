@@ -27,21 +27,72 @@ const gateway =
 const orchestrator = new Orchestrator(chain, gateway);
 
 // --- demo seed: one buzzy pool, θ far out, seeded to n=6 (§7d) so the curve already shows premium.
+/**
+ * Demo seed: one pool per service window (§4 — a pool is a venue + window; different nights are
+ * different pools with independent curves). Varied fill so switching dates visibly changes the
+ * curve, and the nearest date sits inside Tc so θ decay is already biting.
+ */
+interface PoolMeta {
+  pool_id: string;
+  label: string; // "Fri 7–9pm"
+  date_iso: string; // yyyy-mm-dd, for the calendar
+  service_time: number;
+}
 let DEMO_POOL_ID = '';
+const POOLS: PoolMeta[] = [];
+
+const DAY = 86_400;
+const SEED_PLAN = [
+  // tonight — inside the 24h cliff, so θ is already decaying (§7b) and the curve reads flatter
+  { inHours: 6, seats: 14 },
+  { inDays: 2, hour: 19, seats: 6 }, // the headline demo pool
+  { inDays: 3, hour: 19, seats: 9 },
+  { inDays: 4, hour: 20, seats: 3 },
+  { inDays: 8, hour: 19, seats: 1 },
+];
+
 async function seed() {
   const now = Math.floor(Date.now() / 1000);
-  const { pool_id } = await chain.create_pool({
-    authority: 'rest_wallet',
-    p0: '40000000',
-    k: '3000000',
-    n_max: 20,
-    phi_bps: 500,
-    service_time: now + 200_000, // > Tc, θ = 1
-    tc_seconds: 86400,
+  for (const [i, plan] of SEED_PLAN.entries()) {
+    const d = new Date();
+    if ('inHours' in plan && plan.inHours !== undefined) {
+      d.setHours(d.getHours() + plan.inHours, 0, 0, 0);
+    } else {
+      d.setDate(d.getDate() + (plan.inDays ?? 0));
+      d.setHours(plan.hour ?? 19, 0, 0, 0);
+    }
+    const service_time = Math.floor(d.getTime() / 1000);
+
+    const { pool_id } = await chain.create_pool({
+      authority: 'rest_wallet',
+      p0: '40000000',
+      k: '3000000',
+      n_max: 20,
+      phi_bps: 500,
+      service_time,
+      tc_seconds: 86400,
+    });
+    for (let s = 0; s < plan.seats; s++) {
+      await chain.buy(pool_id, `seed_${i}_${s}`, '999000000');
+    }
+    const h = d.getHours();
+    const h12 = (x: number) => (x > 12 ? x - 12 : x === 0 ? 12 : x);
+    const label = `${d.toLocaleDateString('en-US', { weekday: 'short' })} ${h12(h)}–${h12(
+      h + 2,
+    )}${h + 2 >= 12 ? 'pm' : 'am'}`;
+    POOLS.push({
+      pool_id,
+      label,
+      date_iso: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+        d.getDate(),
+      ).padStart(2, '0')}`,
+      service_time,
+    });
+  }
+  DEMO_POOL_ID = POOLS[1]!.pool_id; // the §7d headline pool (n=6)
+  console.log(`[seed] ${POOLS.length} pools; default ${DEMO_POOL_ID}`, {
+    now: new Date(now * 1000).toISOString(),
   });
-  for (let i = 0; i < 6; i++) await chain.buy(pool_id, `seed_${i}`, '999000000');
-  DEMO_POOL_ID = pool_id;
-  console.log(`[seed] demo pool ${pool_id} at n=6`);
 }
 
 const app = express();
@@ -108,6 +159,26 @@ app.get('/mock/deposit', (req: Request, res: Response) => {
 });
 
 // ---- §10.4 REST (subset; buy/sell/holdings/quote) ----
+/** §10.4 GET /pools — summaries for every service window (powers the date picker). */
+app.get('/pools', async (_req, res) => {
+  const out = [];
+  for (const p of POOLS) {
+    const q = await chain.quote(p.pool_id);
+    out.push({
+      pool_id: p.pool_id,
+      label: p.label,
+      date_iso: p.date_iso,
+      service_time: p.service_time,
+      n_sold: q.n_sold,
+      n_max: q.n_max,
+      buy_price: q.buy_price,
+      theta_bps: q.theta_bps,
+      frozen: q.frozen,
+    });
+  }
+  res.json(out);
+});
+
 app.get('/pools/:id', async (req, res) => {
   try {
     res.json(await chain.quote(req.params.id));

@@ -25,6 +25,19 @@ export interface Holding {
   recover_value: string;
 }
 
+/** §10.4 GET /pools — one entry per service window (each its own curve). */
+export interface PoolSummary {
+  pool_id: string;
+  label: string;
+  date_iso: string;
+  service_time: number;
+  n_sold: number;
+  n_max: number;
+  buy_price: string;
+  theta_bps: number;
+  frozen: boolean;
+}
+
 const USER = 'alice';
 const headers = { 'content-type': 'application/json', 'x-user-id': USER };
 
@@ -35,6 +48,7 @@ async function j<T>(r: Response): Promise<T> {
 
 export const api = {
   demoPoolId: () => fetch('/demo/pool-id').then(j<{ pool_id: string }>),
+  pools: () => fetch('/pools', { headers }).then(j<PoolSummary[]>),
   quote: (id: string) => fetch(`/pools/${id}`, { headers }).then(j<Quote>),
   buy: (id: string) =>
     fetch(`/pools/${id}/buy`, { method: 'POST', headers }).then(j<BuyResponse>),

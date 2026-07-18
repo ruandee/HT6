@@ -10,12 +10,13 @@
   --canvas: #f7f6f3;
   --canvas-deep: #efece7;
 
-  /* warm accent ramp (from the reference orb) */
-  --peach: #ffb38a;
-  --coral: #ff7a59;
-  --coral-deep: #f2542d;
-  --amber: #ffc861;
-  --yellow: #ffe8a3;
+  /* warm accent ramp (from the reference orb) — muted, dusty terracotta
+     rather than a hot red; peach/amber carry more of the weight. */
+  --peach: #ffc9a8;
+  --coral: #ef9576;
+  --coral-deep: #d4715a;
+  --amber: #ffd28f;
+  --yellow: #ffeec4;
 
   /* ink */
   --ink: #16130f;
@@ -70,8 +71,8 @@ body {
 .orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(90px);
-  opacity: 0.85;
+  filter: blur(100px);
+  opacity: 0.62;
 }
 .orb--1 {
   width: 46vw;
@@ -279,14 +280,14 @@ body {
 .btn--primary {
   color: #fff;
   background: linear-gradient(168deg, var(--coral) 0%, var(--coral-deep) 100%);
-  box-shadow: 0 10px 26px -8px rgba(242, 84, 45, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    inset 0 -2px 6px rgba(140, 40, 10, 0.25);
+  box-shadow: 0 10px 24px -10px rgba(212, 113, 90, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -2px 6px rgba(150, 75, 55, 0.18);
 }
 .btn--primary:hover:not(:disabled) {
-  filter: brightness(1.04);
-  box-shadow: 0 14px 32px -8px rgba(242, 84, 45, 0.7),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  filter: brightness(1.03);
+  box-shadow: 0 14px 30px -10px rgba(212, 113, 90, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 .btn--ghost {
   color: var(--ink);
@@ -334,6 +335,49 @@ body {
   color: var(--ink-70);
   font-size: 14px;
   line-height: 1.55;
+}
+
+/* ---- calendar day cells ---- */
+.day {
+  position: relative;
+  aspect-ratio: 1;
+  border: none;
+  background: transparent;
+  border-radius: 11px;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  color: var(--ink-25);
+  cursor: default;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: background 0.16s, color 0.16s, transform 0.16s;
+}
+.day--has {
+  color: var(--ink);
+  cursor: pointer;
+}
+.day--has:hover {
+  background: rgba(255, 255, 255, 0.75);
+  transform: translateY(-1px);
+}
+.day__dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--coral-deep);
+  display: block;
+}
+.day--sel {
+  background: linear-gradient(168deg, var(--coral) 0%, var(--coral-deep) 100%);
+  color: #fff;
+  box-shadow: 0 6px 16px -6px rgba(212, 113, 90, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+.day--sel .day__dot {
+  background: rgba(255, 255, 255, 0.9);
 }
 
 /* quote-lock ring */
