@@ -38,6 +38,31 @@ cp .env.example .env
 
 `.env.example` is committed and lists every variable with a comment. **Never commit `.env`.**
 
+### Run the app (no keys needed)
+
+Two terminals — the demo runs entirely on StubGateway + MockChainAdapter:
+
+```bash
+# terminal 1 — backend REST + webhook ingress on :8080
+npm run dev --workspace @ttr/app-services
+
+# terminal 2 — diner app on :5173 (proxies /pools, /me, /webhooks -> :8080)
+npm run dev --workspace @ttr/diner-frontend
+```
+
+Open **http://localhost:5173**. On boot the backend seeds 5 nights × 3 party-size bands (§4a) =
+15 pools, each with its own curve. The nearest night sits inside the 24h decay cliff so θ decay is
+visible (a fuller night priced LOWER than an emptier one further out — that's §7b working).
+
+Buy flow on the stub: click Claim → the sheet opens with the price locked → Confirm posts a
+simulated `payment_intent.succeeded` to `/webhooks/unifold` → the on-chain buy executes → the
+curve ticks up. The same handler runs with the real gateway; only signature verification differs.
+
+Auth is stubbed as an `x-user-id` header (defaults to `alice`) until Auth0 is wired. To act as a
+different diner — useful for driving the curve up on stage, since it's one table per person per
+pool (§7c-C) — change `USER` in `packages/diner-frontend/src/api.ts` or use a second browser
+profile once real auth lands.
+
 ---
 
 ## 2. How to give me the keys / treasury id / webhook secret  ← your question

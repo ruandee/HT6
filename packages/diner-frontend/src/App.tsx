@@ -3,14 +3,19 @@ import { api, splitUsdc, usdc, type Holding, type PoolSummary, type Quote } from
 import { CurveChart } from './CurveChart';
 import { BuySheet } from './BuySheet';
 import { DatePicker } from './DatePicker';
+import { PartySize, bandFor } from './PartySize';
 
-// demo pool params (§7d) — mirrors what app-services seeds.
-const P0 = '40000000';
-const K = '3000000';
+// p0/k per band, mirroring the server's BANDS table (§4a). Used to draw the curve.
+const BAND_PARAMS: Record<number, { p0: string; k: string }> = {
+  2: { p0: '40000000', k: '3000000' },
+  4: { p0: '80000000', k: '6000000' },
+  6: { p0: '120000000', k: '10000000' },
+};
 
 export default function App() {
   const [poolId, setPoolId] = useState('');
   const [pools, setPools] = useState<PoolSummary[]>([]);
+  const [guests, setGuests] = useState(2);
   const [q, setQ] = useState<Quote | null>(null);
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [sheet, setSheet] = useState<null | { intentId: string; price: string; expires: string }>(
@@ -38,6 +43,22 @@ export default function App() {
     setPoolId(id);
     setQ(null); // avoid showing the previous night's curve while the new one loads
     refresh(id);
+  }
+
+  const currentPool = pools.find((p) => p.pool_id === poolId);
+  // all bands offered on the selected night, and the dates available in the chosen band
+  const bandsTonight = currentPool
+    ? pools.filter((p) => p.date_iso === currentPool.date_iso)
+    : [];
+  const datesInBand = currentPool
+    ? pools.filter((p) => p.party_size === currentPool.party_size)
+    : [];
+
+  /** Changing party size keeps the date and swaps to the band that fits. */
+  function selectGuests(n: number) {
+    setGuests(n);
+    const target = bandFor(bandsTonight, n);
+    if (target && target.pool_id !== poolId) selectPool(target.pool_id);
   }
 
   // poll so the curve moves when other sessions buy (the §11 "ticks up" moment)
@@ -81,6 +102,9 @@ export default function App() {
   const heldElsewhere = holdings.filter((h) => h.status === 'held' && h.pool_id !== poolId);
   const price = q ? splitUsdc(q.buy_price) : { dollars: '—', cents: '00' };
   const left = q ? q.n_max - q.n_sold : 0;
+  const floorP0 = currentPool
+    ? (BAND_PARAMS[currentPool.party_size]?.p0 ?? '40000000')
+    : '40000000';
 
   return (
     <>
@@ -98,7 +122,7 @@ export default function App() {
             </span>
             Prime
           </div>
-          <DatePicker pools={pools} selected={poolId} onSelect={selectPool} />
+          <DatePicker pools={datesInBand} selected={poolId} onSelect={selectPool} />
         </header>
 
         <h1 className="headline">
@@ -139,10 +163,10 @@ export default function App() {
                 hover any table
               </span>
             </div>
-            {q ? (
+            {q && currentPool ? (
               <CurveChart
-                p0={P0}
-                k={K}
+                p0={BAND_PARAMS[currentPool.party_size]?.p0 ?? '40000000'}
+                k={BAND_PARAMS[currentPool.party_size]?.k ?? '3000000'}
                 nMax={q.n_max}
                 nSold={q.n_sold}
                 thetaBps={q.theta_bps}
@@ -166,6 +190,12 @@ export default function App() {
 
           {/* buy panel */}
           <section className="glass glass--strong" style={{ padding: 30 }}>
+            <PartySize bands={bandsTonight} guests={guests} onGuests={selectGuests} />
+
+            <div
+              style={{ height: 1, background: 'var(--hairline)', margin: '24px 0 22px' }}
+            />
+
             <div className="eyebrow" style={{ marginBottom: 16 }}>
               Price now
             </div>
@@ -174,7 +204,7 @@ export default function App() {
               <span className="price__cents">.{price.cents}</span>
             </div>
             <div className="muted" style={{ marginTop: 14, fontSize: 13.5 }}>
-              <strong style={{ color: 'var(--ink)' }}>{usdc(P0)}</strong> of this is meal
+              <strong style={{ color: 'var(--ink)' }}>{usdc(floorP0)}</strong> of this is meal
               credit — redeemable against your bill.
               {left > 0 && (
                 <>
@@ -255,6 +285,8 @@ export default function App() {
       {sheet && (
         <BuySheet
           price={sheet.price}
+          floor={floorP0}
+          partySize={currentPool?.party_size ?? 2}
           expiresAt={sheet.expires}
           onConfirm={() => confirmBuy(sheet.intentId)}
           onExpire={async () => {

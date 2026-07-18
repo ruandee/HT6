@@ -31,6 +31,15 @@ export interface Pool {
   service_time: UnixSeconds;
   tc_seconds: number; // decay cliff length (e.g. 86400)
   frozen: boolean; // true once service reached / trading halted
+  /**
+   * Party-size band: this pool sells tables that seat UP TO `party_size` (§4a). A pool is
+   * (venue, service_window, party_size) — a 2-top and a 6-top are NOT interchangeable, so they
+   * cannot share a curve without breaking the fungibility rule the single-curve AMM rests on.
+   * A party of 3 books the 4-top band. Table-combining is a pool-CREATION decision by the
+   * restaurant (it sets n_max per band), never a trade-time one — N must stay fixed for the
+   * solvency invariant to hold.
+   */
+  party_size: number;
 }
 
 // ---- §10.2 method params / results ----
@@ -43,6 +52,8 @@ export interface CreatePoolParams {
   phi_bps: Bps;
   service_time: UnixSeconds;
   tc_seconds: number;
+  /** seats UP TO this many (§4a). One pool per band; p0/k typically scale with it. */
+  party_size: number;
 }
 export interface CreatePoolResult {
   pool_id: PoolId;

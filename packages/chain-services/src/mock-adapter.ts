@@ -68,6 +68,7 @@ export class MockChainAdapter implements ChainAdapter {
       phi_bps: params.phi_bps,
       service_time: params.service_time,
       tc_seconds: params.tc_seconds,
+      party_size: params.party_size,
       frozen: false,
       reserve_balance: 0n,
       royalties: 0n,

@@ -62,9 +62,10 @@ RATE but no real scarcity, so the curve would have nothing to price.
 
 ## 4. The AMM / bonding-curve math (locked)
 
-Scope: ONE pool = one venue + one service window (e.g. Friday 7–9pm), N interchangeable
-prime slots. **Fungibility within a pool is mandatory** — one fungible token type per
-(venue, service-window), fixed supply N. Different nights = different pools = different curves.
+Scope: ONE pool = one venue + one service window + one **party-size band** (e.g. Friday 7–9pm,
+tables seating up to 2), N interchangeable prime slots. **Fungibility within a pool is
+mandatory** — one fungible token type per (venue, service-window, party-size), fixed supply N.
+Different nights = different pools = different curves; so are different party sizes (§4a).
 The moment users pick a *specific* table, fungibility breaks and the single-curve AMM is
 invalid (would require per-slot NFTs — do NOT do this).
 
@@ -99,6 +100,50 @@ restaurant wallet. This is what makes the issuer COOPERATIVE (wants a liquid res
 service, restaurant sweeps reserve for consumed/forfeited slots (meal-credit floor applied
 to bill). Trading disabled at service time — this is where THETA DECAY will live (resale
 value should bleed toward the floor as the window approaches). Hook is already here.
+
+## 4a. Table sizes / party size (LOCKED)
+
+**Problem:** a 2-top and a 6-top are NOT interchangeable, so they cannot share a curve without
+breaking the fungibility rule §4 rests on. But per-table pricing would mean per-slot NFTs, which
+§4 forbids.
+
+**Decision — one pool per party-size BAND** (not per table):
+```
+pool = (venue, service_window, party_size)
+Fri 7–9pm · seats ≤2  → N=20, p0=$40,  k=$3
+Fri 7–9pm · seats ≤4  → N=8,  p0=$80,  k=$6
+Fri 7–9pm · seats ≤6  → N=3,  p0=$120, k=$10
+```
+Each band is internally fungible (any 4-top is like any other 4-top), so each gets its own honest
+curve. **This needs ZERO new math** — it is the existing model instantiated once per band. It is
+also economically better: a 6-top on a Friday is genuinely scarcer than a 2-top and deserves its
+own (steeper) curve.
+
+**Pricing across bands:** p0 scales ≈ $20/head (the meal credit is per person), and k scales with
+it. The premium is whatever that band's curve discovers.
+
+**"A 4-top seats UP TO 4."** The token means *"a table seating up to N"*. A party of 3 books the
+4-top band — the smallest band that fits. This is how restaurants already work and avoids any
+per-headcount pricing. Booking a band LARGER than your party is disallowed (it lets someone corner
+the scarcest inventory); allowing a book-up when every fitting band is sold out is a UI rule, not
+a math change.
+
+**"You can push tables together."** Deliberately NOT modelled at trade time. Combining two 2-tops
+into a 4-top makes inventory elastic, and a fixed N is exactly what makes the solvency invariant
+(`reserve = area under the curve`) provable — if N could change mid-window the reserve math goes
+murky and we lose the cleanest claim in the pitch. Real restaurants solve this with a floor
+manager, not a pricing engine. So: the restaurant decides its room configuration when it CREATES
+the pools (setting n_max per band). Want to sell 8 four-tops by combining? Set the 4-top pool to
+N=8 and the 2-top pool lower. The combining decision is a human judgment call at pool-creation
+time, never a trade-time one.
+
+**One table per diner per pool** (§7c-C) is per POOL, so holding a 2-top on Friday and a 6-top on
+Saturday is fine — those are different pools.
+
+**Demo guidance:** seed a few bands so the model visibly generalizes and label them in the UI
+("Fri 7–9pm · table for 2"), but drive the §11 script on ONE band. Party size is a second
+dimension to explain and the 2-minute pitch does not need it; have this section ready if a judge
+asks.
 
 ## 5. Backend stack (locked), mapped to the math
 
@@ -242,6 +287,26 @@ count, total swept, and "meal credits to honor" (= p0 × consumed count).
 Rationale: makes the no-show-recovery number explicit and honest, and keeps the p0 floor as a
 real-world credit rather than pretending the chain refunds it.
 
+### (C) One table per diner per pool (LOCKED)
+`buy` MUST reject if the buyer already holds a token for that pool. Enforced ON-CHAIN (the
+authoritative layer), mirrored in app-services (pre-checked BEFORE taking money — the buy path is
+async, so checking only at settlement would mean the diner already paid) and in the UI.
+
+Rationale: the φ spread already makes an instant round-trip unprofitable, so multi-buy is not free
+money by itself. The real exploit is **time-based**: buy several tables early while a night is
+half-empty, then sell into the sold-out premium later. Even net of φ that is a solid profit, and
+those tables were withheld from diners who wanted them — scalping, just against a curve. A
+reservation is also simply *for a table you intend to use*.
+
+Edge cases (both LOCKED):
+- **Sell-back frees a rebuy** — the token went back to the curve; that is the liquidity feature
+  working as intended.
+- **Check-in does NOT free a rebuy** — once you have taken that night's table, that is your table.
+  (So the check counts redeemed tokens too.)
+- Scope is per POOL, so a 2-top Friday + a 6-top Saturday is fine, and per §4a so is a different
+  band on the same night (they are different pools). Tighten to per-(venue,window) if you want to
+  forbid that too.
+
 ## 7d. Suggested demo parameters (so the curve visibly MOVES on stage)
 p0 = 40 USDC, k = 3 USDC, N = 20, φ = 500 bps (5%), Tc = 86400s (24h).
 Seed the pool partway (e.g. n=6) so the first on-stage buy is already at a premium; do 2–3 live
@@ -267,7 +332,8 @@ source of truth — an agent changing any signature there must flag it, because 
 4. **diner-frontend** — React consumer app: live bonding curve (hero), buy / sell-back / redeem
    flows, holdings view. Talks ONLY to app-services REST (never the chain directly). Owns §10.4 client.
 5. **restaurant-frontend** — React issuer dashboard: create pool (set p0, k, N, φ, service_time,
-   Tc), monitor pool fill + reserve, trigger check-in per diner, sweep reserve after service.
+   Tc, party_size — one pool per band, §4a), monitor pool fill + reserve, trigger check-in per
+   diner, sweep reserve after service.
    Talks ONLY to app-services REST. Owns §10.4 issuer client.
 
 Boundary rule (LOCKED): frontends never touch the chain; app-services never talks to the chain
@@ -339,6 +405,7 @@ Pool {
   service_time:   i64         // unix ts of service window
   tc_seconds:     i64         // decay cliff length (e.g. 86400)
   frozen:         bool        // true once service reached / trading halted
+  party_size:     u8          // seats UP TO this many (§4a); pool = (venue, window, party_size)
 }
 ```
 
@@ -346,10 +413,11 @@ Pool {
 `chain-services` MUST expose a TS interface with these exact methods so diner/app agents build
 against the mock, then swap to the real program with no caller changes:
 ```
-create_pool(authority, p0, k, n_max, phi_bps, service_time, tc_seconds) -> { pool_id, mint }
+create_pool(authority, p0, k, n_max, phi_bps, service_time, tc_seconds, party_size) -> { pool_id, mint }
 quote(pool_id) -> { n_sold, n_max, theta_bps, buy_price, sell_price, frozen }   // read-only
 buy(pool_id, buyer_user_id, max_price)  -> { tx_sig, status:'filled'|'rejected_slippage', price_paid?, refund? }
                                           // n -> n+1 if current buy_price <= max_price; else reject+refund (§7c-A)
+                                          // MUST also reject if buyer already holds a token for this pool (§7c-C)
 sell(pool_id, seller_user_id)-> { tx_sig, payout }                              // n -> n-1
 redeem(pool_id, user_id)     -> { tx_sig }              // burn on check-in; stablecoin stays in reserve
 check_in(pool_id, user_id, restaurant_authority) -> { tx_sig }   // issuer marks diner arrived -> triggers redeem
@@ -368,7 +436,7 @@ sell_price = p0 + floor(k * (n_sold-1) * theta_bps / 10000) ; payout = sell_pric
 Program emits events on each state change; indexer writes them. Postgres tables (read-model only):
 ```
 venues(id, name, auth0_org, created_at)
-pools(id, venue_id, mint, p0, k, n_max, phi_bps, service_time, tc_seconds, frozen, created_at)
+pools(id, venue_id, mint, p0, k, n_max, phi_bps, service_time, tc_seconds, party_size, frozen, created_at)
 pool_state(pool_id PK, n_sold, last_buy_price, last_sell_price, theta_bps, reserve_balance, updated_at)
 price_history(id, pool_id, ts, n_sold, spot_price, theta_bps, event_type)   // powers the live chart
 holdings(id, user_id, pool_id, token_amount, status[held|redeemed|sold], acquired_at)
@@ -378,7 +446,7 @@ events_raw(id, tx_sig, pool_id, kind[create|buy|sell|redeem|checkin|sweep], payl
 ## 10.4 REST API (owned by `app-services`; consumed by both frontends)
 Auth: Bearer JWT from Auth0 on every call; `restaurant-*` routes require issuer role.
 ```
-GET  /pools                       -> [pool summary]
+GET  /pools                       -> [pool summary]   // incl. party_size; one entry per (night, band) §4a
 GET  /pools/:id                   -> pool detail + current quote (proxies chain-services.quote)
 GET  /pools/:id/history?since=    -> price_history rows (for the curve chart)
 POST /pools/:id/buy               -> { deposit_intent_id, max_price, expires_at, checkout }   // §7c-A quote-lock; see §10.5 buy flow
@@ -389,7 +457,7 @@ GET  /me/holdings                 -> holdings for Auth0 user
 POST /me/redeem  {pool_id}        -> triggers redeem (or restaurant-side check_in)
 
 // issuer (restaurant-frontend):
-POST /restaurant/pools            -> create_pool passthrough
+POST /restaurant/pools            -> create_pool passthrough (one call per party-size band, §4a)
 GET  /restaurant/pools/:id        -> fill %, reserve, holders, royalties accrued
 POST /restaurant/pools/:id/checkin {user_id}
 POST /restaurant/pools/:id/sweep
@@ -499,7 +567,10 @@ project's Base/Solana treasury addresses + Solana USDC mint.
 ## 10.6 Assumptions (override at build if wrong)
 - Custodial / app-managed holdings (no diner Phantom wallet). CONFIRMED.
 - Stablecoin = devnet USDC (6 decimals). Chain = devnet OR mock behind §10.2 adapter. CONFIRMED.
-- One fungible token type per (venue, service_window). Pools independent. LOCKED (§4/§7).
+- One fungible token type per (venue, service_window, party_size). Pools independent. LOCKED (§4/§4a/§7).
+- Party size handled as BANDS ("seats up to N"), one pool each; table-combining is a
+  pool-creation decision, never trade-time. LOCKED (§4a).
+- One table per diner per pool, enforced on-chain. LOCKED (§7c-C).
 - Check-in = restaurant staff action in dashboard (no geofencing). CONFIRMED.
 - Auth beyond email login (Auth0) not required for demo. CONFIRMED.
 

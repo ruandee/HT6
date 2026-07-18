@@ -31,6 +31,8 @@ export interface PoolSummary {
   label: string;
   date_iso: string;
   service_time: number;
+  /** seats UP TO this many — a party of 3 books the 4-top band (§4a). */
+  party_size: number;
   n_sold: number;
   n_max: number;
   buy_price: string;

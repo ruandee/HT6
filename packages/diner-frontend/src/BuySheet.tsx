@@ -7,17 +7,26 @@
 import { useEffect, useState } from 'react';
 import { splitUsdc, usdc } from './api';
 
-const P0 = '40000000';
-
 interface Props {
   price: string;
+  /** this band's meal-credit floor (p0) — scales with party size (§4a). */
+  floor: string;
+  partySize: number;
   expiresAt: string;
   onConfirm: () => void;
   onExpire: () => void;
   onClose: () => void;
 }
 
-export function BuySheet({ price, expiresAt, onConfirm, onExpire, onClose }: Props) {
+export function BuySheet({
+  price,
+  floor,
+  partySize,
+  expiresAt,
+  onConfirm,
+  onExpire,
+  onClose,
+}: Props) {
   const total = Math.max(1, (new Date(expiresAt).getTime() - Date.now()) / 1000);
   const [left, setLeft] = useState(total);
   const [busy, setBusy] = useState(false);
@@ -45,7 +54,7 @@ export function BuySheet({ price, expiresAt, onConfirm, onExpire, onClose }: Pro
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
           <div>
             <div className="eyebrow" style={{ width: 150 }}>
-              Price locked
+              Table for {partySize}
             </div>
             <div className="price" style={{ fontSize: 58, marginTop: 14 }}>
               <span>${p.dollars}</span>
@@ -77,7 +86,7 @@ export function BuySheet({ price, expiresAt, onConfirm, onExpire, onClose }: Pro
         </div>
 
         <p className="muted" style={{ marginTop: 22, fontSize: 14 }}>
-          <strong style={{ color: 'var(--ink)' }}>{usdc(P0)}</strong> of this comes back to you
+          <strong style={{ color: 'var(--ink)' }}>{usdc(floor)}</strong> of this comes back to you
           as meal credit at the table. The rest is tonight&apos;s scarcity premium — and if you
           can&apos;t make it, sell it back to the curve.
         </p>

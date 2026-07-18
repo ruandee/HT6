@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usdc, type PoolSummary } from './api';
 
 interface Props {
+  /** already filtered to the chosen party-size band — one pool per date. */
   pools: PoolSummary[];
   selected: string; // pool_id
   onSelect: (poolId: string) => void;

@@ -28,27 +28,40 @@ const orchestrator = new Orchestrator(chain, gateway);
 
 // --- demo seed: one buzzy pool, θ far out, seeded to n=6 (§7d) so the curve already shows premium.
 /**
- * Demo seed: one pool per service window (§4 — a pool is a venue + window; different nights are
- * different pools with independent curves). Varied fill so switching dates visibly changes the
- * curve, and the nearest date sits inside Tc so θ decay is already biting.
+ * Demo seed. A pool is (venue, service_window, party_size) — §4/§4a. A 2-top and a 6-top are
+ * not interchangeable, so each party-size BAND gets its own curve; that keeps the single-curve
+ * AMM honest. Tokens mean "a table seating UP TO party_size", so a party of 3 books the 4-top.
+ *
+ * p0 scales ~$20/head (the meal credit is per person) and k scales with it — a 6-top on a
+ * Friday is scarcer, so its curve is steeper. n_max per band is the restaurant's room
+ * configuration, decided at pool creation (this is where "push tables together" lives — it is
+ * never a trade-time decision, because N must stay fixed for the solvency invariant).
  */
 interface PoolMeta {
   pool_id: string;
   label: string; // "Fri 7–9pm"
   date_iso: string; // yyyy-mm-dd, for the calendar
   service_time: number;
+  party_size: number;
 }
 let DEMO_POOL_ID = '';
 const POOLS: PoolMeta[] = [];
 
-const DAY = 86_400;
+/** Party-size bands offered each night: seats up to N, how many such tables, and their economics. */
+const BANDS = [
+  { party_size: 2, n_max: 20, p0: '40000000', k: '3000000' }, // §7d headline params
+  { party_size: 4, n_max: 8, p0: '80000000', k: '6000000' },
+  { party_size: 6, n_max: 3, p0: '120000000', k: '10000000' },
+];
+
+/** seats[] = how many already sold in each band, index-aligned with BANDS. */
 const SEED_PLAN = [
   // tonight — inside the 24h cliff, so θ is already decaying (§7b) and the curve reads flatter
-  { inHours: 6, seats: 14 },
-  { inDays: 2, hour: 19, seats: 6 }, // the headline demo pool
-  { inDays: 3, hour: 19, seats: 9 },
-  { inDays: 4, hour: 20, seats: 3 },
-  { inDays: 8, hour: 19, seats: 1 },
+  { inHours: 6, seats: [14, 6, 2] },
+  { inDays: 2, hour: 19, seats: [6, 3, 1] }, // the headline demo night
+  { inDays: 3, hour: 19, seats: [9, 5, 0] },
+  { inDays: 4, hour: 20, seats: [3, 1, 0] },
+  { inDays: 8, hour: 19, seats: [1, 0, 0] },
 ];
 
 async function seed() {
@@ -62,37 +75,41 @@ async function seed() {
       d.setHours(plan.hour ?? 19, 0, 0, 0);
     }
     const service_time = Math.floor(d.getTime() / 1000);
-
-    const { pool_id } = await chain.create_pool({
-      authority: 'rest_wallet',
-      p0: '40000000',
-      k: '3000000',
-      n_max: 20,
-      phi_bps: 500,
-      service_time,
-      tc_seconds: 86400,
-    });
-    for (let s = 0; s < plan.seats; s++) {
-      await chain.buy(pool_id, `seed_${i}_${s}`, '999000000');
-    }
     const h = d.getHours();
     const h12 = (x: number) => (x > 12 ? x - 12 : x === 0 ? 12 : x);
     const label = `${d.toLocaleDateString('en-US', { weekday: 'short' })} ${h12(h)}–${h12(
       h + 2,
     )}${h + 2 >= 12 ? 'pm' : 'am'}`;
-    POOLS.push({
-      pool_id,
-      label,
-      date_iso: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
-        d.getDate(),
-      ).padStart(2, '0')}`,
-      service_time,
-    });
+    const date_iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+      d.getDate(),
+    ).padStart(2, '0')}`;
+
+    // one pool per band — each band is internally fungible, so each gets its own curve
+    for (const [b, band] of BANDS.entries()) {
+      const { pool_id } = await chain.create_pool({
+        authority: 'rest_wallet',
+        p0: band.p0,
+        k: band.k,
+        n_max: band.n_max,
+        phi_bps: 500,
+        service_time,
+        tc_seconds: 86400,
+        party_size: band.party_size,
+      });
+      const sold = Math.min(plan.seats[b] ?? 0, band.n_max);
+      for (let s = 0; s < sold; s++) {
+        await chain.buy(pool_id, `seed_${i}_${b}_${s}`, '9990000000');
+      }
+      POOLS.push({ pool_id, label, date_iso, service_time, party_size: band.party_size });
+      if (i === 1 && band.party_size === 2) DEMO_POOL_ID = pool_id; // §7d headline pool
+    }
   }
-  DEMO_POOL_ID = POOLS[1]!.pool_id; // the §7d headline pool (n=6)
-  console.log(`[seed] ${POOLS.length} pools; default ${DEMO_POOL_ID}`, {
-    now: new Date(now * 1000).toISOString(),
-  });
+  DEMO_POOL_ID ||= POOLS[0]!.pool_id;
+  console.log(
+    `[seed] ${POOLS.length} pools (${SEED_PLAN.length} nights × ${BANDS.length} bands); ` +
+      `default ${DEMO_POOL_ID}`,
+    { now: new Date(now * 1000).toISOString() },
+  );
 }
 
 const app = express();
@@ -169,6 +186,7 @@ app.get('/pools', async (_req, res) => {
       label: p.label,
       date_iso: p.date_iso,
       service_time: p.service_time,
+      party_size: p.party_size,
       n_sold: q.n_sold,
       n_max: q.n_max,
       buy_price: q.buy_price,

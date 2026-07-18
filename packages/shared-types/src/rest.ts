@@ -18,6 +18,8 @@ export interface PoolSummary {
   id: PoolId;
   venue_name: string;
   label: string; // e.g. "Fri 7–9pm"
+  /** seats UP TO this many (§4a). Pools are (venue, window, party_size). */
+  party_size: number;
   n_sold: number;
   n_max: number;
   spot_price: UsdcBaseUnits;
@@ -88,6 +90,8 @@ export interface RedeemRequest {
 export interface CreatePoolRequest {
   venue_id: string;
   label: string;
+  /** seats UP TO this many. The issuer creates one pool per band it wants to sell (§4a). */
+  party_size: number;
   p0: UsdcBaseUnits;
   k: UsdcBaseUnits;
   n_max: number;
