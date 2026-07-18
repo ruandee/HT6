@@ -44,6 +44,20 @@ export class Orchestrator {
   async beginBuy(poolId: PoolId, userId: UserId) {
     const q = await this.chain.quote(poolId);
     if (q.frozen) throw new Error('pool frozen; trading halted');
+    if (q.n_sold >= q.n_max) throw new Error('this night is sold out');
+
+    // One table per diner per pool — check BEFORE taking money. The chain enforces this too
+    // (that's authoritative), but failing at settlement would mean the diner already paid.
+    if (this.holdings.some((h) => h.userId === userId && h.poolId === poolId && h.status === 'held')) {
+      throw new Error('you already have a table for this night');
+    }
+    // ...and don't let a second checkout open while one is still pending (double-click / two tabs).
+    for (const p of this.pendingBuys.values()) {
+      if (p.userId === userId && p.poolId === poolId) {
+        throw new Error('you already have a checkout open for this night');
+      }
+    }
+
     const maxPrice = q.buy_price; // lock the price the diner saw
     const dep = await this.gateway.beginDeposit(
       userId,
@@ -68,7 +82,19 @@ export class Orchestrator {
     const pending = this.pendingBuys.get(depositIntentId);
     if (!pending) return { unknownIntent: true };
 
-    const result = await this.chain.buy(pending.poolId, pending.userId, pending.maxPrice);
+    let result;
+    try {
+      result = await this.chain.buy(pending.poolId, pending.userId, pending.maxPrice);
+    } catch (e) {
+      // Chain refused (sold out, already holding, frozen). The diner has already paid, so
+      // refund rather than swallow it.
+      this.pendingBuys.delete(depositIntentId);
+      await this.gateway.payout(pending.userId, pending.maxPrice, {
+        kind: 'sell',
+        pool_id: pending.poolId,
+      });
+      return { filled: false, reason: 'rejected_refunded', error: String(e) };
+    }
     this.pendingBuys.delete(depositIntentId);
 
     if (result.status === 'rejected_slippage') {

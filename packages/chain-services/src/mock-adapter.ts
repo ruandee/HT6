@@ -104,6 +104,16 @@ export class MockChainAdapter implements ChainAdapter {
     const p = this.get(pool_id);
     if (p.frozen) throw new Error('pool frozen; trading halted');
     if (p.n_sold >= p.n_max) throw new Error('pool sold out');
+    // One table per diner per pool. A reservation is for a table you intend to use; holding
+    // several withholds inventory from real diners and turns the curve into a speculation
+    // vehicle (buy cheap early, sell into the sold-out premium later). Different NIGHTS are
+    // different pools and are unrestricted. The real Anchor program must enforce this too.
+    // Note: this counts REDEEMED tokens too — once you've taken the night's table (checked in),
+    // you don't get to buy another for the same window. Selling back DOES free you to rebuy,
+    // since the token left your hands and returned to the curve.
+    if (p.tokens.some((t) => t.user_id === buyer_user_id)) {
+      throw new Error('already holding a table for this service window');
+    }
     const theta = this.theta(p);
     const current = BigInt(buyPrice(p.p0, p.k, p.n_sold, theta));
     // §7c-A: reject if current price rose past the diner's locked max.

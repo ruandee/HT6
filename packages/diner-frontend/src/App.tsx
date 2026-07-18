@@ -52,8 +52,13 @@ export default function App() {
   }, [q]);
 
   async function startBuy() {
-    const r = await api.buy(poolId);
-    setSheet({ intentId: r.deposit_intent_id, price: r.max_price, expires: r.expires_at });
+    try {
+      const r = await api.buy(poolId);
+      setSheet({ intentId: r.deposit_intent_id, price: r.max_price, expires: r.expires_at });
+    } catch (e) {
+      setFlash(String(e instanceof Error ? e.message : e).replace(/^Error:\s*/, ''));
+      setTimeout(() => setFlash(null), 4200);
+    }
   }
 
   async function confirmBuy(intentId: string) {
@@ -183,10 +188,27 @@ export default function App() {
               className="btn btn--primary"
               style={{ width: '100%', marginTop: 26 }}
               onClick={startBuy}
-              disabled={!q || q.frozen || left === 0}
+              disabled={!q || q.frozen || left === 0 || held.length > 0}
             >
-              Claim this table
+              {held.length > 0
+                ? 'You have this night'
+                : left === 0
+                  ? 'Sold out'
+                  : 'Claim this table'}
             </button>
+            {held.length > 0 && (
+              <div
+                style={{
+                  fontSize: 11.5,
+                  color: 'var(--ink-45)',
+                  textAlign: 'center',
+                  marginTop: 10,
+                  lineHeight: 1.5,
+                }}
+              >
+                One table per person per night — pick another night to book again.
+              </div>
+            )}
 
             {held.length > 0 && (
               <>

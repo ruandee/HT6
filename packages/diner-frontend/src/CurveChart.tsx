@@ -118,13 +118,13 @@ export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500 }: Props
         <AreaChart data={data} margin={{ top: 18, right: 14, bottom: 4, left: 4 }}>
           <defs>
             <linearGradient id="curveStroke" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#FFD28F" />
-              <stop offset="55%" stopColor="#EF9576" />
-              <stop offset="100%" stopColor="#D4715A" />
+              <stop offset="0%" stopColor="#FFC861" />
+              <stop offset="55%" stopColor="#FF7A59" />
+              <stop offset="100%" stopColor="#F2542D" />
             </linearGradient>
             <linearGradient id="curveFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#EF9576" stopOpacity={0.22} />
-              <stop offset="100%" stopColor="#FFEEC4" stopOpacity={0} />
+              <stop offset="0%" stopColor="#FF7A59" stopOpacity={0.28} />
+              <stop offset="100%" stopColor="#FFE8A3" stopOpacity={0} />
             </linearGradient>
             <filter id="dotGlow" x="-120%" y="-120%" width="340%" height="340%">
               <feGaussianBlur stdDeviation="5" result="b" />
@@ -189,7 +189,7 @@ export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500 }: Props
               x={current.n}
               y={current.price}
               r={6.5}
-              fill="#D4715A"
+              fill="#F2542D"
               stroke="#fff"
               strokeWidth={2.5}
               filter="url(#dotGlow)"

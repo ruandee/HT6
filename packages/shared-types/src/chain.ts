@@ -102,7 +102,14 @@ export interface ChainAdapter {
   create_pool(params: CreatePoolParams): Promise<CreatePoolResult>;
   /** read-only; safe to poll for the live curve. */
   quote(pool_id: PoolId): Promise<QuoteResult>;
-  /** n -> n+1 iff current buy_price <= max_price, else rejected+refund (§7c-A). */
+  /**
+   * n -> n+1 iff current buy_price <= max_price, else rejected+refund (§7c-A).
+   *
+   * ONE TABLE PER USER PER POOL (enforced here, the authoritative layer — not just in the UI):
+   * throws if `buyer_user_id` already holds an unredeemed token for this pool. Prevents a diner
+   * cornering a night's inventory and reselling into the sold-out premium. Holding tables for
+   * DIFFERENT service windows (different pools) is unrestricted.
+   */
   buy(pool_id: PoolId, buyer_user_id: UserId, max_price: UsdcBaseUnits): Promise<BuyResult>;
   /** n -> n-1; curve is the counterparty. */
   sell(pool_id: PoolId, seller_user_id: UserId): Promise<SellResult>;
