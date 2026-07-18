@@ -12,6 +12,10 @@ export interface Config {
     secretKey: string;
     treasuryId: string;
     webhookSecret: string;
+    /** Base-chain address BUY proceeds settle to (v1 destination is Base USDC only). */
+    baseRecipientAddress: string;
+    /** SPL USDC mint used as token_address on Solana payouts. */
+    solanaUsdcMint: string;
   };
 }
 
@@ -28,6 +32,10 @@ export function loadConfig(): Config {
       secretKey: process.env.UNIFOLD_SECRET_KEY ?? '',
       treasuryId: process.env.UNIFOLD_TREASURY_ID ?? '',
       webhookSecret: process.env.UNIFOLD_WEBHOOK_SECRET ?? '',
+      baseRecipientAddress: process.env.UNIFOLD_BASE_RECIPIENT_ADDRESS ?? '',
+      // Mainnet SPL USDC mint by default; override for devnet.
+      solanaUsdcMint:
+        process.env.SOLANA_USDC_MINT ?? 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
     },
   };
 }

@@ -17,15 +17,28 @@ import { StubGateway } from './stub-gateway.js';
 import { Orchestrator } from './orchestrator.js';
 import { IssuerService } from './issuer.js';
 import { verifyWebhook } from './webhook-verify.js';
+import {
+  UnifoldGateway,
+  normalizeUnifoldEvent,
+  type UnifoldWebhookEvent,
+} from './unifold-gateway.js';
 
 const cfg = loadConfig();
 const chain = new MockChainAdapter();
-const gateway =
-  cfg.gateway === 'stub'
-    ? new StubGateway(`${cfg.baseUrl}/mock/deposit`)
-    : (() => {
-        throw new Error('UnifoldGateway not implemented yet (SWAP B). Use PAYMENT_GATEWAY=stub.');
-      })();
+/**
+ * §8.1 SWAP B. `PAYMENT_GATEWAY=stub` (the default) keeps the keyless demo exactly as it was;
+ * `unifold` constructs the real REST gateway, which throws immediately if any key is missing.
+ */
+const unifoldGateway =
+  cfg.gateway === 'unifold'
+    ? new UnifoldGateway({
+        ...cfg.unifold,
+        // Diner Solana USDC payout address. The x-user-id auth stub has no wallet registry yet;
+        // when Auth0 + the custodial wallet service land, resolve it from the user profile here.
+        resolveSolanaAddress: (uid) => process.env.DEMO_DINER_SOLANA_ADDRESS ?? String(uid),
+      })
+    : undefined;
+const gateway = unifoldGateway ?? new StubGateway(`${cfg.baseUrl}/mock/deposit`);
 /** Pools sharing a service window = the other party-size bands that night (§4a/§7c-C). */
 function siblingPools(poolId: string): string[] {
   const self = POOLS.find((p) => p.pool_id === poolId);
@@ -171,31 +184,52 @@ app.post(
     });
     if (!v.ok) return res.status(400).json({ error: v.error });
 
-    let evt: { type?: string; data?: { object?: { id?: string } } };
+    let evt: UnifoldWebhookEvent;
     try {
-      evt = JSON.parse(rawBody);
+      evt = JSON.parse(rawBody) as UnifoldWebhookEvent;
     } catch {
       return res.status(400).json({ error: 'invalid JSON body' });
     }
-    const intentId = evt.data?.object?.id ?? '';
 
-    switch (evt.type) {
-      case 'payment_intent.succeeded': {
-        const out = await orchestrator.onDepositSucceeded(intentId, v.eventId);
-        console.log('[webhook] succeeded', intentId, out);
+    // ONE mapping for both paths: the stub posts real-shaped envelopes (with x-stub:1 to skip the
+    // HMAC), the real gateway posts signature-verified ones. Same normalizer, same branches.
+    const n = normalizeUnifoldEvent(evt);
+    switch (n.action) {
+      case 'deposit_succeeded': {
+        // The ONLY place a buy is fulfilled (§7c-A). max_price rides in metadata on the real
+        // path; the orchestrator's pending row remains authoritative for the on-chain cap.
+        const out = await orchestrator.onDepositSucceeded(n.intentId, v.eventId);
+        console.log('[webhook] succeeded', n.intentId, out);
         break;
       }
-      case 'payment_intent.expired':
-      case 'payment_intent.refunded':
-        orchestrator.onDepositExpired(intentId);
-        console.log('[webhook] expired/refunded', intentId);
+      case 'deposit_expired':
+        orchestrator.onDepositExpired(n.intentId);
+        console.log('[webhook] expired/refunded', n.intentId, n.reason);
         break;
-      case 'treasury.outbound_transfer.completed':
-      case 'treasury.outbound_transfer.failed':
-        console.log('[webhook] payout', evt.type, intentId);
+      case 'deposit_awaiting_refund': {
+        // Late deposit after expiry: refund the payer on the SOURCE chain, never buy.
+        orchestrator.onDepositExpired(n.intentId);
+        const refundTo = process.env.DEMO_DINER_SOLANA_ADDRESS ?? '';
+        if (unifoldGateway && refundTo) {
+          try {
+            await unifoldGateway.refund(n.intentId, refundTo);
+            console.log('[webhook] refund requested', n.intentId);
+          } catch (e) {
+            console.error('[webhook] refund FAILED', n.intentId, msg(e));
+          }
+        } else {
+          console.warn('[webhook] awaiting_refund but no refund address resolved', n.intentId);
+        }
+        break;
+      }
+      case 'deposit_refund_failed':
+        console.error('[webhook] REFUND FAILED — manual intervention', n.intentId, n.failureReason);
+        break;
+      case 'payout_settled':
+        console.log('[webhook] payout', n.status, n.payoutId, n.failureReason ?? '');
         break;
       default:
-        console.log('[webhook] ignored', evt.type);
+        console.log('[webhook] ignored:', n.reason);
     }
     return res.status(200).json({ received: true });
   },
