@@ -1,10 +1,26 @@
 {
   "name": "@ttr/diner-frontend",
   "version": "0.0.0",
-  "description": "Stream 4: React diner app — live bonding curve, buy/sell-back/redeem, holdings (§10.4 client). Talks ONLY to app-services REST + the Unifold checkout modal.",
+  "description": "Stream 4: React diner app — live bonding curve, buy/sell-back/redeem, holdings (§10.4 client).",
   "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
   "dependencies": {
     "@ttr/shared-types": "*",
-    "@unifold/connect-react": "^0.1.70"
+    "@unifold/connect-react": "^0.1.70",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^2.12.7"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.6.0",
+    "vite": "^5.4.11"
   }
 }
