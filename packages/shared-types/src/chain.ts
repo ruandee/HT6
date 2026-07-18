@@ -116,10 +116,15 @@ export interface ChainAdapter {
   /**
    * n -> n+1 iff current buy_price <= max_price, else rejected+refund (§7c-A).
    *
-   * ONE TABLE PER USER PER POOL (enforced here, the authoritative layer — not just in the UI):
-   * throws if `buyer_user_id` already holds an unredeemed token for this pool. Prevents a diner
-   * cornering a night's inventory and reselling into the sold-out premium. Holding tables for
-   * DIFFERENT service windows (different pools) is unrestricted.
+   * ONE TABLE PER USER PER SERVICE WINDOW (§7c-C; enforced here, the authoritative layer — not
+   * just in the UI): throws if `buyer_user_id` holds a token in ANY pool sharing this pool's
+   * (authority, service_time) — i.e. across every party-size band, not just this one.
+   *
+   * Scoped to the window rather than the pool to close the cross-band straddle (hold a 2-top AND
+   * a 4-top for the same night, then sell back whichever leg the curve favours — a cheap option
+   * on the night selling out, and it withholds a table from a real diner). Counts redeemed
+   * tokens too. Selling back frees a rebuy, which is how a diner switches party size. Different
+   * nights and different venues are unrestricted.
    */
   buy(pool_id: PoolId, buyer_user_id: UserId, max_price: UsdcBaseUnits): Promise<BuyResult>;
   /** n -> n-1; curve is the counterparty. */

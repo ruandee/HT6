@@ -99,7 +99,15 @@ export default function App() {
 
   // scope to the night being viewed — sell-back acts on this pool's token.
   const held = holdings.filter((h) => h.status === 'held' && h.pool_id === poolId);
-  const heldElsewhere = holdings.filter((h) => h.status === 'held' && h.pool_id !== poolId);
+  // §7c-C is per SERVICE WINDOW, so holding any band tonight blocks buying another.
+  const windowPoolIds = new Set(bandsTonight.map((b) => b.pool_id));
+  const heldThisWindow = holdings.filter(
+    (h) => h.status === 'held' && windowPoolIds.has(h.pool_id),
+  );
+  const heldOtherBand = heldThisWindow.filter((h) => h.pool_id !== poolId);
+  const heldElsewhere = holdings.filter(
+    (h) => h.status === 'held' && !windowPoolIds.has(h.pool_id),
+  );
   const price = q ? splitUsdc(q.buy_price) : { dollars: '—', cents: '00' };
   const left = q ? q.n_max - q.n_sold : 0;
   const floorP0 = currentPool
@@ -218,15 +226,15 @@ export default function App() {
               className="btn btn--primary"
               style={{ width: '100%', marginTop: 26 }}
               onClick={startBuy}
-              disabled={!q || q.frozen || left === 0 || held.length > 0}
+              disabled={!q || q.frozen || left === 0 || heldThisWindow.length > 0}
             >
-              {held.length > 0
+              {heldThisWindow.length > 0
                 ? 'You have this night'
                 : left === 0
                   ? 'Sold out'
                   : 'Claim this table'}
             </button>
-            {held.length > 0 && (
+            {heldThisWindow.length > 0 && (
               <div
                 style={{
                   fontSize: 11.5,
@@ -236,7 +244,17 @@ export default function App() {
                   lineHeight: 1.5,
                 }}
               >
-                One table per person per night — pick another night to book again.
+                {heldOtherBand.length > 0 ? (
+                  <>
+                    You hold the{' '}
+                    {bandsTonight.find((b) => b.pool_id === heldOtherBand[0]!.pool_id)
+                      ?.party_size ?? ''}
+                    -top this night. One table per person per night — sell that back to switch
+                    sizes.
+                  </>
+                ) : (
+                  <>One table per person per night — pick another night to book again.</>
+                )}
               </div>
             )}
 

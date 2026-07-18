@@ -24,7 +24,15 @@ const gateway =
     : (() => {
         throw new Error('UnifoldGateway not implemented yet (SWAP B). Use PAYMENT_GATEWAY=stub.');
       })();
-const orchestrator = new Orchestrator(chain, gateway);
+/** Pools sharing a service window = the other party-size bands that night (§4a/§7c-C). */
+function siblingPools(poolId: string): string[] {
+  const self = POOLS.find((p) => p.pool_id === poolId);
+  if (!self) return [poolId];
+  return POOLS.filter(
+    (p) => p.date_iso === self.date_iso && p.service_time === self.service_time,
+  ).map((p) => p.pool_id);
+}
+const orchestrator = new Orchestrator(chain, gateway, siblingPools);
 
 // --- demo seed: one buzzy pool, θ far out, seeded to n=6 (§7d) so the curve already shows premium.
 /**

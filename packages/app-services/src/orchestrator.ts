@@ -35,9 +35,15 @@ export class Orchestrator {
   private pendingBuys = new Map<string, PendingBuy>();
   private processedEvents = new Set<string>();
 
+  /**
+   * `siblingPools` returns every pool sharing a service window with the given one (i.e. the
+   * other party-size bands that night, §4a). Used for the §7c-C one-table-per-window check.
+   * Defaults to "just this pool" so the orchestrator works standalone in tests.
+   */
   constructor(
     private readonly chain: ChainAdapter,
     private readonly gateway: PaymentGateway,
+    private readonly siblingPools: (poolId: PoolId) => PoolId[] = (id) => [id],
   ) {}
 
   /** POST /pools/:id/buy — quote, lock, create deposit intent. Returns checkout handle for the UI. */
@@ -46,14 +52,22 @@ export class Orchestrator {
     if (q.frozen) throw new Error('pool frozen; trading halted');
     if (q.n_sold >= q.n_max) throw new Error('this night is sold out');
 
-    // One table per diner per pool — check BEFORE taking money. The chain enforces this too
-    // (that's authoritative), but failing at settlement would mean the diner already paid.
-    if (this.holdings.some((h) => h.userId === userId && h.poolId === poolId && h.status === 'held')) {
+    // One table per diner per SERVICE WINDOW, across every band (§7c-C) — checked BEFORE taking
+    // money. The chain enforces this too (that's authoritative), but failing only at settlement
+    // would mean the diner already paid. Scoped to the whole window so the cross-band straddle
+    // (hold a 2-top and a 4-top, sell back whichever leg the curve favours) can't be opened.
+    const window = new Set(this.siblingPools(poolId));
+    if (
+      this.holdings.some(
+        (h) => h.userId === userId && h.status === 'held' && window.has(h.poolId),
+      )
+    ) {
       throw new Error('you already have a table for this night');
     }
-    // ...and don't let a second checkout open while one is still pending (double-click / two tabs).
+    // ...and don't let a second checkout open while one is still pending (double-click / two
+    // tabs / one tab per band).
     for (const p of this.pendingBuys.values()) {
-      if (p.userId === userId && p.poolId === poolId) {
+      if (p.userId === userId && window.has(p.poolId)) {
         throw new Error('you already have a checkout open for this night');
       }
     }

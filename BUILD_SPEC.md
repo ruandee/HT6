@@ -137,8 +137,10 @@ the pools (setting n_max per band). Want to sell 8 four-tops by combining? Set t
 N=8 and the 2-top pool lower. The combining decision is a human judgment call at pool-creation
 time, never a trade-time one.
 
-**One table per diner per pool** (§7c-C) is per POOL, so holding a 2-top on Friday and a 6-top on
-Saturday is fine — those are different pools.
+**One table per diner per SERVICE WINDOW** (§7c-C) spans every band, so you cannot hold a 2-top
+and a 4-top for the same night (that straddle is a cheap option on the night selling out, and it
+withholds a table). Holding a 2-top on Friday and a 6-top on Saturday IS fine — different nights.
+To switch party size for a night you already hold, sell that table back first.
 
 **Demo guidance:** seed a few bands so the model visibly generalizes and label them in the UI
 ("Fri 7–9pm · table for 2"), but drive the §11 script on ONE band. Party size is a second
@@ -287,25 +289,40 @@ count, total swept, and "meal credits to honor" (= p0 × consumed count).
 Rationale: makes the no-show-recovery number explicit and honest, and keeps the p0 floor as a
 real-world credit rather than pretending the chain refunds it.
 
-### (C) One table per diner per pool (LOCKED)
-`buy` MUST reject if the buyer already holds a token for that pool. Enforced ON-CHAIN (the
-authoritative layer), mirrored in app-services (pre-checked BEFORE taking money — the buy path is
-async, so checking only at settlement would mean the diner already paid) and in the UI.
+### (C) One table per diner per SERVICE WINDOW (LOCKED)
+`buy` MUST reject if the buyer already holds a token for **any pool sharing that (venue,
+service_window)** — i.e. across every party-size band (§4a), not just the pool being bought.
+Enforced ON-CHAIN (the authoritative layer; the program groups by `authority` + `service_time`),
+mirrored in app-services (pre-checked BEFORE taking money — the buy path is async, so checking
+only at settlement would mean the diner already paid) and in the UI.
 
-Rationale: the φ spread already makes an instant round-trip unprofitable, so multi-buy is not free
-money by itself. The real exploit is **time-based**: buy several tables early while a night is
-half-empty, then sell into the sold-out premium later. Even net of φ that is a solid profit, and
-those tables were withheld from diners who wanted them — scalping, just against a curve. A
-reservation is also simply *for a table you intend to use*.
+Rationale, in two steps:
+1. **Why any cap at all.** The φ spread already makes an instant round-trip unprofitable, so
+   multi-buy is not free money by itself. The real exploit is **time-based**: buy several tables
+   early while a night is half-empty, then sell into the sold-out premium later. Net of φ that is
+   still a solid profit, and those tables were withheld from diners who wanted them — scalping,
+   just against a curve.
+2. **Why per-WINDOW and not per-pool.** A per-pool cap leaves the **cross-band straddle** open:
+   hold a 2-top *and* a 4-top for the same night, then sell back whichever leg the curve favours.
+   That is not arbitrage — the spread makes it a loss on average — but it is a **cheap option on
+   the night selling out** (pay ~$10 of spread for a shot at ~$12+ if the band fills), and either
+   way it withholds a table from a real diner. On the 6-top band (N=3) one straddler removes a
+   third of the inventory. Scaling it — one table in every band on every night — corners a slice
+   of everything. So the rule is simply: **one table per person per night.**
 
-Edge cases (both LOCKED):
+Edge cases (all LOCKED):
 - **Sell-back frees a rebuy** — the token went back to the curve; that is the liquidity feature
-  working as intended.
+  working as intended. It is also how a diner legitimately SWITCHES party size: sell the 2-top,
+  buy the 4-top.
 - **Check-in does NOT free a rebuy** — once you have taken that night's table, that is your table.
   (So the check counts redeemed tokens too.)
-- Scope is per POOL, so a 2-top Friday + a 6-top Saturday is fine, and per §4a so is a different
-  band on the same night (they are different pools). Tighten to per-(venue,window) if you want to
-  forbid that too.
+- **Different nights are unrestricted** (legitimate demand), as are **different venues** in the
+  same window.
+- **Accepted cost:** a genuine party of 10 cannot book a 6-top + a 4-top themselves — they should
+  call the restaurant, which is what happens today. §4a already declines to model table-combining
+  for the same reason.
+- **Residual, not closed:** multiple accounts. That is the identity problem every ticketing system
+  has; Auth0 email verification raises the cost, payment identity would raise it further.
 
 ## 7d. Suggested demo parameters (so the curve visibly MOVES on stage)
 p0 = 40 USDC, k = 3 USDC, N = 20, φ = 500 bps (5%), Tc = 86400s (24h).
@@ -417,7 +434,8 @@ create_pool(authority, p0, k, n_max, phi_bps, service_time, tc_seconds, party_si
 quote(pool_id) -> { n_sold, n_max, theta_bps, buy_price, sell_price, frozen }   // read-only
 buy(pool_id, buyer_user_id, max_price)  -> { tx_sig, status:'filled'|'rejected_slippage', price_paid?, refund? }
                                           // n -> n+1 if current buy_price <= max_price; else reject+refund (§7c-A)
-                                          // MUST also reject if buyer already holds a token for this pool (§7c-C)
+                                          // MUST also reject if buyer holds a token in ANY pool sharing
+                                          // this (authority, service_time) — all bands (§7c-C)
 sell(pool_id, seller_user_id)-> { tx_sig, payout }                              // n -> n-1
 redeem(pool_id, user_id)     -> { tx_sig }              // burn on check-in; stablecoin stays in reserve
 check_in(pool_id, user_id, restaurant_authority) -> { tx_sig }   // issuer marks diner arrived -> triggers redeem
@@ -570,7 +588,8 @@ project's Base/Solana treasury addresses + Solana USDC mint.
 - One fungible token type per (venue, service_window, party_size). Pools independent. LOCKED (§4/§4a/§7).
 - Party size handled as BANDS ("seats up to N"), one pool each; table-combining is a
   pool-creation decision, never trade-time. LOCKED (§4a).
-- One table per diner per pool, enforced on-chain. LOCKED (§7c-C).
+- One table per diner per (venue, service_window) — across all bands — enforced on-chain.
+  LOCKED (§7c-C).
 - Check-in = restaurant staff action in dashboard (no geofencing). CONFIRMED.
 - Auth beyond email login (Auth0) not required for demo. CONFIRMED.
 
