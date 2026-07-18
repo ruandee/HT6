@@ -131,14 +131,20 @@ pub mod reservations {
         )?;
 
         // mint the pool token to the diner (fungible within the band, §4)
-        let seeds = &[b"pool".as_ref(), pool.pool_seed.as_ref(), &[pool.bump]];
+        //
+        // Copy the seed material out before building the CpiContext: `pool` is a &mut borrow, and
+        // the signer seeds must outlive the CPI call, so they cannot borrow from it.
+        let pool_seed = pool.pool_seed;
+        let pool_bump = pool.bump;
+        let pool_ai = pool.to_account_info();
+        let seeds: &[&[u8]] = &[b"pool", pool_seed.as_ref(), &[pool_bump]];
         token::mint_to(
             CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
                 token::MintTo {
                     mint: ctx.accounts.mint.to_account_info(),
                     to: ctx.accounts.diner_token.to_account_info(),
-                    authority: pool.to_account_info(),
+                    authority: pool_ai,
                 },
                 &[seeds],
             ),
@@ -203,15 +209,18 @@ pub mod reservations {
             1,
         )?;
 
-        // reserve -> diner
-        let seeds = &[b"pool".as_ref(), pool.pool_seed.as_ref(), &[pool.bump]];
+        // reserve -> diner (seed material copied out; see the note in `buy`)
+        let pool_seed = pool.pool_seed;
+        let pool_bump = pool.bump;
+        let pool_ai = pool.to_account_info();
+        let seeds: &[&[u8]] = &[b"pool", pool_seed.as_ref(), &[pool_bump]];
         token::transfer(
             CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
                 Transfer {
                     from: ctx.accounts.reserve.to_account_info(),
                     to: ctx.accounts.diner_usdc.to_account_info(),
-                    authority: pool.to_account_info(),
+                    authority: pool_ai,
                 },
                 &[seeds],
             ),
@@ -254,33 +263,38 @@ pub mod reservations {
             ctx.accounts.authority.key() == pool.authority,
             ReservationError::NotAuthority
         );
-        let holding = &mut ctx.accounts.holding;
-        require!(!holding.redeemed, ReservationError::AlreadyRedeemed);
+        require!(!ctx.accounts.holding.redeemed, ReservationError::AlreadyRedeemed);
 
+        // Burn with the pool PDA as mint authority. Seed material is copied out first so the
+        // signer seeds don't borrow from `pool` across the CPI.
+        let pool_seed = pool.pool_seed;
+        let pool_bump = pool.bump;
+        let pool_ai = pool.to_account_info();
+        let seeds: &[&[u8]] = &[b"pool", pool_seed.as_ref(), &[pool_bump]];
         token::burn(
-            CpiContext::new(
+            CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
                 token::Burn {
                     mint: ctx.accounts.mint.to_account_info(),
                     from: ctx.accounts.diner_token.to_account_info(),
-                    authority: pool.to_account_info(),
+                    authority: pool_ai,
                 },
-            )
-            .with_signer(&[&[b"pool".as_ref(), pool.pool_seed.as_ref(), &[pool.bump]]]),
+                &[seeds],
+            ),
             1,
         )?;
 
+        let holding = &mut ctx.accounts.holding;
         holding.redeemed = true;
+        let paid = holding.paid;
+        let diner = holding.diner;
+        let pool = &mut ctx.accounts.pool;
         pool.consumed_count = pool
             .consumed_count
             .checked_add(1)
             .ok_or(ReservationError::MathOverflow)?;
 
-        emit!(CheckedIn {
-            pool: pool.key(),
-            diner: holding.diner,
-            paid: holding.paid,
-        });
+        emit!(CheckedIn { pool: pool.key(), diner, paid });
         Ok(())
     }
 
@@ -309,14 +323,18 @@ pub mod reservations {
             .ok_or(ReservationError::MathOverflow)?;
 
         if amount > 0 {
-            let seeds = &[b"pool".as_ref(), pool.pool_seed.as_ref(), &[pool.bump]];
+            // seed material copied out; see the note in `buy`
+            let pool_seed = pool.pool_seed;
+            let pool_bump = pool.bump;
+            let pool_ai = pool.to_account_info();
+            let seeds: &[&[u8]] = &[b"pool", pool_seed.as_ref(), &[pool_bump]];
             token::transfer(
                 CpiContext::new_with_signer(
                     ctx.accounts.token_program.to_account_info(),
                     Transfer {
                         from: ctx.accounts.reserve.to_account_info(),
                         to: ctx.accounts.authority_usdc.to_account_info(),
-                        authority: pool.to_account_info(),
+                        authority: pool_ai,
                     },
                     &[seeds],
                 ),
