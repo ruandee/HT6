@@ -1,0 +1,456 @@
+/* ============================================================
+   Prime — design system
+   Warm near-white canvas + hazy peach/coral/yellow orbs behind
+   prominent Apple-style glass. Type: Archivo (display, condensed
+   caps), Inter (UI), Reenie Beanie (handwritten emphasis).
+   ============================================================ */
+
+:root {
+  /* canvas — never pure white */
+  --canvas: #f7f6f3;
+  --canvas-deep: #efece7;
+
+  /* warm accent ramp (from the reference orb) */
+  --peach: #ffb38a;
+  --coral: #ff7a59;
+  --coral-deep: #f2542d;
+  --amber: #ffc861;
+  --yellow: #ffe8a3;
+
+  /* ink */
+  --ink: #16130f;
+  --ink-70: rgba(22, 19, 15, 0.7);
+  --ink-45: rgba(22, 19, 15, 0.45);
+  --ink-25: rgba(22, 19, 15, 0.25);
+  --hairline: rgba(22, 19, 15, 0.12);
+
+  /* glass */
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-bg-strong: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.75);
+  --glass-shadow: 0 18px 50px -12px rgba(80, 45, 25, 0.18),
+    0 4px 14px -4px rgba(80, 45, 25, 0.1);
+
+  --r-lg: 28px;
+  --r-md: 20px;
+  --r-pill: 999px;
+
+  --font-display: 'Archivo', system-ui, sans-serif;
+  --font-ui: 'Inter', system-ui, sans-serif;
+  --font-script: 'Reenie Beanie', cursive;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ---- hazy gradient orbs (sit BEHIND the glass so it picks up color) ---- */
+.orbs {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.85;
+}
+.orb--1 {
+  width: 46vw;
+  height: 46vw;
+  right: -6vw;
+  top: -8vw;
+  background: radial-gradient(
+    circle at 35% 35%,
+    var(--coral) 0%,
+    var(--peach) 42%,
+    var(--yellow) 68%,
+    transparent 76%
+  );
+  animation: drift1 22s ease-in-out infinite alternate;
+}
+.orb--2 {
+  width: 34vw;
+  height: 34vw;
+  left: -8vw;
+  bottom: -10vw;
+  background: radial-gradient(
+    circle at 50% 50%,
+    var(--amber) 0%,
+    var(--peach) 45%,
+    transparent 72%
+  );
+  opacity: 0.6;
+  animation: drift2 28s ease-in-out infinite alternate;
+}
+@keyframes drift1 {
+  to {
+    transform: translate3d(-4vw, 3vw, 0) scale(1.08);
+  }
+}
+@keyframes drift2 {
+  to {
+    transform: translate3d(3vw, -2vw, 0) scale(1.12);
+  }
+}
+
+/* ---- glass bevel (the Apple-ish treatment) ---- */
+.glass {
+  position: relative;
+  background: var(--glass-bg);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.25);
+}
+/* bright top-edge highlight — what sells the bevel */
+.glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(255, 255, 255, 0.25) 28%,
+    rgba(255, 255, 255, 0) 55%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.glass--strong {
+  background: var(--glass-bg-strong);
+}
+
+/* ---- layout ---- */
+.shell {
+  position: relative;
+  z-index: 1;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px 32px 72px;
+}
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 40px;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 13px;
+}
+.brand-dots {
+  display: flex;
+  gap: 5px;
+}
+.brand-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink);
+  display: block;
+}
+.brand-dots i:last-child {
+  background: var(--coral);
+}
+
+/* small-caps label + hairline rule (reference's section marker) */
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-45);
+}
+.eyebrow::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: var(--hairline);
+}
+
+/* ---- headline with handwritten emphasis ---- */
+.headline {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(38px, 5.4vw, 72px);
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  margin: 18px 0 0;
+}
+.script {
+  font-family: var(--font-script);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--coral-deep);
+  /* Reenie Beanie runs small — bump it to match cap height */
+  font-size: 1.55em;
+  line-height: 0.7;
+  padding: 0 0.06em;
+  display: inline-block;
+  transform: rotate(-2.5deg);
+}
+
+/* ---- price ---- */
+.price {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+.price--hero {
+  font-size: clamp(64px, 8.5vw, 104px);
+}
+.price__cents {
+  font-size: 0.44em;
+  letter-spacing: -0.02em;
+  color: var(--ink-45);
+}
+.price__delta {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--coral-deep);
+  margin-left: 12px;
+  align-self: center;
+}
+
+/* ---- buttons ---- */
+.btn {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border-radius: var(--r-pill);
+  padding: 16px 30px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.18s,
+    filter 0.18s;
+}
+.btn:active {
+  transform: scale(0.975);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.btn--primary {
+  color: #fff;
+  background: linear-gradient(168deg, var(--coral) 0%, var(--coral-deep) 100%);
+  box-shadow: 0 10px 26px -8px rgba(242, 84, 45, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -2px 6px rgba(140, 40, 10, 0.25);
+}
+.btn--primary:hover:not(:disabled) {
+  filter: brightness(1.04);
+  box-shadow: 0 14px 32px -8px rgba(242, 84, 45, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+.btn--ghost {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-color: var(--glass-border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 6px 18px -8px rgba(80, 45, 25, 0.25);
+}
+.btn--ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+/* ---- slot pips (scarcity at a glance) ---- */
+.pips {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.pip {
+  width: 15px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--ink-25);
+  transition: background 0.4s, transform 0.4s;
+}
+.pip--sold {
+  background: linear-gradient(90deg, var(--coral), var(--coral-deep));
+}
+.pip--just-sold {
+  transform: scaleY(1.9);
+}
+
+/* ---- misc ---- */
+.stat-label {
+  font-family: var(--font-display);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-45);
+}
+.muted {
+  color: var(--ink-70);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+/* ---- party-size selector ---- */
+.guest {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.5);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.16s, transform 0.16s, box-shadow 0.16s, color 0.16s;
+}
+.guest:hover:not(:disabled):not(.guest--sel) {
+  background: rgba(255, 255, 255, 0.85);
+  transform: translateY(-1px);
+}
+.guest:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.guest--sel {
+  background: linear-gradient(168deg, var(--coral) 0%, var(--coral-deep) 100%);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 6px 16px -6px rgba(242, 84, 45, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+/* ---- calendar day cells ---- */
+.day {
+  position: relative;
+  aspect-ratio: 1;
+  border: none;
+  background: transparent;
+  border-radius: 11px;
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  color: var(--ink-25);
+  cursor: default;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: background 0.16s, color 0.16s, transform 0.16s;
+}
+.day--has {
+  color: var(--ink);
+  cursor: pointer;
+}
+.day--has:hover {
+  background: rgba(255, 255, 255, 0.75);
+  transform: translateY(-1px);
+}
+.day__dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--coral-deep);
+  display: block;
+}
+.day--sel {
+  background: linear-gradient(168deg, var(--coral) 0%, var(--coral-deep) 100%);
+  color: #fff;
+  box-shadow: 0 6px 16px -6px rgba(242, 84, 45, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+.day--sel .day__dot {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+/* quote-lock ring */
+.ring {
+  transform: rotate(-90deg);
+}
+.ring__track {
+  stroke: var(--hairline);
+}
+.ring__fill {
+  stroke: var(--coral);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear;
+}
+
+/* sheet (buy/sell moment) */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgba(30, 20, 12, 0.18);
+  backdrop-filter: blur(3px);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  animation: fade 0.25s ease;
+}
+.sheet {
+  width: min(460px, 100%);
+  padding: 34px;
+  animation: rise 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+  }
+}
+
+.fade-in {
+  animation: fade 0.5s ease both;
+}

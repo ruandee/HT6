@@ -30,7 +30,7 @@ export function PartySize({ bands, guests, onGuests }: Props) {
   return (
     <div>
       <div className="eyebrow" style={{ marginBottom: 12 }}>
-        How many?
+        Party of
       </div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {Array.from({ length: maxSeat }, (_, i) => i + 1).map((n) => {
@@ -56,25 +56,17 @@ export function PartySize({ bands, guests, onGuests }: Props) {
         })}
       </div>
 
-      {chosen && (
+      {chosen && chosen.n_sold >= chosen.n_max && (
         <div
           style={{
             marginTop: 12,
             fontSize: 12.5,
-            color: 'var(--ink-45)',
+            color: 'var(--coral-deep)',
             lineHeight: 1.5,
+            fontWeight: 600,
           }}
         >
-          {guests === chosen.party_size ? (
-            <>Seats {chosen.party_size} — an exact fit.</>
-          ) : (
-            <>
-              Books a table for {chosen.party_size} — the smallest that fits {guests}.
-            </>
-          )}
-          {chosen.n_sold >= chosen.n_max && (
-            <strong style={{ color: 'var(--coral-deep)' }}> Sold out this night.</strong>
-          )}
+          Sold out this night.
         </div>
       )}
     </div>

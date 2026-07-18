@@ -110,10 +110,12 @@ breaking the fungibility rule §4 rests on. But per-table pricing would mean per
 **Decision — one pool per party-size BAND** (not per table):
 ```
 pool = (venue, service_window, party_size)
-Fri 7–9pm · seats ≤2  → N=20, p0=$40,  k=$3
-Fri 7–9pm · seats ≤4  → N=8,  p0=$80,  k=$6
-Fri 7–9pm · seats ≤6  → N=3,  p0=$120, k=$10
+Fri 7–9pm · seats ≤2  → N=20, p0=$40, k=$3
+Fri 7–9pm · seats ≤4  → N=8,  p0=$80, k=$6
 ```
+**Shipped scope: exactly these TWO bands (2-top and 4-top).** The model generalizes to any number
+of bands — a 6-top would just be another row — but the demo offers two, which is enough to prove
+bands work without adding a dimension the 2-minute pitch has to explain.
 Each band is internally fungible (any 4-top is like any other 4-top), so each gets its own honest
 curve. **This needs ZERO new math** — it is the existing model instantiated once per band. It is
 also economically better: a 6-top on a Friday is genuinely scarcer than a 2-top and deserves its
@@ -139,7 +141,7 @@ time, never a trade-time one.
 
 **One table per diner per SERVICE WINDOW** (§7c-C) spans every band, so you cannot hold a 2-top
 and a 4-top for the same night (that straddle is a cheap option on the night selling out, and it
-withholds a table). Holding a 2-top on Friday and a 6-top on Saturday IS fine — different nights.
+withholds a table). Holding a 2-top on Friday and a 4-top on Saturday IS fine — different nights.
 To switch party size for a night you already hold, sell that table back first.
 
 **Demo guidance:** seed a few bands so the model visibly generalizes and label them in the UI
@@ -306,9 +308,9 @@ Rationale, in two steps:
    hold a 2-top *and* a 4-top for the same night, then sell back whichever leg the curve favours.
    That is not arbitrage — the spread makes it a loss on average — but it is a **cheap option on
    the night selling out** (pay ~$10 of spread for a shot at ~$12+ if the band fills), and either
-   way it withholds a table from a real diner. On the 6-top band (N=3) one straddler removes a
-   third of the inventory. Scaling it — one table in every band on every night — corners a slice
-   of everything. So the rule is simply: **one table per person per night.**
+   way it withholds a table from a real diner. On the scarce band (the 4-top, N=8) one straddler
+   removes an eighth of the inventory. Scaling it — one table in every band on every night —
+   corners a slice of everything. So the rule is simply: **one table per person per night.**
 
 Edge cases (all LOCKED):
 - **Sell-back frees a rebuy** — the token went back to the curve; that is the liquidity feature
@@ -318,9 +320,9 @@ Edge cases (all LOCKED):
   (So the check counts redeemed tokens too.)
 - **Different nights are unrestricted** (legitimate demand), as are **different venues** in the
   same window.
-- **Accepted cost:** a genuine party of 10 cannot book a 6-top + a 4-top themselves — they should
-  call the restaurant, which is what happens today. §4a already declines to model table-combining
-  for the same reason.
+- **Accepted cost:** a genuine party of 6 cannot book two 4-tops themselves — they should call the
+  restaurant, which is what happens today. §4a already declines to model table-combining for the
+  same reason.
 - **Residual, not closed:** multiple accounts. That is the identity problem every ticketing system
   has; Auth0 email verification raises the cost, payment identity would raise it further.
 

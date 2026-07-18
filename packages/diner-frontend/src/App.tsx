@@ -9,7 +9,6 @@ import { PartySize, bandFor } from './PartySize';
 const BAND_PARAMS: Record<number, { p0: string; k: string }> = {
   2: { p0: '40000000', k: '3000000' },
   4: { p0: '80000000', k: '6000000' },
-  6: { p0: '120000000', k: '10000000' },
 };
 
 export default function App() {
@@ -85,15 +84,16 @@ export default function App() {
   async function confirmBuy(intentId: string) {
     await api.stubSettle(intentId, 'succeeded');
     setSheet(null);
-    const quote = await refresh(poolId);
-    setFlash(`Table secured — curve moved to ${usdc(quote.buy_price)}`);
+    const label = currentPool?.label;
+    await refresh(poolId);
+    setFlash(label ? `You're in. See you ${label}.` : "You're in.");
     setTimeout(() => setFlash(null), 4200);
   }
 
   async function sellBack() {
     const r = await api.sell(poolId);
     await refresh(poolId);
-    setFlash(`Sold back — ${usdc(r.payout_amount)} returned to you`);
+    setFlash(`${usdc(r.payout_amount)} back in your account.`);
     setTimeout(() => setFlash(null), 4200);
   }
 
@@ -134,13 +134,12 @@ export default function App() {
         </header>
 
         <h1 className="headline">
-          Tonight&apos;s table is
+          The good tables
           <br />
-          <span className="script">selling</span> right now.
+          go <span className="script">fast</span>.
         </h1>
-        <p className="muted" style={{ maxWidth: 430, marginTop: 20 }}>
-          The price rises as tables go. Can&apos;t make it? Sell it back to the curve
-          instantly — always liquid, no waiting for a buyer.
+        <p className="muted" style={{ maxWidth: 380, marginTop: 20 }}>
+          Plans change. Sell your table back anytime before service.
         </p>
 
         {/* ---- main grid ---- */}
@@ -165,11 +164,8 @@ export default function App() {
               }}
             >
               <div className="eyebrow" style={{ flex: 1 }}>
-                Live price curve
+                Tonight&apos;s pricing
               </div>
-              <span style={{ fontSize: 11, color: 'var(--ink-45)', whiteSpace: 'nowrap' }}>
-                hover any table
-              </span>
             </div>
             {q && currentPool ? (
               <CurveChart
@@ -185,7 +181,7 @@ export default function App() {
             )}
             <div style={{ marginTop: 20 }}>
               <div className="stat-label" style={{ marginBottom: 9 }}>
-                {q ? `${q.n_sold} of ${q.n_max} claimed` : 'loading'}
+                {q ? `${q.n_sold} of ${q.n_max} taken` : ' '}
               </div>
               <div className="pips">
                 {q &&
@@ -205,19 +201,20 @@ export default function App() {
             />
 
             <div className="eyebrow" style={{ marginBottom: 16 }}>
-              Price now
+              Right now
             </div>
             <div className="price price--hero">
               <span>${price.dollars}</span>
               <span className="price__cents">.{price.cents}</span>
             </div>
             <div className="muted" style={{ marginTop: 14, fontSize: 13.5 }}>
-              <strong style={{ color: 'var(--ink)' }}>{usdc(floorP0)}</strong> of this is meal
-              credit — redeemable against your bill.
-              {left > 0 && (
+              {usdc(floorP0)} comes off your bill.
+              {left > 0 && left <= 5 && (
                 <>
                   {' '}
-                  Only <strong style={{ color: 'var(--coral-deep)' }}>{left}</strong> left.
+                  <strong style={{ color: 'var(--coral-deep)' }}>
+                    {left} left.
+                  </strong>
                 </>
               )}
             </div>
@@ -229,12 +226,12 @@ export default function App() {
               disabled={!q || q.frozen || left === 0 || heldThisWindow.length > 0}
             >
               {heldThisWindow.length > 0
-                ? 'You have this night'
+                ? "You're booked"
                 : left === 0
                   ? 'Sold out'
                   : 'Claim this table'}
             </button>
-            {heldThisWindow.length > 0 && (
+            {heldOtherBand.length > 0 && (
               <div
                 style={{
                   fontSize: 11.5,
@@ -244,17 +241,10 @@ export default function App() {
                   lineHeight: 1.5,
                 }}
               >
-                {heldOtherBand.length > 0 ? (
-                  <>
-                    You hold the{' '}
-                    {bandsTonight.find((b) => b.pool_id === heldOtherBand[0]!.pool_id)
-                      ?.party_size ?? ''}
-                    -top this night. One table per person per night — sell that back to switch
-                    sizes.
-                  </>
-                ) : (
-                  <>One table per person per night — pick another night to book again.</>
-                )}
+                You have the table for{' '}
+                {bandsTonight.find((b) => b.pool_id === heldOtherBand[0]!.pool_id)?.party_size ??
+                  ''}{' '}
+                this night.
               </div>
             )}
 
@@ -267,18 +257,15 @@ export default function App() {
                     margin: '26px 0 22px',
                   }}
                 />
-                <div className="eyebrow" style={{ marginBottom: 12 }}>
-                  You hold {held.length}
-                </div>
-                <div className="muted" style={{ fontSize: 13.5, marginBottom: 16 }}>
-                  Recover{' '}
+                <div className="muted" style={{ fontSize: 13.5, marginBottom: 14 }}>
+                  Worth{' '}
                   <strong style={{ color: 'var(--ink)' }}>
                     {usdc(held[0]!.recover_value)}
                   </strong>{' '}
-                  if you sell back now.
+                  back right now.
                 </div>
                 <button className="btn btn--ghost" style={{ width: '100%' }} onClick={sellBack}>
-                  Can&apos;t make it? Sell back
+                  Can&apos;t make it? Sell it back
                 </button>
               </>
             )}
@@ -288,12 +275,10 @@ export default function App() {
                 className="muted"
                 style={{ fontSize: 12.5, marginTop: 18, color: 'var(--ink-45)' }}
               >
-                You also hold {heldElsewhere.length} table
-                {heldElsewhere.length > 1 ? 's' : ''} on{' '}
+                Also booked:{' '}
                 {heldElsewhere
                   .map((h) => pools.find((p) => p.pool_id === h.pool_id)?.label ?? 'another night')
                   .join(', ')}
-                .
               </div>
             )}
           </section>
@@ -310,7 +295,7 @@ export default function App() {
           onExpire={async () => {
             await api.stubSettle(sheet.intentId, 'expired');
             setSheet(null);
-            setFlash('Quote window lapsed — price moved. Try again.');
+            setFlash('That price expired. Have another look.');
             setTimeout(() => setFlash(null), 4200);
           }}
           onClose={() => setSheet(null)}

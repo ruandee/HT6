@@ -1,7 +1,11 @@
 /**
- * Live bonding curve (the hero, §5). Renders p(n) = p0 + k·n·θ across the pool, with the
- * current position marked. As θ decays the whole curve FLATTENS toward the floor — the §11
- * step-4 demo moment — so we draw the floor as a reference line.
+ * The live price curve — the hero (§5), sized for a phone. Renders p(n) = p0 + k·n·θ across the
+ * pool with the current position marked by a glowing dot. As θ decays the whole curve FLATTENS
+ * toward the meal-credit floor (§7b), so the floor is drawn as a dashed reference line.
+ *
+ * Touch adaptation: tapping the chart moves an active point (recharts treats touch as a click),
+ * so the per-slot detail is reachable without hover. Axis density is reduced for the narrow
+ * viewport and the tooltip is compact.
  */
 import {
   Area,
@@ -21,6 +25,7 @@ interface Props {
   nSold: number;
   thetaBps: number;
   phiBps?: number;
+  height?: number;
 }
 
 interface Datum {
@@ -31,7 +36,7 @@ interface Datum {
   state: 'sold' | 'current' | 'remaining';
 }
 
-/** Per-slot detail on hover — what this unit of the curve actually means (§4/§7b). */
+/** Per-slot detail on tap — what this unit of the curve actually means. */
 function CurveTip({
   active,
   payload,
@@ -46,39 +51,39 @@ function CurveTip({
   const net = d.price * (1 - phiBps / 10_000);
   const copy =
     d.state === 'sold'
-      ? 'Taken'
+      ? 'Already claimed.'
       : d.state === 'current'
-        ? "Yours if you book now"
-        : `Once ${d.n} are gone`;
+        ? "You're buying here."
+        : `Once ${d.n} tables are gone.`;
   return (
     <div
       className="glass glass--strong"
-      style={{ padding: '13px 15px', minWidth: 178, borderRadius: 16 }}
+      style={{ padding: '11px 13px', minWidth: 152, borderRadius: 15 }}
     >
-      <div className="stat-label" style={{ marginBottom: 7 }}>
+      <div className="stat-label" style={{ marginBottom: 6 }}>
         Table #{d.n === 0 ? 1 : d.n}
       </div>
       <div
         style={{
           fontFamily: 'Archivo',
           fontWeight: 700,
-          fontSize: 25,
+          fontSize: 22,
           letterSpacing: '-0.03em',
           lineHeight: 1,
         }}
       >
         ${d.price.toFixed(2)}
       </div>
-      <div style={{ marginTop: 10, fontSize: 11.5, lineHeight: 1.75, color: 'var(--ink-70)' }}>
-        <Row label="Off your bill" value={`$${d.floor.toFixed(2)}`} />
+      <div style={{ marginTop: 8, fontSize: 11, lineHeight: 1.7, color: 'var(--ink-70)' }}>
+        <Row label="Meal credit" value={`$${d.floor.toFixed(2)}`} />
         <Row label="Sell back for" value={`$${net.toFixed(2)}`} />
       </div>
       <div
         style={{
-          marginTop: 9,
-          paddingTop: 8,
+          marginTop: 7,
+          paddingTop: 6,
           borderTop: '1px solid var(--hairline)',
-          fontSize: 11,
+          fontSize: 10.5,
           color: 'var(--ink-45)',
         }}
       >
@@ -90,14 +95,14 @@ function CurveTip({
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14 }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
       <span>{label}</span>
       <span style={{ color: 'var(--ink)', fontWeight: 600 }}>{value}</span>
     </div>
   );
 }
 
-export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500 }: Props) {
+export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500, height = 178 }: Props) {
   const p0n = Number(p0) / 1e6;
   const kn = Number(k) / 1e6;
   const theta = thetaBps / 10_000;
@@ -112,20 +117,20 @@ export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500 }: Props
   const current = data[Math.min(nSold, nMax)];
 
   return (
-    <div style={{ width: '100%', height: 260 }}>
+    <div style={{ width: '100%', height }}>
       <ResponsiveContainer>
-        <AreaChart data={data} margin={{ top: 18, right: 14, bottom: 4, left: 4 }}>
+        <AreaChart data={data} margin={{ top: 16, right: 10, bottom: 0, left: 0 }}>
           <defs>
-            <linearGradient id="curveStroke" x1="0" y1="0" x2="1" y2="0">
+            <linearGradient id="mCurveStroke" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stopColor="#FFC861" />
               <stop offset="55%" stopColor="#FF7A59" />
               <stop offset="100%" stopColor="#F2542D" />
             </linearGradient>
-            <linearGradient id="curveFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#FF7A59" stopOpacity={0.28} />
+            <linearGradient id="mCurveFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#FF7A59" stopOpacity={0.3} />
               <stop offset="100%" stopColor="#FFE8A3" stopOpacity={0} />
             </linearGradient>
-            <filter id="dotGlow" x="-120%" y="-120%" width="340%" height="340%">
+            <filter id="mDotGlow" x="-120%" y="-120%" width="340%" height="340%">
               <feGaussianBlur stdDeviation="5" result="b" />
               <feMerge>
                 <feMergeNode in="b" />
@@ -136,17 +141,19 @@ export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500 }: Props
 
           <XAxis
             dataKey="n"
-            tick={{ fontSize: 10, fill: 'rgba(22,19,15,0.4)', fontFamily: 'Inter' }}
+            tick={{ fontSize: 9.5, fill: 'rgba(22,19,15,0.4)', fontFamily: 'Inter' }}
             axisLine={false}
             tickLine={false}
-            interval={Math.max(1, Math.floor(nMax / 5))}
+            interval={Math.max(1, Math.floor(nMax / 4))}
+            height={18}
           />
           <YAxis
             domain={['dataMin - 4', 'dataMax + 4']}
-            tick={{ fontSize: 10, fill: 'rgba(22,19,15,0.4)', fontFamily: 'Inter' }}
+            tick={{ fontSize: 9.5, fill: 'rgba(22,19,15,0.4)', fontFamily: 'Inter' }}
             axisLine={false}
             tickLine={false}
-            width={34}
+            width={30}
+            tickCount={4}
             tickFormatter={(v) => `$${Math.round(v)}`}
           />
 
@@ -156,9 +163,9 @@ export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500 }: Props
             stroke="rgba(22,19,15,0.28)"
             strokeDasharray="3 4"
             label={{
-              value: 'DINNER CREDIT',
+              value: 'MEAL CREDIT',
               position: 'insideBottomLeft',
-              fontSize: 9,
+              fontSize: 8.5,
               fill: 'rgba(22,19,15,0.45)',
               fontFamily: 'Archivo',
               letterSpacing: '0.14em',
@@ -168,30 +175,32 @@ export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500 }: Props
           <Tooltip
             content={<CurveTip phiBps={phiBps} />}
             cursor={{ stroke: 'rgba(22,19,15,0.28)', strokeWidth: 1, strokeDasharray: '3 3' }}
-            animationDuration={140}
+            animationDuration={120}
+            wrapperStyle={{ zIndex: 5 }}
           />
 
           <Area
             type="monotone"
             dataKey="price"
-            stroke="url(#curveStroke)"
-            strokeWidth={3}
-            fill="url(#curveFill)"
+            stroke="url(#mCurveStroke)"
+            strokeWidth={2.75}
+            fill="url(#mCurveFill)"
             isAnimationActive
-            animationDuration={650}
+            animationDuration={620}
             animationEasing="ease-out"
             dot={false}
+            activeDot={{ r: 4.5, fill: '#F2542D', stroke: '#fff', strokeWidth: 2 }}
           />
 
           {current && (
             <ReferenceDot
               x={current.n}
               y={current.price}
-              r={6.5}
+              r={6}
               fill="#F2542D"
               stroke="#fff"
               strokeWidth={2.5}
-              filter="url(#dotGlow)"
+              filter="url(#mDotGlow)"
               isFront
             />
           )}

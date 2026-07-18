@@ -86,9 +86,8 @@ export function BuySheet({
         </div>
 
         <p className="muted" style={{ marginTop: 22, fontSize: 14 }}>
-          <strong style={{ color: 'var(--ink)' }}>{usdc(floor)}</strong> of this comes back to you
-          as meal credit at the table. The rest is tonight&apos;s scarcity premium — and if you
-          can&apos;t make it, sell it back to the curve.
+          <strong style={{ color: 'var(--ink)' }}>{usdc(floor)}</strong> comes off your bill at the
+          table. Change of plans? Sell it back.
         </p>
 
         <button
@@ -100,7 +99,7 @@ export function BuySheet({
             onConfirm();
           }}
         >
-          {busy ? 'Confirming…' : 'Confirm & pay'}
+          {busy ? 'One moment…' : 'Confirm & pay'}
         </button>
 
         <button

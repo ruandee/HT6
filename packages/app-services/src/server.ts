@@ -70,17 +70,16 @@ const POOLS: PoolMeta[] = [];
 const BANDS = [
   { party_size: 2, n_max: 20, p0: '40000000', k: '3000000' }, // §7d headline params
   { party_size: 4, n_max: 8, p0: '80000000', k: '6000000' },
-  { party_size: 6, n_max: 3, p0: '120000000', k: '10000000' },
 ];
 
 /** seats[] = how many already sold in each band, index-aligned with BANDS. */
 const SEED_PLAN = [
   // tonight — inside the 24h cliff, so θ is already decaying (§7b) and the curve reads flatter
-  { inHours: 6, seats: [14, 6, 2] },
-  { inDays: 2, hour: 19, seats: [6, 3, 1] }, // the headline demo night
-  { inDays: 3, hour: 19, seats: [9, 5, 0] },
-  { inDays: 4, hour: 20, seats: [3, 1, 0] },
-  { inDays: 8, hour: 19, seats: [1, 0, 0] },
+  { inHours: 6, seats: [14, 6] },
+  { inDays: 2, hour: 19, seats: [6, 3] }, // the headline demo night
+  { inDays: 3, hour: 19, seats: [9, 5] },
+  { inDays: 4, hour: 20, seats: [3, 1] },
+  { inDays: 8, hour: 19, seats: [1, 0] },
 ];
 
 async function seed() {
