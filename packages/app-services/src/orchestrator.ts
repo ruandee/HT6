@@ -16,6 +16,21 @@ import {
 
 const QUOTE_WINDOW_SECONDS = 90; // §7c-A diner-facing lock window
 
+/**
+ * Projection hooks the issuer read model subscribes to (§10.3 indexer role). `gross` on sell is
+ * the sell_price BEFORE the φ royalty; `payout` is what the seller actually received, so
+ * `gross − payout` is the restaurant's accrued royalty.
+ */
+export interface TradeObserver {
+  onBuy?: (poolId: PoolId, userId: UserId, pricePaid: UsdcBaseUnits) => void;
+  onSell?: (
+    poolId: PoolId,
+    userId: UserId,
+    payout: UsdcBaseUnits,
+    gross: UsdcBaseUnits,
+  ) => void;
+}
+
 interface Holding {
   userId: UserId;
   poolId: PoolId;
@@ -44,6 +59,13 @@ export class Orchestrator {
     private readonly chain: ChainAdapter,
     private readonly gateway: PaymentGateway,
     private readonly siblingPools: (poolId: PoolId) => PoolId[] = (id) => [id],
+    /**
+     * Read-model projection hooks (§10.3). The frozen ChainAdapter exposes no getter for reserve
+     * balance / royalties / holders, so the issuer dashboard's read model is fed from the trades
+     * observed here — same role the indexer plays against the real program. Optional so the
+     * orchestrator still runs standalone.
+     */
+    private readonly observer: TradeObserver = {},
   ) {}
 
   /** POST /pools/:id/buy — quote, lock, create deposit intent. Returns checkout handle for the UI. */
@@ -126,6 +148,7 @@ export class Orchestrator {
       status: 'held',
       acquiredAt: new Date().toISOString(),
     });
+    this.observer.onBuy?.(pending.poolId, pending.userId, result.price_paid ?? pending.maxPrice);
     // If the price fell, result.refund is credited back (mock returns it; real: gateway.payout).
     return { filled: true, price_paid: result.price_paid, refund: result.refund };
   }
@@ -141,10 +164,33 @@ export class Orchestrator {
       (x) => x.userId === userId && x.poolId === poolId && x.status === 'held',
     );
     if (!h) throw new Error('no held token to sell');
+    // gross sell_price BEFORE φ, read at the same curve state the sell will execute against.
+    // royalty = gross − payout, which is what accrues to the restaurant (§4 cooperative issuer).
+    const pre = await this.chain.quote(poolId);
     const sold = await this.chain.sell(poolId, userId);
     h.status = 'sold';
+    this.observer.onSell?.(poolId, userId, sold.payout, pre.sell_price);
     const payout = await this.gateway.payout(userId, sold.payout, { kind: 'sell', pool_id: poolId });
     return { payout_intent: payout.payout_id, payout_amount: sold.payout };
+  }
+
+  /**
+   * Mark a holding consumed after the issuer checked the diner in (§7c-B CONSUMED). The chain
+   * call itself happens in IssuerService; this keeps the diner-facing holdings view honest.
+   * Check-in does NOT free a rebuy for that window (§7c-C) — status becomes 'redeemed', not 'sold'.
+   */
+  markRedeemed(poolId: PoolId, userId: UserId): void {
+    const h = this.holdings.find(
+      (x) => x.userId === userId && x.poolId === poolId && x.status === 'held',
+    );
+    if (h) h.status = 'redeemed';
+  }
+
+  /** Users with a live (held) token in this pool — the check-in list the floor manager works. */
+  heldUserIds(poolId: PoolId): UserId[] {
+    return this.holdings
+      .filter((h) => h.poolId === poolId && h.status === 'held')
+      .map((h) => h.userId);
   }
 
   async holdingsFor(userId: UserId) {

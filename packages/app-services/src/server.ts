@@ -11,9 +11,11 @@
  */
 import express, { type Request, type Response } from 'express';
 import { MockChainAdapter } from '@ttr/chain-services';
+import type { CheckinRequest, CreatePoolRequest } from '@ttr/shared-types';
 import { loadConfig } from './config.js';
 import { StubGateway } from './stub-gateway.js';
 import { Orchestrator } from './orchestrator.js';
+import { IssuerService } from './issuer.js';
 import { verifyWebhook } from './webhook-verify.js';
 
 const cfg = loadConfig();
@@ -32,7 +34,16 @@ function siblingPools(poolId: string): string[] {
     (p) => p.date_iso === self.date_iso && p.service_time === self.service_time,
   ).map((p) => p.pool_id);
 }
-const orchestrator = new Orchestrator(chain, gateway, siblingPools);
+/** Issuer read model (§10.3 role) — feeds the restaurant dashboard's reserve/royalties/holders. */
+const issuer = new IssuerService(chain);
+const orchestrator = new Orchestrator(chain, gateway, siblingPools, {
+  onBuy: (poolId, userId, pricePaid) => issuer.onBuy(poolId, userId, pricePaid),
+  onSell: (poolId, userId, payout, gross) => issuer.onSell(poolId, userId, payout, gross),
+});
+
+/** The demo venue. Auth is the x-user-id stub, so the issuer identity is stubbed the same way. */
+const RESTAURANT_AUTHORITY = 'rest_wallet';
+const VENUE_NAME = 'Bar Aurelia';
 
 // --- demo seed: one buzzy pool, θ far out, seeded to n=6 (§7d) so the curve already shows premium.
 /**
@@ -95,7 +106,7 @@ async function seed() {
     // one pool per band — each band is internally fungible, so each gets its own curve
     for (const [b, band] of BANDS.entries()) {
       const { pool_id } = await chain.create_pool({
-        authority: 'rest_wallet',
+        authority: RESTAURANT_AUTHORITY,
         p0: band.p0,
         k: band.k,
         n_max: band.n_max,
@@ -104,9 +115,25 @@ async function seed() {
         tc_seconds: 86400,
         party_size: band.party_size,
       });
+      // mirror into the issuer read model so the dashboard sees the seeded inventory too
+      issuer.register({
+        pool_id,
+        authority: RESTAURANT_AUTHORITY,
+        label,
+        venue_name: VENUE_NAME,
+        p0: band.p0,
+        k: band.k,
+        phi_bps: 500,
+        n_max: band.n_max,
+        service_time,
+        tc_seconds: 86400,
+        party_size: band.party_size,
+      });
       const sold = Math.min(plan.seats[b] ?? 0, band.n_max);
       for (let s = 0; s < sold; s++) {
-        await chain.buy(pool_id, `seed_${i}_${b}_${s}`, '9990000000');
+        const buyer = `seed_${i}_${b}_${s}`;
+        const r = await chain.buy(pool_id, buyer, '9990000000');
+        if (r.status === 'filled') issuer.onBuy(pool_id, buyer, r.price_paid ?? '0');
       }
       POOLS.push({ pool_id, label, date_iso, service_time, party_size: band.party_size });
       if (i === 1 && band.party_size === 2) DEMO_POOL_ID = pool_id; // §7d headline pool
@@ -234,6 +261,117 @@ app.get('/me/holdings', async (req, res) => {
 });
 
 app.get('/demo/pool-id', (_req, res) => res.json({ pool_id: DEMO_POOL_ID }));
+
+// ============================================================================
+// §10.4 issuer routes (restaurant-frontend). Auth is the same x-user-id stub as above; the real
+// system requires an Auth0 issuer role on every /restaurant/* call.
+// ============================================================================
+
+/** Every pool this venue issues — one row per (night × party-size band), §4a. */
+app.get('/restaurant/pools', async (_req, res) => {
+  try {
+    res.json(await issuer.list(RESTAURANT_AUTHORITY));
+  } catch (e) {
+    res.status(500).json({ error: msg(e) });
+  }
+});
+
+/** §10.4 POST /restaurant/pools — create_pool passthrough; one call per band (§4a). */
+app.post('/restaurant/pools', async (req, res) => {
+  try {
+    const body = req.body as CreatePoolRequest;
+    const { pool_id, mint } = await issuer.createPool(body, RESTAURANT_AUTHORITY, VENUE_NAME);
+    // keep the diner-facing /pools list in sync — same (night, band) grid it renders
+    const d = new Date(body.service_time * 1000);
+    POOLS.push({
+      pool_id,
+      label: body.label,
+      date_iso: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+        d.getDate(),
+      ).padStart(2, '0')}`,
+      service_time: body.service_time,
+      party_size: body.party_size,
+    });
+    res.status(201).json({ pool_id, mint });
+  } catch (e) {
+    res.status(400).json({ error: msg(e) });
+  }
+});
+
+/** §10.4 GET /restaurant/pools/:id — fill %, reserve, holders, ROYALTIES ACCRUED (demo step 3). */
+app.get('/restaurant/pools/:id', async (req, res) => {
+  try {
+    res.json(await issuer.view(req.params.id));
+  } catch (e) {
+    res.status(404).json({ error: msg(e) });
+  }
+});
+
+/** §10.4 POST /restaurant/pools/:id/checkin — staff marks a diner arrived; triggers redeem. */
+app.post('/restaurant/pools/:id/checkin', async (req, res) => {
+  try {
+    const { user_id } = req.body as CheckinRequest;
+    if (!user_id) return res.status(400).json({ error: 'user_id required' });
+    const r = await issuer.checkIn(req.params.id, user_id);
+    orchestrator.markRedeemed(req.params.id, user_id);
+    return res.json(r);
+  } catch (e) {
+    return res.status(400).json({ error: msg(e) });
+  }
+});
+
+/**
+ * §10.4 POST /restaurant/pools/:id/sweep → §7c-B breakdown (demo step 5). Requires the pool to be
+ * FROZEN; the chain rejects an early sweep and we pass that message straight through.
+ */
+app.post('/restaurant/pools/:id/sweep', async (req, res) => {
+  try {
+    res.json(await issuer.sweep(req.params.id));
+  } catch (e) {
+    res.status(400).json({ error: msg(e) });
+  }
+});
+
+/**
+ * DEMO ONLY — advance this ONE pool to service time so `sweep` can be exercised on stage without
+ * waiting for the real clock. Scoped to a single pool by design: global clock control (the §11
+ * step-4 θ-decay fast-forward) is owned elsewhere and lives outside this stream, and the mock
+ * adapter's clock plumbing is deliberately untouched here. Implemented by re-creating nothing —
+ * it just moves the pool's service_time into the past via a chain-level freeze trigger.
+ */
+app.post('/restaurant/pools/:id/demo-freeze', async (req, res) => {
+  try {
+    const ok = freezePoolForDemo(req.params.id);
+    if (!ok) return res.status(404).json({ error: `unknown pool ${req.params.id}` });
+    return res.json(await issuer.view(req.params.id));
+  } catch (e) {
+    return res.status(400).json({ error: msg(e) });
+  }
+});
+
+function msg(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
+
+/**
+ * DEMO-ONLY lever for §11 step 5: pull ONE pool's service_time into the past so the adapter's
+ * own freeze rule (`now >= service_time`) trips on the next read and `sweep` becomes legal.
+ *
+ * Deliberately does NOT touch the adapter's injectable clock — that is global (it would move every
+ * pool and every curve at once) and clock control is owned by another stream. This only edits one
+ * pool's timestamp, so the rest of the demo grid is unaffected. It reaches into the mock's private
+ * pool map, which is acceptable precisely because this is scaffolding around a MOCK: when the real
+ * Solana adapter lands (SWAP A) this route goes away — you freeze by waiting for the block clock.
+ */
+function freezePoolForDemo(poolId: string): boolean {
+  const pools = (chain as unknown as { pools: Map<string, { service_time: number; frozen: boolean }> })
+    .pools;
+  const p = pools?.get(poolId);
+  if (!p) return false;
+  p.service_time = Math.floor(Date.now() / 1000) - 1;
+  p.frozen = true;
+  return true;
+}
 
 function mockDepositPage(intent: string): string {
   const post = (type: string) => `
