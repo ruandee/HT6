@@ -1,0 +1,15 @@
+{
+  "name": "@ttr/chain-services",
+  "version": "0.0.0",
+  "description": "Stream 2: mock-chain adapter + real Solana client + event indexer + AMM read model (§10.2, §10.3).",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@ttr/shared-types": "*"
+  }
+}

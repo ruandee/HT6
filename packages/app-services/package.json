@@ -1,0 +1,16 @@
+{
+  "name": "@ttr/app-services",
+  "version": "0.0.0",
+  "description": "Stream 3: Auth0 + Unifold (PaymentGateway/StubGateway) + REST API (§10.4, §10.5).",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@ttr/shared-types": "*",
+    "@ttr/chain-services": "*"
+  }
+}

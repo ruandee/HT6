@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.DS_Store
+# Solana / Anchor
+target/
+test-ledger/
+# logs
+*.log
+npm-debug.log*

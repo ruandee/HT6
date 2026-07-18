@@ -1,0 +1,19 @@
+{
+  "name": "@ttr/shared-types",
+  "version": "0.0.0",
+  "description": "PHASE 0 frozen interface contracts (BUILD_SPEC.md §10) imported by every stream.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "src"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}

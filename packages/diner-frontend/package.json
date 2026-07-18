@@ -1,0 +1,10 @@
+{
+  "name": "@ttr/diner-frontend",
+  "version": "0.0.0",
+  "description": "Stream 4: React diner app — live bonding curve, buy/sell-back/redeem, holdings (§10.4 client). Talks ONLY to app-services REST + the Unifold checkout modal.",
+  "private": true,
+  "dependencies": {
+    "@ttr/shared-types": "*",
+    "@unifold/connect-react": "^0.1.70"
+  }
+}

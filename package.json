@@ -1,0 +1,16 @@
+{
+  "name": "tokenized-reservations",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Tokenized restaurant reservations — AMM bonding curve. Monorepo per BUILD_SPEC.md §8.",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}
