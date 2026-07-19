@@ -23,7 +23,7 @@ import { PartySize, bandFor } from './PartySize';
 import { TabBar, type Tab } from './TabBar';
 import { Sheet } from './Sheet';
 import { usePullToRefresh } from './usePullToRefresh';
-import { ease, swap } from './motion';
+import { ease } from './motion';
 import { venueState } from './venue';
 
 export default function App() {
@@ -179,37 +179,38 @@ export default function App() {
       </div>
 
       <div className="scroll" {...ptr.handlers}>
-        {/* pull-to-refresh affordance */}
-        <div
-          className={`ptr ${ptr.spinning ? 'ptr--spinning' : ''}`}
-          style={{ height: ptr.pull }}
-          aria-hidden
+        <motion.div
+          className="pull-content"
+          initial={false}
+          animate={{ transform: `translateY(${ptr.pull}px)` }}
+          transition={
+            ptr.dragging
+              ? { duration: 0 }
+              : { type: 'spring', stiffness: 420, damping: 38, mass: 0.8 }
+          }
         >
-          <div
-            className="ptr__spinner"
-            style={{
-              opacity: Math.min(1, ptr.pull / 40),
-              transform: ptr.spinning ? undefined : `rotate(${ptr.pull * 4}deg)`,
-              borderTopColor: ptr.armed ? 'var(--coral-deep)' : 'var(--ink-25)',
-            }}
-          />
-        </div>
+          {/* pull-to-refresh affordance; the whole content tracks the resisted pull directly */}
+          <div className={`ptr ${ptr.spinning ? 'ptr--spinning' : ''}`} aria-hidden>
+            <div
+              className="ptr__spinner"
+              style={{
+                opacity: Math.min(1, ptr.pull / 40),
+                transform: ptr.spinning ? undefined : `rotate(${ptr.pull * 4}deg)`,
+                borderTopColor: ptr.armed ? 'var(--coral-deep)' : 'var(--ink-25)',
+              }}
+            />
+          </div>
 
-        {/* Wallet and the curve view swap as whole pages. Keyed 'wallet' vs 'main' rather than
-            on `tab`, so moving between Tonight and Book does NOT remount the recharts curve.
-            Only the header copy below crossfades. */}
-        <AnimatePresence mode="wait" initial={false}>
-        {tab === 'wallet' ? (
-          <motion.div key="wallet" variants={swap} initial="hidden" animate="show" exit="exit">
-          <WalletTab
-            holdings={allHeld}
-            pools={pools}
-            onSell={setSellFor}
-            onBrowse={() => setTab('book')}
-          />
-          </motion.div>
-        ) : (
-          <motion.div key="main" variants={swap} initial="hidden" animate="show" exit="exit">
+          {/* Primary navigation is immediate; frequent tab changes should never wait on motion. */}
+          {tab === 'wallet' ? (
+            <WalletTab
+              holdings={allHeld}
+              pools={pools}
+              onSell={setSellFor}
+              onBrowse={() => setTab('book')}
+            />
+          ) : (
+            <div>
             <header className="mhead">
               <div className="mhead__row">
                 <div className="brand">
@@ -222,16 +223,8 @@ export default function App() {
                 <div className="avatar">MD</div>
               </div>
 
-              {/* only the copy changes between Tonight and Book, so only the copy moves */}
-              <AnimatePresence mode="wait" initial={false}>
-                {tab === 'tonight' ? (
-                  <motion.div
-                    key="tonight"
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    transition={ease(0.22)}
-                  >
+              {tab === 'tonight' ? (
+                <div>
                     {/* same shape as the desktop header, sized for a phone. The fill word is
                         derived (see venue.ts) rather than asserted, so it stays true. */}
                     <h1 className="mtitle">
@@ -244,37 +237,18 @@ export default function App() {
                         ? `${venue.sold} of ${venue.cap} tables gone tonight. Sell yours back any time before service.`
                         : 'Sell your table back any time before service.'}
                     </p>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="book"
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    transition={ease(0.22)}
-                  >
-                    <h1 className="mtitle">Pick a night</h1>
-                    <p className="msub">{venue.name} · dinner service</p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                </div>
+              ) : (
+                <div>
+                  <h1 className="mtitle">Pick a night</h1>
+                  <p className="msub">{venue.name} · dinner service</p>
+                </div>
+              )}
             </header>
 
-            {/* the night rail unfolds rather than shoving the curve down */}
-            <AnimatePresence initial={false}>
-              {tab === 'book' && (
-                <motion.div
-                  key="rail"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={ease(0.28)}
-                  style={{ overflow: 'hidden' }}
-                >
-                  <NightRail nights={nights} selectedDate={selectedDate} onSelect={selectDate} />
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {tab === 'book' && (
+              <NightRail nights={nights} selectedDate={selectedDate} onSelect={selectDate} />
+            )}
 
             {/* ---- the live curve: the hero ---- */}
             <section className="glass card">
@@ -332,21 +306,11 @@ export default function App() {
                   <div className="eyebrow" style={{ marginBottom: 10, width: 108 }}>
                     Price now
                   </div>
-                  {/* the §11 "ticks up" moment: the poll brings a new price and it rolls */}
                   <div className="price price--phone">
-                    <AnimatePresence mode="wait" initial={false}>
-                      <motion.span
-                        key={q?.buy_price ?? 'pending'}
-                        initial={{ opacity: 0, y: 9 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -9 }}
-                        transition={ease(0.26)}
-                        style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}
-                      >
-                        <span>${price.dollars}</span>
-                        <span className="price__cents">.{price.cents}</span>
-                      </motion.span>
-                    </AnimatePresence>
+                    <span style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+                      <span>${price.dollars}</span>
+                      <span className="price__cents">.{price.cents}</span>
+                    </span>
                   </div>
                 </div>
                 {current && (
@@ -406,9 +370,9 @@ export default function App() {
 
             {/* room for the docked button */}
             <div style={{ height: 74 }} />
-          </motion.div>
-        )}
-        </AnimatePresence>
+            </div>
+          )}
+        </motion.div>
 
         <AnimatePresence>
           {toast && (
@@ -417,7 +381,7 @@ export default function App() {
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 8 }}
-              transition={ease(0.3)}
+              transition={ease(0.2)}
             >
               {toast}
             </motion.div>
@@ -600,7 +564,7 @@ function SellSheet({
 }) {
   const p = splitUsdc(holding.recover_value);
   return (
-    <Sheet onClose={onClose}>
+    <Sheet onClose={onClose} label="Confirm table sale">
       <div className="eyebrow" style={{ width: 128 }}>
         Sell it back
       </div>

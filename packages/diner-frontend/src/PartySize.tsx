@@ -7,9 +7,7 @@
  * larger than your party is disallowed (it would let someone corner the scarcest inventory)
  * unless every band that fits is sold out.
  */
-import { AnimatePresence, motion } from 'framer-motion';
 import { usdc, type PoolSummary } from './api';
-import { ease } from './motion';
 
 interface Props {
   /** all pools for the selected date, one per band. */
@@ -68,31 +66,17 @@ export function PartySize({ bands, guests, onGuests }: Props) {
         </svg>
       </div>
 
-      {/* the routing, said out loud. Crossfaded on the band so changing headcount within the
-          same table size reads as "nothing moved" rather than a flicker. */}
       <div className="psize__routed" style={{ minHeight: 20 }}>
-        <AnimatePresence mode="wait" initial={false}>
-          {chosen && (
-            <motion.span
-              key={chosen.pool_id}
-              style={{ display: 'block' }}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={ease(0.24)}
-            >
-              {soldOut ? (
-                <span style={{ color: 'var(--coral-deep)', fontWeight: 600 }}>
-                  The {chosen.party_size}-top is sold out this night.
-                </span>
-              ) : (
-                <>
-                  Books the <strong>{chosen.party_size}-top</strong> · {usdc(chosen.buy_price)}
-                </>
-              )}
-            </motion.span>
-          )}
-        </AnimatePresence>
+        {chosen &&
+          (soldOut ? (
+            <span style={{ color: 'var(--coral-deep)', fontWeight: 600 }}>
+              The {chosen.party_size}-top is sold out this night.
+            </span>
+          ) : (
+            <>
+              Books the <strong>{chosen.party_size}-top</strong> · {usdc(chosen.buy_price)}
+            </>
+          ))}
       </div>
     </div>
   );

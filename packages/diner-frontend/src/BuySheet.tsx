@@ -11,7 +11,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { splitUsdc, usdc } from './api';
-import { EASE, ease, hoverLift, tapPress } from './motion';
+import { EASE, ease } from './motion';
 
 interface Props {
   price: string;
@@ -75,7 +75,7 @@ export function BuySheet({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         /* leaves faster than it arrives, and downward, so dismissal feels decisive */
         exit={{ opacity: 0, y: 14, scale: 0.98, transition: { duration: 0.18, ease: EASE } }}
-        transition={{ duration: 0.42, ease: EASE }}
+        transition={{ duration: 0.28, ease: EASE }}
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
@@ -117,10 +117,8 @@ export function BuySheet({
           table. Change of plans? Sell it back.
         </p>
 
-        <motion.button
+        <button
           className="btn btn--primary"
-          whileHover={hoverLift}
-          whileTap={tapPress}
           style={{ width: '100%', marginTop: 26 }}
           disabled={busy || settling || left <= 0}
           onClick={async () => {
@@ -135,18 +133,16 @@ export function BuySheet({
           }}
         >
           {settling ? 'Confirming your table…' : busy ? 'One moment…' : 'Confirm & pay'}
-        </motion.button>
+        </button>
 
-        <motion.button
+        <button
           className="btn btn--ghost"
-          whileHover={hoverLift}
-          whileTap={tapPress}
           style={{ width: '100%', marginTop: 10 }}
           onClick={onClose}
           disabled={busy || settling}
         >
           Cancel
-        </motion.button>
+        </button>
 
         <div
           className="stat-label"

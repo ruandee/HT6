@@ -6,8 +6,8 @@
  * that navigates between them is the only thing that can sit above all three, and keeping it
  * dependency-free means it can't break the apps it launches.
  */
-import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useMemo, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { fadeUp, group } from './motion';
 import { Desktop, Phone, Counter } from './Glyphs';
 
@@ -66,10 +66,12 @@ function useReady(): Record<string, boolean> {
 
 export default function Roles({ onHome }: { onHome: (e: React.MouseEvent) => void }) {
   const ready = useReady();
+  const reduceMotion = Boolean(useReducedMotion());
+  const enter = useMemo(() => fadeUp(reduceMotion), [reduceMotion]);
 
   return (
     <motion.div className="shell" variants={group(0.07)} initial="hidden" animate="show">
-      <motion.header className="topbar" variants={fadeUp}>
+      <motion.header className="topbar" variants={enter}>
         {/* the wordmark goes home, which is the only way back to the marketing page once
             you've walked in the door */}
         <a className="brand brand--link" href="/" onClick={onHome}>
@@ -82,11 +84,11 @@ export default function Roles({ onHome }: { onHome: (e: React.MouseEvent) => voi
         <div className="stat-label">tokenized reservations</div>
       </motion.header>
 
-      <motion.div className="eyebrow" variants={fadeUp}>
+      <motion.div className="eyebrow" variants={enter}>
         Pick a seat
       </motion.div>
 
-      <motion.h1 className="headline" variants={fadeUp}>
+      <motion.h1 className="headline" variants={enter}>
         Who are <span className="script">you</span>?
       </motion.h1>
 
@@ -96,7 +98,7 @@ export default function Roles({ onHome }: { onHome: (e: React.MouseEvent) => voi
             key={r.key}
             className="glass role"
             href={URLS[r.key]}
-            variants={fadeUp}
+            variants={enter}
             // no target=_blank: during the demo you want this window to *become* the app.
             // Middle-click still opens a new one when you're setting the profiles up.
           >
@@ -114,7 +116,7 @@ export default function Roles({ onHome }: { onHome: (e: React.MouseEvent) => voi
         ))}
       </motion.div>
 
-      <motion.p className="footnote" variants={fadeUp}>
+      <motion.p className="footnote" variants={enter}>
         One table per person per service window, so the desktop and phone diners are two
         different people, and both can hold a table on the same night.
       </motion.p>

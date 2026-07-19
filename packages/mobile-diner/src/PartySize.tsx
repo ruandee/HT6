@@ -10,9 +10,7 @@
  * A native <select> on purpose: on a phone that is the OS wheel picker, which is thumb-reachable,
  * scrollable at speed, and already familiar. Nothing hand-rolled competes with it.
  */
-import { AnimatePresence, motion } from 'framer-motion';
 import { usdc, type PoolSummary } from './api';
-import { ease } from './motion';
 
 interface Props {
   /** every pool for the selected night, one per band. */
@@ -67,32 +65,18 @@ export function PartySize({ bands, guests, onGuests }: Props) {
         </svg>
       </div>
 
-      {/* the routing, said out loud. Keyed on the band, so changing headcount within the same
-          table size reads as "nothing moved" rather than a flicker. */}
       <div className="psize__routed" style={{ minHeight: 20 }}>
-        <AnimatePresence mode="wait" initial={false}>
-          {chosen && (
-            <motion.span
-              key={chosen.pool_id}
-              style={{ display: 'block' }}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={ease(0.24)}
-            >
-              {left <= 0 ? (
-                <span style={{ color: 'var(--coral-deep)', fontWeight: 600 }}>
-                  The {chosen.party_size}-top is fully booked.
-                </span>
-              ) : (
-                <>
-                  Books the <strong>{chosen.party_size}-top</strong> · {usdc(chosen.buy_price)} ·{' '}
-                  {left <= 3 ? `only ${left} left` : `${left} left`}
-                </>
-              )}
-            </motion.span>
-          )}
-        </AnimatePresence>
+        {chosen &&
+          (left <= 0 ? (
+            <span style={{ color: 'var(--coral-deep)', fontWeight: 600 }}>
+              The {chosen.party_size}-top is fully booked.
+            </span>
+          ) : (
+            <>
+              Books the <strong>{chosen.party_size}-top</strong> · {usdc(chosen.buy_price)} ·{' '}
+              {left <= 3 ? `only ${left} left` : `${left} left`}
+            </>
+          ))}
       </div>
     </div>
   );

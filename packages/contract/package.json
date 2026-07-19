@@ -4,8 +4,9 @@
   "private": true,
   "description": "Stream 1: Solana/Anchor program — AMM bonding curve, θ decay, reserve PDA (§4/§7b/§7c).",
   "scripts": {
-    "test": "anchor test",
-    "build": "anchor build",
+    "test": "cargo test -p reservations",
+    "test:integration": "anchor test",
+    "build": "anchor build --no-idl",
     "deploy:devnet": "anchor deploy --provider.cluster devnet"
   },
   "dependencies": {

@@ -13,14 +13,14 @@
 //! for this program with no caller changes (§8.1 SWAP A).
 
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
+use anchor_spl::token::{self, Approve, Mint, Token, TokenAccount, Transfer};
 
 pub mod error;
 pub mod math;
 pub mod state;
 
 use error::ReservationError;
-use math::{buy_price, door_closes_at, sell_payout, sell_price, theta_bps};
+use math::{buy_price, check_in_open, door_closes_at, sell_payout, sell_price, theta_bps};
 use state::{Holding, Pool, WindowTicket};
 
 declare_id!("Res1111111111111111111111111111111111111111");
@@ -150,9 +150,23 @@ pub mod reservations {
                 token::MintTo {
                     mint: ctx.accounts.mint.to_account_info(),
                     to: ctx.accounts.diner_token.to_account_info(),
-                    authority: pool_ai,
+                    authority: pool_ai.clone(),
                 },
                 &[seeds],
+            ),
+            1,
+        )?;
+
+        // `check_in` is initiated by the restaurant, so let the pool PDA burn this one token as
+        // the diner's SPL delegate. Mint authority alone cannot burn from a diner-owned account.
+        token::approve(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                Approve {
+                    to: ctx.accounts.diner_token.to_account_info(),
+                    delegate: pool_ai,
+                    authority: ctx.accounts.diner.to_account_info(),
+                },
             ),
             1,
         )?;
@@ -270,15 +284,21 @@ pub mod reservations {
             ctx.accounts.authority.key() == pool.authority,
             ReservationError::NotAuthority
         );
+        require!(!pool.swept, ReservationError::AlreadySwept);
         require!(!ctx.accounts.holding.redeemed, ReservationError::AlreadyRedeemed);
         // The door closes at service_time + grace. Past that the diner is a no-show, their table
-        // forfeits, and `sweep` becomes legal (see below) — the two deadlines are the same instant,
-        // so a token can never be both still-checkable-in and already-swept.
+        // forfeits, and `sweep` becomes legal (see below). The strict check makes that boundary
+        // mutually exclusive: at the closing instant only sweep is legal.
         let door_closes = door_closes_at(pool.service_time, pool.grace_seconds)?;
-        require!(now <= door_closes, ReservationError::GraceExpired);
+        require!(check_in_open(now, door_closes), ReservationError::GraceExpired);
+        require_keys_eq!(
+            ctx.accounts.diner_token.owner,
+            ctx.accounts.holding.diner,
+            ReservationError::NoHolding
+        );
 
-        // Burn with the pool PDA as mint authority. Seed material is copied out first so the
-        // signer seeds don't borrow from `pool` across the CPI.
+        // Burn with the pool PDA as the one-token delegate granted during `buy`. Seed material is
+        // copied out first so the signer seeds don't borrow from `pool` across the CPI.
         let pool_seed = pool.pool_seed;
         let pool_bump = pool.bump;
         let pool_ai = pool.to_account_info();
@@ -328,7 +348,7 @@ pub mod reservations {
         // diner who is still inside the window the restaurant promised them, which would make the
         // whole setting cosmetic. Trading, separately, still froze back at service_time.
         let settle_at = door_closes_at(pool.service_time, pool.grace_seconds)?;
-        require!(now >= settle_at, ReservationError::NotYetFrozen);
+        require!(!check_in_open(now, settle_at), ReservationError::NotYetFrozen);
         require!(!pool.swept, ReservationError::AlreadySwept);
         pool.frozen = true;
         pool.swept = true;

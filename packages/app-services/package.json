@@ -12,7 +12,8 @@
     "_comment_env": "--env-file-if-exists loads the repo-root .env (gitignored) for local runs. Path is ../../ because npm runs workspace scripts with cwd set to the package dir. `-if-exists` matters: Cloud Run and CI have no .env and inject real env vars instead, and plain --env-file would abort the boot there. Real env vars always win over the file, so the deployed config is never shadowed.",
     "dev": "npm run build && node --env-file-if-exists=../../.env dist/server.js",
     "dev:watch": "node --watch --env-file-if-exists=../../.env dist/server.js",
-    "start": "node --env-file-if-exists=../../.env dist/server.js"
+    "start": "node --env-file-if-exists=../../.env dist/server.js",
+    "test": "npm run build && node --test test/*.test.mjs"
   },
   "dependencies": {
     "@ttr/shared-types": "*",

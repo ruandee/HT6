@@ -92,6 +92,7 @@ describe('reservations', () => {
         serviceTime,
         TC,
         opts.partySize ?? 2,
+        new BN(0),
       )
       .accounts({
         authority: authority.publicKey,
@@ -351,6 +352,23 @@ describe('reservations', () => {
     assert.equal(pool.consumedCount.toNumber(), 1);
     assert.isTrue(pool.frozen);
     assert.equal(pool.reservePaidIn.toNumber(), 0);
+
+    try {
+      await program.methods
+        .checkIn()
+        .accounts({
+          authority: authority.publicKey,
+          pool: p.pool,
+          mint: p.mint,
+          dinerToken: noShow.tokenAta,
+          holding: holdingPda(p.pool, noShow.kp.publicKey),
+          tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
+        })
+        .rpc();
+      assert.fail('expected AlreadySwept');
+    } catch (e: any) {
+      assert.include(e.toString(), 'AlreadySwept');
+    }
   });
 
   it('refuses trading once the pool is frozen', async () => {

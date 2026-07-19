@@ -7,6 +7,7 @@
  * read model here (real system: Postgres via chain-services indexer, §10.3).
  */
 import {
+  type BuyResult,
   type ChainAdapter,
   type PaymentGateway,
   type PoolId,
@@ -45,12 +46,16 @@ interface PendingBuy {
   maxPrice: UsdcBaseUnits;
   /** epoch ms when the locked quote lapses; past this the intent no longer blocks a rebuy. */
   expiresAt: number;
+  /** Chain outcome retained so a failed refund retries the payout, not the buy. */
+  result?: BuyResult;
+  chainError?: string;
 }
 
 export class Orchestrator {
   private holdings: Holding[] = [];
   private pendingBuys = new Map<string, PendingBuy>();
   private processedEvents = new Set<string>();
+  private pendingSellPayouts = new Map<string, UsdcBaseUnits>();
 
   /**
    * `siblingPools` returns every pool sharing a service window with the given one (i.e. the
@@ -128,42 +133,64 @@ export class Orchestrator {
   async onDepositSucceeded(depositIntentId: string, eventId: string) {
     if (this.processedEvents.has(eventId)) return { duplicate: true };
     this.processedEvents.add(eventId);
-    const pending = this.pendingBuys.get(depositIntentId);
-    if (!pending) return { unknownIntent: true };
-
-    let result;
     try {
-      result = await this.chain.buy(pending.poolId, pending.userId, pending.maxPrice);
-    } catch (e) {
-      // Chain refused (sold out, already holding, frozen). The diner has already paid, so
-      // refund rather than swallow it.
+      const pending = this.pendingBuys.get(depositIntentId);
+      if (!pending) return { unknownIntent: true };
+
+      let result = pending.result;
+      if (!result && pending.chainError === undefined) {
+        try {
+          result = await this.chain.buy(pending.poolId, pending.userId, pending.maxPrice);
+          pending.result = result;
+        } catch (e) {
+          pending.chainError = String(e);
+        }
+      }
+
+      if (pending.chainError !== undefined) {
+        // Chain refused (sold out, already holding, frozen). The diner has already paid, so
+        // refund rather than swallow it. Keep the pending row until payout succeeds so a failed
+        // payout can retry without attempting the chain buy again.
+        await this.gateway.payout(pending.userId, pending.maxPrice, {
+          kind: 'sell',
+          pool_id: pending.poolId,
+        });
+        this.pendingBuys.delete(depositIntentId);
+        return { filled: false, reason: 'rejected_refunded', error: pending.chainError };
+      }
+      if (!result) throw new Error('buy settlement has no chain result');
+
+      if (result.status === 'rejected_slippage') {
+        // Price rose past the lock: refund the diner's deposit (real: gateway.payout of Base proceeds).
+        await this.gateway.payout(pending.userId, pending.maxPrice, {
+          kind: 'sell',
+          pool_id: pending.poolId,
+        });
+        this.pendingBuys.delete(depositIntentId);
+        return { filled: false, reason: 'slippage_refunded' };
+      }
+
+      // A fill below the locked maximum leaves Base USDC owed back to the diner.
+      if (result.refund && BigInt(result.refund) > 0n) {
+        await this.gateway.payout(pending.userId, result.refund, {
+          kind: 'sell',
+          pool_id: pending.poolId,
+        });
+      }
+
       this.pendingBuys.delete(depositIntentId);
-      await this.gateway.payout(pending.userId, pending.maxPrice, {
-        kind: 'sell',
-        pool_id: pending.poolId,
+      this.holdings.push({
+        userId: pending.userId,
+        poolId: pending.poolId,
+        status: 'held',
+        acquiredAt: new Date().toISOString(),
       });
-      return { filled: false, reason: 'rejected_refunded', error: String(e) };
+      this.observer.onBuy?.(pending.poolId, pending.userId, result.price_paid ?? pending.maxPrice);
+      return { filled: true, price_paid: result.price_paid, refund: result.refund };
+    } catch (e) {
+      this.processedEvents.delete(eventId);
+      throw e;
     }
-    this.pendingBuys.delete(depositIntentId);
-
-    if (result.status === 'rejected_slippage') {
-      // Price rose past the lock: refund the diner's deposit (real: gateway.payout of Base proceeds).
-      await this.gateway.payout(pending.userId, pending.maxPrice, {
-        kind: 'sell',
-        pool_id: pending.poolId,
-      });
-      return { filled: false, reason: 'slippage_refunded' };
-    }
-
-    this.holdings.push({
-      userId: pending.userId,
-      poolId: pending.poolId,
-      status: 'held',
-      acquiredAt: new Date().toISOString(),
-    });
-    this.observer.onBuy?.(pending.poolId, pending.userId, result.price_paid ?? pending.maxPrice);
-    // If the price fell, result.refund is credited back (mock returns it; real: gateway.payout).
-    return { filled: true, price_paid: result.price_paid, refund: result.refund };
   }
 
   /** payment_intent.expired / refunded — drop the pending buy so the diner re-quotes. */
@@ -173,18 +200,25 @@ export class Orchestrator {
 
   /** POST /pools/:id/sell — sync: burn to curve, then pay the diner out. */
   async sell(poolId: PoolId, userId: UserId) {
-    const h = this.holdings.find(
-      (x) => x.userId === userId && x.poolId === poolId && x.status === 'held',
-    );
-    if (!h) throw new Error('no held token to sell');
-    // gross sell_price BEFORE φ, read at the same curve state the sell will execute against.
-    // royalty = gross − payout, which is what accrues to the restaurant (§4 cooperative issuer).
-    const pre = await this.chain.quote(poolId);
-    const sold = await this.chain.sell(poolId, userId);
-    h.status = 'sold';
-    this.observer.onSell?.(poolId, userId, sold.payout, pre.sell_price);
-    const payout = await this.gateway.payout(userId, sold.payout, { kind: 'sell', pool_id: poolId });
-    return { payout_intent: payout.payout_id, payout_amount: sold.payout };
+    const key = `${poolId}\0${userId}`;
+    let payoutAmount = this.pendingSellPayouts.get(key);
+    if (payoutAmount === undefined) {
+      const h = this.holdings.find(
+        (x) => x.userId === userId && x.poolId === poolId && x.status === 'held',
+      );
+      if (!h) throw new Error('no held token to sell');
+      // gross sell_price BEFORE φ, read at the same curve state the sell will execute against.
+      // royalty = gross − payout, which is what accrues to the restaurant (§4 cooperative issuer).
+      const pre = await this.chain.quote(poolId);
+      const sold = await this.chain.sell(poolId, userId);
+      payoutAmount = sold.payout;
+      this.pendingSellPayouts.set(key, payoutAmount);
+      h.status = 'sold';
+      this.observer.onSell?.(poolId, userId, payoutAmount, pre.sell_price);
+    }
+    const payout = await this.gateway.payout(userId, payoutAmount, { kind: 'sell', pool_id: poolId });
+    this.pendingSellPayouts.delete(key);
+    return { payout_intent: payout.payout_id, payout_amount: payoutAmount };
   }
 
   /**

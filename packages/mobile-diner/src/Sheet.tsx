@@ -10,20 +10,50 @@
  * The drag starts from the handle only (dragControls + dragListener={false}) so that a sheet
  * taller than the viewport still scrolls normally under your thumb.
  */
-import { motion, useDragControls, type PanInfo } from 'framer-motion';
-import { type ReactNode } from 'react';
+import { motion, useAnimationControls, useDragControls, type PanInfo } from 'framer-motion';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { EASE } from './motion';
 
 /** past this far down, let go and it closes */
 const DISMISS_DISTANCE = 110;
-/** ...or flick it, regardless of distance travelled */
-const DISMISS_VELOCITY = 600;
+/** Framer reports px/s; project roughly 100ms along the release trajectory. */
+const PROJECTION_SECONDS = 0.1;
 
-export function Sheet({ onClose, children }: { onClose: () => void; children: ReactNode }) {
+export function Sheet({
+  onClose,
+  label,
+  children,
+}: {
+  onClose: () => void;
+  label: string;
+  children: ReactNode;
+}) {
   const controls = useDragControls();
+  const animation = useAnimationControls();
+  const dialog = useRef<HTMLDivElement>(null);
 
-  function onDragEnd(_: unknown, info: PanInfo) {
-    if (info.offset.y > DISMISS_DISTANCE || info.velocity.y > DISMISS_VELOCITY) onClose();
+  useEffect(() => {
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    void animation.start({
+      y: 0,
+      transition: { type: 'spring', stiffness: 380, damping: 40, mass: 0.9 },
+    });
+    dialog.current?.focus({ preventScroll: true });
+    return () => previous?.focus({ preventScroll: true });
+  }, [animation]);
+
+  async function onDragEnd(_: unknown, info: PanInfo) {
+    if (info.offset.y + info.velocity.y * PROJECTION_SECONDS <= DISMISS_DISTANCE) return;
+    await animation.start({
+      y: '100%',
+      transition: {
+        type: 'spring',
+        bounce: 0.1,
+        duration: 0.3,
+        velocity: Math.max(0, info.velocity.y),
+      },
+    });
+    onClose();
   }
 
   return (
@@ -32,15 +62,25 @@ export function Sheet({ onClose, children }: { onClose: () => void; children: Re
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.22, ease: EASE }}
+      transition={{ duration: 0.2, ease: EASE }}
       onClick={onClose}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          onClose();
+        }
+      }}
     >
       <motion.div
+        ref={dialog}
         className="msheet glass glass--strong"
+        role="dialog"
+        aria-modal="true"
+        aria-label={label}
+        tabIndex={-1}
         initial={{ y: '100%' }}
-        animate={{ y: 0 }}
+        animate={animation}
         exit={{ y: '100%', transition: { duration: 0.26, ease: EASE } }}
-        transition={{ type: 'spring', stiffness: 380, damping: 40, mass: 0.9 }}
         drag="y"
         dragControls={controls}
         dragListener={false}

@@ -38,13 +38,12 @@
   /* motion. --ease is the same curve as EASE in motion.ts, so a CSS hover and a Framer
      entrance on the same element decelerate identically.
 
-     Three speeds, and the split matters more than the numbers: arriving under the pointer is
-     slower than leaving it, and a press is faster than both. Hover is ambient and should never
-     feel like it is reacting to you; a click is a commitment and should answer at once. */
-  --ease: cubic-bezier(0.16, 1, 0.3, 1);
-  --t-enter: 0.34s;
-  --t-leave: 0.46s;
-  --t-press: 0.09s;
+     Presses stay inside the 100–160ms response window; color and shadow use the same compact
+     timing so touch-up never leaves a control slowly inflating under the user's thumb. */
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --t-enter: 0.16s;
+  --t-leave: 0.16s;
+  --t-press: 0.12s;
 
   --font-display: 'Archivo', system-ui, sans-serif;
   --font-ui: 'Inter', system-ui, sans-serif;
@@ -96,7 +95,6 @@ body {
     var(--yellow) 68%,
     transparent 76%
   );
-  animation: drift1 22s ease-in-out infinite alternate;
 }
 .orb--2 {
   width: 34vw;
@@ -110,17 +108,6 @@ body {
     transparent 72%
   );
   opacity: 0.6;
-  animation: drift2 28s ease-in-out infinite alternate;
-}
-@keyframes drift1 {
-  to {
-    transform: translate3d(-4vw, 3vw, 0) scale(1.08);
-  }
-}
-@keyframes drift2 {
-  to {
-    transform: translate3d(3vw, -2vw, 0) scale(1.12);
-  }
 }
 
 /* ---- glass bevel (the Apple-ish treatment) ---- */
@@ -279,19 +266,11 @@ body {
   padding: 16px 30px;
   border: 1px solid transparent;
   cursor: pointer;
-  /* background-color is in here deliberately. It used to be missing, so every tint change
-     snapped while the shadow underneath it faded. */
-  transition: transform var(--t-leave) var(--ease), box-shadow var(--t-leave) var(--ease),
-    filter var(--t-leave) var(--ease), background-color var(--t-leave) var(--ease),
-    border-color var(--t-leave) var(--ease);
-}
-.btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  transition-duration: var(--t-enter);
+  transition: transform var(--t-leave) var(--ease);
 }
 /* later than the :hover rule and equally specific, so the press wins while held */
 .btn:active:not(:disabled) {
-  transform: translateY(0) scale(0.978);
+  transform: translateY(0) scale(0.97);
   transition-duration: var(--t-press);
 }
 .btn:disabled {
@@ -305,11 +284,6 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.55),
     inset 0 -2px 6px rgba(140, 40, 10, 0.25);
 }
-.btn--primary:hover:not(:disabled) {
-  filter: brightness(1.06) saturate(1.03);
-  box-shadow: 0 18px 38px -10px rgba(242, 84, 45, 0.68),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55);
-}
 .btn--ghost {
   color: var(--ink);
   background: rgba(255, 255, 255, 0.5);
@@ -319,8 +293,19 @@ body {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9),
     0 6px 18px -8px rgba(80, 45, 25, 0.25);
 }
-.btn--ghost:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.72);
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    transition-duration: var(--t-enter);
+  }
+  .btn--primary:hover:not(:disabled) {
+    filter: brightness(1.06) saturate(1.03);
+    box-shadow: 0 18px 38px -10px rgba(242, 84, 45, 0.68),
+      inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  }
+  .btn--ghost:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.72);
+  }
 }
 
 /* ---- slot pips (scarcity at a glance) ---- */
@@ -385,18 +370,10 @@ body {
   cursor: pointer;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9),
     0 6px 18px -10px rgba(80, 45, 25, 0.28);
-  transition: transform var(--t-leave) var(--ease), background-color var(--t-leave) var(--ease),
-    box-shadow var(--t-leave) var(--ease), border-color var(--t-leave) var(--ease);
-}
-.psize__select:hover {
-  transform: translateY(-2px);
-  background-color: rgba(255, 255, 255, 0.8);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 14px 28px -12px rgba(80, 45, 25, 0.32);
-  transition-duration: var(--t-enter);
+  transition: transform var(--t-leave) var(--ease);
 }
 .psize__select:active {
-  transform: translateY(0) scale(0.985);
+  transform: scale(0.97);
   transition-duration: var(--t-press);
 }
 .psize__select:focus-visible {
@@ -413,9 +390,18 @@ body {
   color: var(--ink-45);
   transition: color var(--t-leave) var(--ease);
 }
-.psize:hover .psize__chev {
-  color: var(--coral-deep);
-  transition-duration: var(--t-enter);
+@media (hover: hover) and (pointer: fine) {
+  .psize__select:hover {
+    transform: translateY(-2px);
+    background-color: rgba(255, 255, 255, 0.8);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      0 14px 28px -12px rgba(80, 45, 25, 0.32);
+    transition-duration: var(--t-enter);
+  }
+  .psize:hover .psize__chev {
+    color: var(--coral-deep);
+    transition-duration: var(--t-enter);
+  }
 }
 /* which band the headcount landed on, and what it costs right now */
 .psize__routed {
@@ -429,49 +415,6 @@ body {
   font-weight: 600;
 }
 
-/* ---- calendar day cells ---- */
-.day {
-  position: relative;
-  aspect-ratio: 1;
-  border: none;
-  background: transparent;
-  border-radius: 11px;
-  font-family: var(--font-ui);
-  font-size: 12.5px;
-  color: var(--ink-25);
-  cursor: default;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  transition: background 0.16s, color 0.16s, transform 0.16s;
-}
-.day--has {
-  color: var(--ink);
-  cursor: pointer;
-}
-.day--has:hover {
-  background: rgba(255, 255, 255, 0.75);
-  transform: translateY(-1px);
-}
-.day__dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--coral-deep);
-  display: block;
-}
-.day--sel {
-  background: linear-gradient(168deg, var(--coral) 0%, var(--coral-deep) 100%);
-  color: #fff;
-  box-shadow: 0 6px 16px -6px rgba(242, 84, 45, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45);
-}
-.day--sel .day__dot {
-  background: rgba(255, 255, 255, 0.9);
-}
-
 /* quote-lock ring */
 .ring {
   transform: rotate(-90deg);
@@ -482,7 +425,7 @@ body {
 .ring__fill {
   stroke: var(--coral);
   stroke-linecap: round;
-  transition: stroke-dashoffset 1s linear;
+  transition: stroke-dashoffset 250ms linear;
 }
 
 /* sheet (buy/sell moment) */
@@ -506,14 +449,59 @@ body {
    (the sheet, the date popover, the flash toast) moved to Framer, which can animate
    exits too, which a CSS keyframe on a mounting element never could. */
 
-/* ---- respect the OS setting ----
-   Framer handles its own animations via <MotionConfig reducedMotion="user">;
-   this covers what Framer never sees: the ambient orbs and plain CSS transitions. */
+/* ---- respect OS accessibility settings ----
+   Framer removes its own spatial motion via <MotionConfig reducedMotion="user">. CSS keeps
+   brief color/opacity feedback while dropping transforms. */
 @media (prefers-reduced-motion: reduce) {
-  .orb {
-    animation: none !important;
+  .btn,
+  .psize__select,
+  .psize__chev,
+  .pip,
+  .ring__fill {
+    transition-duration: 0.16s !important;
   }
-  * {
-    transition-duration: 0.01ms !important;
+
+  .btn:hover:not(:disabled),
+  .btn:active:not(:disabled),
+  .psize__select:hover,
+  .psize__select:active,
+  .pip--just-sold {
+    transform: none !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass-bg: rgba(255, 255, 255, 0.94);
+    --glass-bg-strong: #fff;
+    --glass-border: rgba(22, 19, 15, 0.16);
+  }
+
+  .glass,
+  .btn--ghost,
+  .psize__select {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --ink-70: rgba(22, 19, 15, 0.86);
+    --ink-45: rgba(22, 19, 15, 0.72);
+    --ink-25: rgba(22, 19, 15, 0.45);
+    --hairline: rgba(22, 19, 15, 0.32);
+    --glass-bg: #fff;
+    --glass-bg-strong: #fff;
+    --glass-border: rgba(22, 19, 15, 0.34);
+  }
+
+  .glass,
+  .btn--ghost,
+  .psize__select {
+    background: #fff;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-color: var(--glass-border);
   }
 }

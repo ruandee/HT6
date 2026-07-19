@@ -11,7 +11,7 @@
  * a holder who bails early is paid out of premium that was going to evaporate anyway.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { motion, MotionConfig } from 'framer-motion';
+import { motion, MotionConfig, useReducedMotion } from 'framer-motion';
 import { CurveChart, DecayChart } from './Charts';
 import { Controls } from './Controls';
 import { curve, decayPath, DEFAULTS, pricesAt, tauLabel, type Params } from './model';
@@ -20,12 +20,19 @@ import { fadeUp, group } from './motion';
 export default function App() {
   const [p, setP] = useState<Params>(DEFAULTS);
   const [playing, setPlaying] = useState(false);
+  const reduceMotion = useReducedMotion();
+  const enter = useMemo(() => fadeUp(Boolean(reduceMotion)), [reduceMotion]);
 
   const set = <K extends keyof Params>(key: K, v: Params[K]) => setP((old) => ({ ...old, [key]: v }));
 
   /** the scrubber, running itself. One sweep from the shoulder to the door takes ~9 seconds. */
   useEffect(() => {
     if (!playing) return;
+    if (reduceMotion) {
+      setP((old) => ({ ...old, tauHours: 0 }));
+      setPlaying(false);
+      return;
+    }
     const span = Math.max(p.tcHours * 1.35, 1);
     let raf = 0;
     let last = performance.now();
@@ -41,7 +48,7 @@ export default function App() {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [playing, p.tcHours]);
+  }, [playing, p.tcHours, reduceMotion]);
 
   // stop at the door rather than looping. The end state is the thing being demonstrated.
   useEffect(() => {
@@ -57,6 +64,14 @@ export default function App() {
   const burned = atFull.buy - now.buy;
 
   function replay() {
+    if (reduceMotion) {
+      setPlaying(false);
+      setP((old) => ({
+        ...old,
+        tauHours: old.tauHours <= 0 ? Math.max(old.tcHours * 1.35, 1) : 0,
+      }));
+      return;
+    }
     setP((old) => ({ ...old, tauHours: Math.max(old.tcHours * 1.35, 1) }));
     setPlaying(true);
   }
@@ -69,7 +84,7 @@ export default function App() {
       </div>
 
       <motion.div className="shell lab" variants={group(0.07)} initial="hidden" animate="show">
-        <motion.header className="topbar" variants={fadeUp}>
+        <motion.header className="topbar" variants={enter}>
           <div className="brand">
             <span className="brand-dots">
               <i />
@@ -80,18 +95,18 @@ export default function App() {
           <div className="eyebrow">Pricing model</div>
         </motion.header>
 
-        <motion.h1 className="headline" variants={fadeUp}>
+        <motion.h1 className="headline" variants={enter}>
           The premium is
           <br />
           <span className="script">time</span>.
         </motion.h1>
-        <motion.p className="muted" variants={fadeUp} style={{ maxWidth: 440, marginTop: 20 }}>
+        <motion.p className="muted" variants={enter} style={{ maxWidth: 440, marginTop: 20 }}>
           A table is a meal credit with a price on top. The credit holds its value all the way to
           service. The price on top does not, and this is the shape it loses.
         </motion.p>
 
         {/* ---- the live readout ---- */}
-        <motion.section className="lab__readout" variants={fadeUp}>
+        <motion.section className="lab__readout" variants={enter}>
           <div className="lab__now glass glass--strong">
             <div className="stat-label">Table #{p.nSold + 1} costs</div>
             <div className="lab__price">
@@ -103,7 +118,7 @@ export default function App() {
             <div className="lab__split">
               <div
                 className="lab__split-credit"
-                style={{ width: `${(p.p0 / Math.max(now.buy, 0.01)) * 100}%` }}
+                style={{ transform: `scaleX(${p.p0 / Math.max(now.buy, 0.01)})` }}
               />
             </div>
             <div className="lab__legend">
@@ -137,7 +152,7 @@ export default function App() {
         </motion.section>
 
         {/* ---- the scrubber: the one control that matters ---- */}
-        <motion.section className="glass lab__scrub" variants={fadeUp}>
+        <motion.section className="glass lab__scrub" variants={enter}>
           <div className="lab__scrub-head">
             <div>
               <div className="eyebrow">Time until service</div>
@@ -169,7 +184,7 @@ export default function App() {
 
         {/* ---- the two charts ---- */}
         <motion.div className="lab__charts" variants={group(0.08)}>
-          <motion.section className="glass lab__panel" variants={fadeUp}>
+          <motion.section className="glass lab__panel" variants={enter}>
             <div className="lab__panel-head">
               <div className="eyebrow">The curve, flattening</div>
               <div className="lab__panel-note">
@@ -188,7 +203,7 @@ export default function App() {
             </p>
           </motion.section>
 
-          <motion.section className="glass lab__panel" variants={fadeUp}>
+          <motion.section className="glass lab__panel" variants={enter}>
             <div className="lab__panel-head">
               <div className="eyebrow">One table, to the door</div>
               <div className="lab__panel-note">Tc = {p.tcHours}h</div>
@@ -202,14 +217,14 @@ export default function App() {
         </motion.div>
 
         {/* ---- the parameters ---- */}
-        <motion.section className="glass lab__panel" variants={fadeUp}>
+        <motion.section className="glass lab__panel" variants={enter}>
           <div className="eyebrow" style={{ marginBottom: 18 }}>
             Pool parameters
           </div>
           <Controls p={p} onChange={set} />
         </motion.section>
 
-        <motion.section className="lab__notes" variants={fadeUp}>
+        <motion.section className="lab__notes" variants={enter}>
           <h2 className="lab__notes-title">Why it is built this way</h2>
           <div className="lab__notes-grid">
             <Note title="The floor never moves">
@@ -231,7 +246,7 @@ export default function App() {
           </div>
         </motion.section>
 
-        <motion.p className="footnote" variants={fadeUp}>
+        <motion.p className="footnote" variants={enter}>
           Every price here comes from the same module the chain prices against. Nothing on this
           page is a re-derivation, and nothing is connected to a live pool.
         </motion.p>

@@ -10,10 +10,10 @@
  */
 import type { Transition, Variants } from 'framer-motion';
 
-/** soft decelerate, the same curve the stylesheet already uses for hovers and meters */
-export const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+/** strong decelerate, shared by routine entrances and state changes */
+export const EASE: [number, number, number, number] = [0.23, 1, 0.32, 1];
 
-export const DUR = { quick: 0.2, base: 0.34, slow: 0.5 } as const;
+export const DUR = { quick: 0.16, base: 0.24, slow: 0.28 } as const;
 
 export const ease = (duration: number = DUR.base): Transition => ({ duration, ease: EASE });
 
@@ -27,7 +27,7 @@ export const fadeUp: Variants = {
 /** panel swap, with shorter travel than fadeUp because this one fires on every click */
 export const swap: Variants = {
   hidden: { opacity: 0, y: 6 },
-  show: { opacity: 1, y: 0, transition: ease(0.3) },
+  show: { opacity: 1, y: 0, transition: ease(0.22) },
   exit: { opacity: 0, y: -4, transition: ease(0.16) },
 };
 

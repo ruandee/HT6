@@ -41,10 +41,10 @@
      Three speeds, and the split matters more than the numbers: arriving under the pointer is
      slower than leaving it, and a press is faster than both. Hover is ambient and should never
      feel like it is reacting to you; a click is a commitment and should answer at once. */
-  --ease: cubic-bezier(0.16, 1, 0.3, 1);
-  --t-enter: 0.34s;
-  --t-leave: 0.46s;
-  --t-press: 0.09s;
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --t-enter: 0.18s;
+  --t-leave: 0.14s;
+  --t-press: 0.1s;
 
   --font-display: 'Archivo', system-ui, sans-serif;
   --font-ui: 'Inter', system-ui, sans-serif;
@@ -285,13 +285,9 @@ body {
     filter var(--t-leave) var(--ease), background-color var(--t-leave) var(--ease),
     border-color var(--t-leave) var(--ease);
 }
-.btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  transition-duration: var(--t-enter);
-}
 /* later than the :hover rule and equally specific, so the press wins while held */
 .btn:active:not(:disabled) {
-  transform: translateY(0) scale(0.978);
+  transform: scale(0.97);
   transition-duration: var(--t-press);
 }
 .btn:disabled {
@@ -334,7 +330,7 @@ body {
   height: 5px;
   border-radius: 3px;
   background: var(--ink-25);
-  transition: background 0.4s, transform 0.4s;
+  transition: background 0.2s ease, transform 0.2s var(--ease);
 }
 .pip--sold {
   background: linear-gradient(90deg, var(--coral), var(--coral-deep));
@@ -389,14 +385,13 @@ body {
     box-shadow var(--t-leave) var(--ease), border-color var(--t-leave) var(--ease);
 }
 .psize__select:hover {
-  transform: translateY(-2px);
   background-color: rgba(255, 255, 255, 0.8);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95),
     0 14px 28px -12px rgba(80, 45, 25, 0.32);
   transition-duration: var(--t-enter);
 }
 .psize__select:active {
-  transform: translateY(0) scale(0.985);
+  transform: scale(0.97);
   transition-duration: var(--t-press);
 }
 .psize__select:focus-visible {
@@ -453,7 +448,6 @@ body {
 }
 .day--has:hover {
   background: rgba(255, 255, 255, 0.75);
-  transform: translateY(-1px);
 }
 .day__dot {
   width: 4px;
@@ -513,7 +507,33 @@ body {
   .orb {
     animation: none !important;
   }
-  * {
-    transition-duration: 0.01ms !important;
+  .btn:hover:not(:disabled),
+  .btn:active:not(:disabled),
+  .psize__select:hover,
+  .psize__select:active,
+  .day--has:hover {
+    transform: none;
+  }
+  .pip--just-sold {
+    transform: none;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .btn:hover:not(:disabled),
+  .psize__select:hover {
+    transform: translateY(-2px);
+    transition-duration: var(--t-enter);
+  }
+  .btn:active:not(:disabled) {
+    transform: scale(0.97);
+    transition-duration: var(--t-press);
+  }
+  .psize__select:active {
+    transform: scale(0.97);
+    transition-duration: var(--t-press);
+  }
+  .day--has:hover {
+    transform: translateY(-1px);
   }
 }

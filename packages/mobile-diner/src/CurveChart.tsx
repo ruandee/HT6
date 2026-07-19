@@ -189,9 +189,7 @@ export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500, height 
             stroke="url(#mCurveStroke)"
             strokeWidth={2.75}
             fill="url(#mCurveFill)"
-            isAnimationActive
-            animationDuration={620}
-            animationEasing="ease-out"
+            isAnimationActive={false}
             dot={false}
             activeDot={{ r: 4.5, fill: '#F2542D', stroke: '#fff', strokeWidth: 2 }}
           />
