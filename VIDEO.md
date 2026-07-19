@@ -1,16 +1,15 @@
 # hora — video script
 
 For the **online judges**, watching without you in the room. Different job from `PITCH.md`: there
-you defend engineering decisions live, here you make a stranger care inside fifteen seconds.
-Promotional first, credible second — but credible, because the last beat is the one that wins the
-Unifold track.
+you defend engineering decisions live, here you make a stranger care inside ten seconds.
+Promotional first, credible second — but credible, because the last beat is what wins the Unifold
+track.
 
-**Runtime 2:20–2:50.** VO is 370 words: 2:11 at a brisk 170wpm, 2:39 at a relaxed 140, plus ~10
-seconds of deliberate silence. Devpost caps at 3:00, so at a slow read you are close to the ceiling
-— time your own before building the edit around it.
+**Runtime ~1:30.** VO is 226 words: 1:25 at 160wpm, plus a few seconds of deliberate silence.
+Short is the point — a judge watching thirty entries will finish this one.
 **Voice: first person, present tense, plain.** You built this. Say "I".
 
-**Never cut:** the cold open, the no-show beat, or the mainnet proof. Those three are the film.
+**Never cut:** the cold open, the no-show beat, or the mainnet proof.
 
 ---
 
@@ -18,13 +17,13 @@ seconds of deliberate silence. Devpost caps at 3:00, so at a slow read you are c
 
 | # | Beat | Time | Job |
 |---|---|---|---|
-| 0 | The empty chair | 0:00–0:15 | Make them feel it before they know what this is |
-| 1 | Reveal | 0:15–0:25 | Name it. One line. |
-| 2 | A price that moves | 0:25–0:52 | The product, and why early is cheaper |
-| 3 | Hand it back | 0:52–1:18 | The thing nobody else does |
-| 4 | Nobody came | 1:18–1:42 | The money shot |
-| 5 | This is real money | 1:42–2:08 | Kill the "nice mockup" reflex |
-| 6 | Close | 2:08–2:20 | Wordmark, one line, out |
+| 0 | The empty chair | 0:00–0:13 | Make them feel it before they know what this is |
+| 1 | Reveal | 0:13–0:21 | Name it. One line. |
+| 2 | A price that moves | 0:21–0:44 | The product, and why early is cheaper |
+| 3 | Hand it back | 0:44–1:00 | The thing nobody else does |
+| 4 | Nobody came | 1:00–1:14 | The money shot |
+| 5 | This is real money | 1:14–1:30 | Kill the "nice mockup" reflex |
+| 6 | Close | 1:30–1:35 | Wordmark, out |
 
 ---
 
@@ -32,71 +31,67 @@ seconds of deliberate silence. Devpost caps at 3:00, so at a slow read you are c
 
 ---
 
-### 0 · The empty chair — 0:00–0:15
+### 0 · The empty chair — 0:00–0:13
 
-**ON SCREEN.** Title cards on the warm canvas. One line at a time. Slow. No product yet.
+**ON SCREEN.** Title cards on the warm canvas. One line at a time. No product yet.
 
 > A restaurant holds a table for you.
 > You don't come.
 > Nobody pays for the empty chair.
 
 **VO**
-> "Every night, restaurants give away something scarce for free. A reservation costs nothing to make, nothing to break, and nothing to hoard. So the good tables get resold in group chats, the quiet ones get abandoned at 7:58, and the restaurant eats both."
+> "Restaurants give away something scarce for free every night. A reservation costs nothing to make and nothing to break — so good tables get resold in group chats, quiet ones sit empty, and the restaurant eats both."
 
-*Half a second of silence before the cut. Don't rush it.*
+*Half a second of silence before the cut.*
 
 ---
 
-### 1 · Reveal — 0:15–0:25
+### 1 · Reveal — 0:13–0:21
 
-**ON SCREEN.** The landing hero. Wordmark settles, the two dots land. Hold.
+**ON SCREEN.** The landing hero. Wordmark settles, the two dots land.
 
 **VO**
-> "So I gave it a price. This is hora — a restaurant table you can buy, and sell back, right up until the night it's for."
+> "So I gave it a price. This is hora — a table you can buy, and sell back, until the night it's for."
 
 ---
 
-### 2 · A price that moves — 0:25–0:52
+### 2 · A price that moves — 0:21–0:44
 
-**ON SCREEN.** The website. Curve already up. Cursor to Claim, the sheet lifts with the price
+**ON SCREEN.** The website, curve already up. Cursor to Claim, the sheet lifts with the price
 locked and the ring depleting, confirm. The curve steps and the number rolls.
 
 **VO**
-> "Here's a Monday. Fifty-eight dollars for a table for two — and forty of that is credit against your bill, so most of what you're paying is just dinner, early."
+> "Fifty-eight dollars for a Monday table for two — forty of it credit against your bill, so most of what you're paying is dinner."
 >
-> "Watch what happens when I take it."
+> "Watch when I take it."
 
 *Let the price roll 58 → 61 with no narration. The motion is the line.*
 
-> "Every table sold moves the price for the next one. Book early and you genuinely pay less. And there's no wallet here, no seed phrase, no gas — you pay however you already pay for things, and stablecoin comes out the other side."
+> "Every table sold moves the price for the next one. And there's no wallet, no seed phrase, no gas — you pay how you already pay."
 
 ---
 
-### 3 · Hand it back — 0:52–1:18
+### 3 · Hand it back — 0:44–1:00
 
-**ON SCREEN.** Same screen. Sell-back. Payout lands. Price steps down. Cut to the Operator
-Console; the royalty counter ticks.
+**ON SCREEN.** Sell-back. Payout lands, price steps down. Cut to the Operator Console as the
+royalty counter ticks.
 
 **VO**
-> "Plans change, the way they always do."
->
-> "I hand the table back, and the money is there immediately. Not a refund request. Not a waitlist. Not begging the host. There's always a buyer, because the app itself is the buyer — and the maths guarantees it can always pay."
+> "Plans change. I hand it back and the money is there immediately. There's always a buyer, because the app itself is the buyer."
 
 *Cut to the dashboard.*
 
-> "That resale just paid the restaurant a cut. Which means for the first time, the restaurant wants people trading tables instead of fighting it."
+> "That resale just paid the restaurant a cut."
 
 ---
 
-### 4 · Nobody came — 1:18–1:42
+### 4 · Nobody came — 1:00–1:14
 
-**ON SCREEN.** Operator Console. Check a diner in. Advance to service. Sweep. Land on the settled
-panel: the big number, **no-shows recovered**, the breakdown tiles.
+**ON SCREEN.** Operator Console. Check a diner in, advance to service, sweep. Land on the settled
+panel: the big number and **no-shows recovered**.
 
 **VO**
-> "Then service ends, and here's the part I actually built this for."
->
-> "The people who came, ate. The people who didn't — already paid. That money goes to the restaurant tonight, automatically. No card holds, no penalty emails, no chasing anyone."
+> "Service ends. The people who came, ate. The people who didn't already paid — and that money goes to the restaurant tonight."
 
 *Hold on the number. Silence.*
 
@@ -104,33 +99,27 @@ panel: the big number, **no-shows recovered**, the breakdown tiles.
 
 ---
 
-### 5 · This is real money — 1:42–2:08
+### 5 · This is real money — 1:14–1:30
 
-**ON SCREEN.** Fast cuts, ~3s each: the mobile app curve → `math.rs` on the rounding test → then
-settle on **`/unifold/status`** in a browser, scrolled so the succeeded payment intent and the
-completed transfer are both visible. Let that page sit for a full four seconds.
+**ON SCREEN.** Quick cut through the mobile app, then settle on **`/unifold/status`** in a browser,
+scrolled so the succeeded payment intent and the completed transfer are both visible. Let it sit
+for four full seconds.
 
 **VO**
-> "And this isn't a mockup. There's a Solana program holding the money, an indexer feeding the read model, and four real clients — a website, a phone, an operator console, and a lab for the pricing itself."
+> "This isn't a mockup. I ran a full round trip on mainnet through Unifold — bought a table, sold it back, real stablecoin both ways. It cost nineteen cents, and that nineteen cents was the royalty."
 >
-> "The payments are real too. I ran a full round trip on mainnet through Unifold: bought a table, sold it back, real stablecoin both directions. It cost me nineteen cents — and the nineteen cents was the restaurant's royalty."
-
-*Beat.*
-
-> "That page is live. You can check the transactions yourself."
+> "That page is live. Check it yourself."
 
 ---
 
-### 6 · Close — 2:08–2:20
+### 6 · Close — 1:30–1:35
 
-**ON SCREEN.** Back to the landing hero. Wordmark. Hold two seconds, buttons resolve underneath.
+**ON SCREEN.** Back to the landing hero. Wordmark. Hold, buttons resolve underneath.
 
 **VO**
-> "Reservations have been free and worthless for fifty years. This one's worth something."
->
-> "hora."
+> "A reservation you can actually trade. That's hora."
 
-*Cut to black on the wordmark. No outro sting, no credits crawl.*
+*Cut to black on the wordmark.*
 
 ---
 
@@ -141,10 +130,10 @@ do better, because you have a receipt: a real mainnet payment intent, a real tre
 a status page that queries Unifold's live API on every load.
 
 So don't narrate the architecture — **show the evidence and get out of the way.** Four seconds on
-that page does more than twenty seconds of explaining. The nineteen cents is the strongest line in
-the film, because it's your whole economic thesis reduced to a number a stranger can verify.
+that page beats twenty seconds of explaining. The nineteen cents is the strongest line in the film,
+because it's your whole economic thesis reduced to a number a stranger can verify.
 
-If you're overrunning, cut the `math.rs` shot before you cut the status page.
+At this length there is nothing spare. If you overrun, take it out of the cold open, not beat 5.
 
 ---
 
@@ -168,15 +157,14 @@ If you're overrunning, cut the `math.rs` shot before you cut the status page.
 5. Move the cursor slowly and deliberately, or hide it on beats where it isn't clicking. A darting
    cursor is the biggest tell of an amateur recording.
 
-**Record video first, silent, in pieces. Then write VO to the footage you actually got.** Trying to
+**Record video first, silent, in pieces. Then lay VO over the footage you actually got.** Trying to
 perform both at once is how takes reach number twenty.
 
-1. Landing: hero load, then a slow scroll through the page. Two takes.
+1. Landing: hero load, then a slow scroll. Two takes.
 2. Website buy: the full sequence, unbroken. Three times, keep the smoothest.
 3. Sell-back, plus the Operator Console royalty tick.
 4. Sweep: check in, advance, sweep, hold on the settled panel.
-5. B-roll: mobile app, `math.rs` on the rounding test, and `/unifold/status` with both transactions
-   visible.
+5. B-roll: mobile app, and `/unifold/status` with both transactions visible.
 
 Start recording two seconds before you touch anything and stop two seconds after the motion
 settles. Those handles are what let you cut on the beat.
