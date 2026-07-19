@@ -457,7 +457,8 @@ body {
   .psize__select,
   .psize__chev,
   .pip,
-  .ring__fill {
+  .ring__fill,
+  .split__credit {
     transition-duration: 0.16s !important;
   }
 

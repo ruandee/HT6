@@ -16,6 +16,7 @@ import {
   type PoolSummary,
   type Quote,
 } from './api';
+import { Num, Price } from './num';
 import { CurveChart } from './CurveChart';
 import { BuySheet } from './BuySheet';
 import { NightRail } from './NightRail';
@@ -111,7 +112,6 @@ export default function App() {
   const params = bandParams(current?.party_size ?? 2);
   const floorP0 = params.p0;
   const left = q ? q.n_max - q.n_sold : 0;
-  const price = q ? splitUsdc(q.buy_price) : { dollars: '—', cents: '00' };
 
   function selectDate(dateIso: string) {
     // the headcount is the thing the diner chose, so it survives the night change and we
@@ -258,7 +258,7 @@ export default function App() {
                 </div>
                 {q && (
                   <span className="badge badge--live">
-                    {left > 0 ? `${left} left` : 'Full'}
+                    {left > 0 ? <><Num value={left} /> left</> : 'Full'}
                   </span>
                 )}
               </div>
@@ -278,7 +278,13 @@ export default function App() {
 
               <div style={{ marginTop: 14 }}>
                 <div className="stat-label" style={{ marginBottom: 8 }}>
-                  {q ? `${q.n_sold} of ${q.n_max} claimed` : 'Loading'}
+                  {q ? (
+                    <>
+                      <Num value={q.n_sold} /> of <Num value={q.n_max} /> claimed
+                    </>
+                  ) : (
+                    'Loading'
+                  )}
                 </div>
                 <div className="pips">
                   {q &&
@@ -307,10 +313,7 @@ export default function App() {
                     Price now
                   </div>
                   <div className="price price--phone">
-                    <span style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
-                      <span>${price.dollars}</span>
-                      <span className="price__cents">.{price.cents}</span>
-                    </span>
+                    <Price base={q?.buy_price} />
                   </div>
                 </div>
                 {current && (
@@ -325,7 +328,7 @@ export default function App() {
                         marginTop: 4,
                       }}
                     >
-                      {current.party_size}
+                      <Num value={current.party_size} />
                     </div>
                   </div>
                 )}

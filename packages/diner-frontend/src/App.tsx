@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, MotionConfig } from 'framer-motion';
-import { api, errText, splitUsdc, usdc, type Holding, type PoolSummary, type Quote } from './api';
+import { api, errText, usdc, type Holding, type PoolSummary, type Quote } from './api';
+import { Num, Price } from './num';
 import { CurveChart } from './CurveChart';
 import { BuySheet } from './BuySheet';
 import { Calendar } from './Calendar';
@@ -170,7 +171,6 @@ export default function App() {
   }, [settling, heldThisWindow.length, currentPool?.label]);
 
   const venue = venueState(bandsTonight);
-  const price = q ? splitUsdc(q.buy_price) : { dollars: '—', cents: '00' };
   const left = q ? q.n_max - q.n_sold : 0;
   const floorP0 = currentPool
     ? (BAND_PARAMS[currentPool.party_size]?.p0 ?? '40000000')
@@ -212,9 +212,13 @@ export default function App() {
                 whole night (9 of 28); without it the two numbers look like a bug */}
             <p className="muted lede">
               {currentPool ? `${currentPool.label} · ` : ''}
-              {venue.cap > 0
-                ? `${venue.sold} of ${venue.cap} tables gone, all sizes`
-                : 'Loading tonight'}
+              {venue.cap > 0 ? (
+                <>
+                  <Num value={venue.sold} /> of <Num value={venue.cap} /> tables gone, all sizes
+                </>
+              ) : (
+                'Loading tonight'
+              )}
             </p>
 
             <div className="rail__cal">
@@ -241,7 +245,13 @@ export default function App() {
             {/* pinned to the panel's floor, so it lines up with the buy button beside it */}
             <div className="panel__foot">
               <div className="stat-label" style={{ marginBottom: 9 }}>
-                {q ? `${q.n_sold} of ${q.n_max} taken` : ' '}
+                {q ? (
+                  <>
+                    <Num value={q.n_sold} /> of <Num value={q.n_max} /> taken
+                  </>
+                ) : (
+                  ' '
+                )}
               </div>
               <div className="pips">
                 {q &&
@@ -262,10 +272,7 @@ export default function App() {
 
             <div className="eyebrow">Right now</div>
             <div className="price price--hero">
-              <span style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
-                <span>${price.dollars}</span>
-                <span className="price__cents">.{price.cents}</span>
-              </span>
+              <Price base={q?.buy_price} />
             </div>
             <div className="muted buy__note">
               {usdc(floorP0)} comes off your bill.
@@ -273,7 +280,7 @@ export default function App() {
                 <>
                   {' '}
                   <strong style={{ color: 'var(--coral-deep)' }}>
-                    {left} left.
+                    <Num value={left} /> left.
                   </strong>
                 </>
               )}
