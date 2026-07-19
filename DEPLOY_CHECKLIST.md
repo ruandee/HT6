@@ -68,11 +68,26 @@ allow-origin header for an allowlisted origin and omits it for one that isn't.
 
 Four projects off the same repo. For each:
 
-- [ ] **Root Directory** = `packages/<app>`, with **"Include files outside root directory"**
-      ENABLED. `@ttr/shared-types` is a workspace dependency; install has to happen at the repo
-      root or resolution fails.
-- [ ] Confirm the build resolves the shared-types project reference. `packages/*/dist` is
-      untracked, so Vercel builds everything from scratch — it will not inherit your local `dist`.
+- [ ] **Root Directory** = `packages/<app>`. That is the whole setup — leave everything else alone.
+
+      There is **no "Include files outside root directory" checkbox** in current Vercel. It existed
+      in the older dashboard and is gone; Vercel now detects npm workspaces natively from the
+      lockfile and the root `workspaces` key (this repo has `["packages/*"]`) and installs at the
+      workspace root on its own. Don't go hunting for it.
+- [x] **`@ttr/shared-types` must be built before its consumers** — fixed in
+      [restaurant-frontend/vercel.json](packages/restaurant-frontend/vercel.json) and
+      [launcher/vercel.json](packages/launcher/vercel.json), which now run
+      `cd ../shared-types && npm run build` first.
+
+      Three things combine to cause this, and it only shows up on a clean clone:
+      shared-types resolves through `"types": "./dist/index.d.ts"`; `packages/shared-types/dist`
+      is **gitignored**, so Vercel never receives it; and the consuming tsconfigs have **no TS
+      project references**, so `tsc -b` does not build it for them. Locally it works only because
+      a root build left a `dist` on disk. Symptom is
+      `TS2307: Cannot find module '@ttr/shared-types'`.
+
+      Only restaurant and launcher import it — diner and mobile don't, which is why those two
+      deployed fine. Verified by deleting `packages/shared-types/dist` and rebuilding both.
 - [ ] Each app's `vercel.json` is committed (SPA rewrite is required or deep links 404).
 
 **Environment variables:**
@@ -166,23 +181,20 @@ You lose tables bought earlier, not correctness.
 
 ### Deploy
 
-```bash
+Commands are on one line each **on purpose**: this repo is developed on Windows, and a bash-style
+`\` line continuation is a parse error in PowerShell (it wants a backtick). One line works in both
+shells.
+
+```powershell
 gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
 
-gcloud run deploy ttr-app-services \
-  --source . \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --max-instances=1 \
-  --min-instances=0 \
-  --set-env-vars PAYMENT_GATEWAY=stub
+gcloud run deploy ttr-app-services --source . --region us-central1 --allow-unauthenticated --max-instances=1 --min-instances=0 --set-env-vars PAYMENT_GATEWAY=stub
 ```
 
 Then, using the URL it prints:
 
-```bash
-gcloud run services update ttr-app-services --region us-central1 \
-  --update-env-vars APP_BASE_URL=https://<service-url>
+```powershell
+gcloud run services update ttr-app-services --region us-central1 --update-env-vars APP_BASE_URL=https://<service-url>
 ```
 
 - [x] **Port**: Cloud Run injects `PORT` and health-checks that exact port.
@@ -217,10 +229,10 @@ built until app-services has a public URL.
 6. **Deploy the launcher** with `VITE_DINER_URL` / `VITE_MOBILE_URL` / `VITE_RESTAURANT_URL` /
    `VITE_LAB_URL` pointing at those. The launcher is the demo's front door, so it goes last.
 7. **Tighten CORS** to the comma-separated Vercel origins, then re-test one buy — get this wrong
-   and the browser blocks the call, leaving the app looking dead with only a console error:
-   ```bash
-   gcloud run services update ttr-app-services --region us-central1 \
-     --update-env-vars CORS_ORIGINS=https://a.vercel.app,https://b.vercel.app
+   and the browser blocks the call, leaving the app looking dead with only a console error.
+   Quote the value: unquoted, PowerShell splits on the commas and gcloud sees separate arguments.
+   ```powershell
+   gcloud run services update ttr-app-services --region us-central1 --update-env-vars "CORS_ORIGINS=https://a.vercel.app,https://b.vercel.app"
    ```
 8. **Custom domain** (optional): Vercel → Project → Settings → Domains. Add the apex to the
    launcher and subdomains to the rest. Changing an app's domain means updating the launcher's

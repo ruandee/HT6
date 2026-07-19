@@ -27,8 +27,8 @@ const CFG = {
   treasuryId: 'ta_FAKE',
   webhookSecret: 'whsec_FAKE',
   baseRecipientAddress: '0x742d35Cc6634C0532925a3b844Bc9e7595f0aB12',
-  solanaUsdcMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  resolveSolanaAddress: () => 'DinerSo1anaUSDCAddr11111111111111111111111',
+  baseUsdcAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+  resolvePayoutAddress: () => '0x606C49ca2Fa4982F07016265040F777eD3DA3160',
 };
 
 /** Records every fetch call and replays queued responses. */
@@ -86,7 +86,7 @@ console.log('\n== 2. beginDeposit sends the exact two-step locked-quote calls ==
   assert.equal(calls[0].headers.authorization, 'Bearer sk_test_FAKE');
   assert.deepEqual(calls[0].body, {
     source_currency: 'usdc',
-    source_network: 'solana',
+    source_network: 'base',
     destination_amount: '58000000',
     destination_currency: 'usdc',
     destination_network: 'base',
@@ -128,17 +128,19 @@ console.log('\n== 3. payout sends an outbound transfer with a deterministic Idem
 
   assert.equal(calls[0].url, 'https://api.unifold.io/v1/treasury/outbound_transfers');
   assert.deepEqual(calls[0].body, {
-    source: { treasury_account_id: 'ta_FAKE', currency: 'usdc', chain_id: 'mainnet' },
+    // '8453' on BOTH sides selects Base. Note 'mainnet' in this enum means SOLANA, not Ethereum
+    // mainnet — sending it here would silently route the payout off the wrong treasury.
+    source: { treasury_account_id: 'ta_FAKE', currency: 'usdc', chain_id: '8453' },
     external_user_id: 'auth0|diner1',
     destination: {
-      recipient_address: 'DinerSo1anaUSDCAddr11111111111111111111111',
-      chain_type: 'solana',
-      chain_id: 'mainnet',
-      token_address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+      recipient_address: '0x606C49ca2Fa4982F07016265040F777eD3DA3160',
+      chain_type: 'ethereum',
+      chain_id: '8453',
+      token_address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
     },
     amount: '55100000',
   });
-  ok('outbound transfer body: Solana destination, chain_id "mainnet" on both sides');
+  ok('outbound transfer body: Base destination, chain_id "8453" on both sides');
   assert.equal(calls[0].headers['idempotency-key'], 'sell:pool_7:auth0|diner1:55100000');
   ok('REQUIRED Idempotency-Key header present and deterministic');
   assert.deepEqual(out, { payout_id: 'obt_TEST789' });
@@ -150,6 +152,21 @@ console.log('\n== 3. payout sends an outbound transfer with a deterministic Idem
   assert.equal(k1, k2);
   assert.notEqual(k1, payoutIdempotencyKey('u', '200', { kind: 'sell', pool_id: 'p' }));
   ok('idempotency key is deterministic and amount-sensitive');
+
+  // A Solana address left over from the pre-Base configuration must be caught BEFORE the HTTP
+  // call, not surface as an opaque 4xx after money has started moving.
+  const solanaCfg = {
+    ...CFG,
+    resolvePayoutAddress: () => 'DinerSo1anaUSDCAddr11111111111111111111111',
+  };
+  const badGw = new UnifoldGateway(solanaCfg);
+  const before = calls.length;
+  await assert.rejects(
+    () => badGw.payout('u', '100', { kind: 'sell', pool_id: 'p' }),
+    /not a Base \(EVM\) address/,
+  );
+  assert.equal(calls.length, before, 'rejected without issuing any HTTP call');
+  ok('payout rejects a non-EVM address before spending money');
 }
 
 console.log('\n== 4. Retry policy: only idempotent ops retry ==');

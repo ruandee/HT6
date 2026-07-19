@@ -38,14 +38,20 @@ export interface UnifoldGatewayConfig {
    * under the treasury-float model — see the money-flow note below.
    */
   baseRecipientAddress: string;
-  /** SPL USDC mint on Solana — the token_address for outbound transfers. */
-  solanaUsdcMint: string;
+  /** USDC contract on Base — the token_address for outbound transfers. */
+  baseUsdcAddress: string;
   /**
-   * Resolves a diner's Solana USDC address for payouts. In the real system this comes from the
+   * Resolves a diner's Base USDC address for payouts. In the real system this comes from the
    * user profile / custodial wallet service; injected so this gateway stays free of that concern.
    */
-  resolveSolanaAddress: (userId: UserId) => Promise<string> | string;
-  /** Source token the diner funds the BUY with. Defaults to USDC on Solana. */
+  resolvePayoutAddress: (userId: UserId) => Promise<string> | string;
+  /**
+   * Source token the diner funds the BUY with. Defaults to USDC on Base.
+   *
+   * Base (an L2) is the default deliberately: Unifold's minimum deposit is ~3 USDC on L2 versus
+   * ~10 USDC on L1, and the demo quotes well under $10. Funding from an L1 would bounce off that
+   * floor. The diner can still pick any other token in the checkout modal.
+   */
   sourceCurrency?: string;
   sourceNetwork?: string;
   /** Per-request timeout (ms). */
@@ -53,16 +59,23 @@ export interface UnifoldGatewayConfig {
 }
 
 /**
- * MONEY-FLOW MODEL — treasury-float (UNIFOLD_INTEGRATION.md §2, recommended option).
+ * MONEY-FLOW MODEL — treasury-float, single-chain on Base (UNIFOLD_INTEGRATION.md §2).
  *
- * Unifold v1 payment intents settle ONLY to Base USDC. The Solana reserve PDA that backs
- * reservations therefore is NOT funded directly by a diner's buy. We run the recommended
- * treasury-float model:
+ * Unifold v1 payment intents settle ONLY to Base USDC, and the Unifold team's guidance is to keep
+ * the treasury on Base too. So the ENTIRE Unifold side is Base; Solana never appears in this file:
  *
- *   - BUY proceeds land as USDC on our BASE treasury (`baseRecipientAddress`).
+ *   - BUY proceeds land as USDC on our Base treasury (`baseRecipientAddress`).
+ *   - SELL payouts leave that same Base treasury for the diner's Base address.
  *   - On `payment_intent.succeeded` the orchestrator calls `chain-services.buy(...)`, which debits
  *     our PRE-FUNDED Solana reserve float. The Base USDC is the operating float backing that.
  *   - We reconcile Base → Solana out-of-band (periodic sweep), not on the hot path.
+ *
+ * Pointing `baseRecipientAddress` at the treasury's OWN address makes the demo self-funding: buys
+ * pay into the same account sell-backs pay out of, so money circulates rather than draining.
+ *
+ * The Solana reserve remains the money-authority for reservations — it is just not on the payment
+ * rail. That split is the whole point of the gateway seam: the chain layer prices and settles
+ * reservations, Unifold moves fiat-equivalent value in and out, and neither knows about the other.
  *
  * ALTERNATIVE (real production): bridge-per-buy. Set `baseRecipientAddress` to a per-buy Base
  * deposit address and, on `payment_intent.succeeded`, issue a follow-up transfer/bridge that moves
@@ -71,6 +84,9 @@ export interface UnifoldGatewayConfig {
  * hop and a bridge-failure branch between "diner paid" and "token minted". Swapping models is
  * confined to this file plus the succeeded-webhook branch; nothing else in the app changes.
  */
+
+/** Base mainnet chain id, as the string the Unifold DTOs expect (enum: '137' | '8453' | 'mainnet'). */
+const BASE_CHAIN_ID = '8453';
 
 // ---------------------------------------------------------------------------
 // Errors
@@ -194,7 +210,7 @@ export class UnifoldGateway implements PaymentGateway {
     if (!config.webhookSecret) missing.push('UNIFOLD_WEBHOOK_SECRET');
     if (!config.apiBase) missing.push('UNIFOLD_API_BASE');
     if (!config.baseRecipientAddress) missing.push('UNIFOLD_BASE_RECIPIENT_ADDRESS');
-    if (!config.solanaUsdcMint) missing.push('SOLANA_USDC_MINT');
+    if (!config.baseUsdcAddress) missing.push('BASE_USDC_ADDRESS');
     if (missing.length > 0) {
       throw new Error(
         `UnifoldGateway: missing required configuration: ${missing.join(', ')}. ` +
@@ -215,7 +231,7 @@ export class UnifoldGateway implements PaymentGateway {
     this.cfg = {
       ...config,
       sourceCurrency: config.sourceCurrency ?? 'usdc',
-      sourceNetwork: config.sourceNetwork ?? 'solana',
+      sourceNetwork: config.sourceNetwork ?? 'base',
       timeoutMs: config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     };
   }
@@ -298,7 +314,7 @@ export class UnifoldGateway implements PaymentGateway {
   // -------------------------------------------------------------------------
 
   /**
-   * SELL / payout — Treasury outbound transfer delivering USDC to the diner on SOLANA.
+   * SELL / payout — Treasury outbound transfer delivering USDC to the diner on BASE.
    * The `Idempotency-Key` header is REQUIRED by the API (400 without it) and is deterministic
    * here, so a retried payout returns the existing transfer (HTTP 200) rather than paying twice.
    */
@@ -307,9 +323,18 @@ export class UnifoldGateway implements PaymentGateway {
     amountUsdc: UsdcBaseUnits,
     purpose: SellPurpose,
   ): Promise<PayoutResult> {
-    const recipient = await this.cfg.resolveSolanaAddress(userId);
+    const recipient = await this.cfg.resolvePayoutAddress(userId);
     if (!recipient) {
-      throw new Error(`UnifoldGateway.payout: no Solana USDC address on file for user ${userId}`);
+      throw new Error(`UnifoldGateway.payout: no Base USDC address on file for user ${userId}`);
+    }
+    // Fail before spending money rather than after: an address that isn't a plausible EVM address
+    // would be rejected by Unifold anyway, but a Solana base58 address left over from the previous
+    // configuration is the specific mistake worth naming out loud.
+    if (!/^0x[0-9a-fA-F]{40}$/.test(recipient)) {
+      throw new Error(
+        `UnifoldGateway.payout: "${recipient}" is not a Base (EVM) address for user ${userId}. ` +
+          `Payouts moved from Solana to Base — a base58 Solana address will not work here.`,
+      );
     }
     const idempotencyKey = payoutIdempotencyKey(userId, amountUsdc, purpose);
 
@@ -320,15 +345,17 @@ export class UnifoldGateway implements PaymentGateway {
         source: {
           treasury_account_id: this.cfg.treasuryId,
           currency: 'usdc',
-          // Solana treasury sources MUST pass "mainnet" explicitly (docs: OutboundTransferSourceDto).
-          chain_id: 'mainnet',
+          // Base source. The enum is '137' | '8453' | 'mainnet' — 'mainnet' means SOLANA here, not
+          // "Ethereum mainnet", so sending '8453' is what selects Base (docs: OutboundTransferSourceDto).
+          chain_id: BASE_CHAIN_ID,
         },
         external_user_id: String(userId), // REQUIRED on this DTO
         destination: {
           recipient_address: recipient,
-          chain_type: 'solana',
-          chain_id: 'mainnet',
-          token_address: this.cfg.solanaUsdcMint,
+          // `ethereum` is the chain_type for ALL supported EVM chains; chain_id picks Base.
+          chain_type: 'ethereum',
+          chain_id: BASE_CHAIN_ID,
+          token_address: this.cfg.baseUsdcAddress,
         },
         amount: String(amountUsdc),
       },

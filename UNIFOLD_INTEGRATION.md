@@ -28,10 +28,10 @@ webhooks, testnet) is right. Seven concrete details were wrong or underspecified
    is the open-amount flow (user picks the amount) — wrong for a fixed, quote-locked buy price. We
    create the intent server-side and hand its `client_secret` to `beginCheckout` on the diner UI.
 5. **Payout = Treasury outbound transfer** (`POST /v1/treasury/outbound_transfers`), NOT a
-   "beginWithdraw" call. Outbound transfers CAN deliver USDC to a **Solana** recipient address
-   (`chain_type: "solana"`, `chain_id: "mainnet"`) and require an **`Idempotency-Key`** request
-   header. (`beginWithdraw` exists but is a client-signed flow where the app holds keys — wrong for
-   our custodial model.)
+   "beginWithdraw" call, and it requires an **`Idempotency-Key`** request header.
+   (`beginWithdraw` exists but is a client-signed flow where the app holds keys — wrong for our
+   custodial model.) **Delivery is on BASE** (`chain_type: "ethereum"`, `chain_id: "8453"`) — see
+   the REVISION note below; an earlier version of this document specified Solana.
 6. **Exact webhook event names** (the subscribable set):
    `payment_intent.processing | succeeded | expired | awaiting_refund | refunded | refund_failed`
    and `treasury.outbound_transfer.completed | failed`. There is **no** `deposit.*` event for our
@@ -53,24 +53,44 @@ UNIFOLD_WEBHOOK_SECRET  = whsec_...          # from GET /v1/webhook_endpoints/{i
 UNIFOLD_TREASURY_ID     = ta_...             # created once via POST /v1/treasury/accounts
 ```
 
-- Use **test keys** (`*_test_`) for the hackathon — Unifold has explicit testnet/test mode. Don't
-  mix test and live.
+- Use **LIVE keys** (`*_live_`), Test Mode OFF. Unifold's guidance: testnet is not well maintained
+  by the providers behind it, and Checkout/Payment Intents are mainnet-only. Run mainnet with small
+  amounts instead — `DEMO_PRICE_DIVISOR=10` puts a buy near $5.80, above the ~3 USDC L2 minimum.
+- **Never put a trailing `# comment` on a key line in `.env`.** Node's `--env-file` strips them but
+  naive parsers don't, and the comment ends up inside the value — which surfaces as a baffling
+  `401 invalid_secret_key` on a key you copied correctly.
 - Auth seam holds exactly as specced: our app user id → Unifold `external_user_id` on every call.
 
 ---
 
 ## 2. Money-flow reality (the one architectural consequence)
 
+> **REVISION (2026-07-19) — the Unifold rail is now single-chain on BASE.**
+> Payouts originally targeted Solana. Unifold's team advised keeping the treasury on Base, and
+> since payment intents already settle to Base only, the whole rail moved there. Solana no longer
+> appears anywhere in `unifold-gateway.ts`. Two things this pinned down:
+> - `chain_id` enum is `'137' | '8453' | 'mainnet'`, where **`'mainnet'` means SOLANA**, not
+>   Ethereum mainnet. Base is `'8453'`, and `chain_type: "ethereum"` covers every EVM chain.
+> - Minimum deposit is ~**3 USDC on an L2** vs ~**10 USDC on an L1**, so the BUY source also
+>   defaults to Base — an L1 source would put the demo's sub-$10 quote under the floor.
+>
+> The Solana reserve is still the money-authority for reservations. It is simply not on the
+> payment rail, which makes the seam cleaner: Unifold moves value, the contract prints and settles
+> reservations, and neither knows the other exists.
+
 Because v1 payment intents only settle to **Base USDC**, the funds path is:
 
 ```
-BUY:   diner deposits any crypto  --Unifold-->  USDC on BASE (project recipient / treasury)
+BUY:   diner funds w/ any token or card  --Unifold-->  USDC on BASE (our treasury)
                                                         │
-                                   (bridge Base-USDC ── our step ──> Solana reserve PDA)
+                                   (reconciled out-of-band ──> Solana reserve PDA)
 SELL:  Solana reserve --chain-services.sell--> USDC back into reserve
                                                         │
-       Treasury outbound_transfer  --Unifold-->  USDC on SOLANA to the diner
+       Treasury outbound_transfer  --Unifold-->  USDC on BASE to the diner
 ```
+
+Pointing the buy recipient at the **treasury's own address** closes the loop: buys pay into the
+same account sell-backs pay out of, so demo money circulates instead of draining.
 
 Two clean ways to handle the Base-side buy proceeds — **decide at build, gateway hides it either way:**
 
@@ -162,17 +182,21 @@ Stash `max_price` in `metadata` too so the webhook handler can recover it withou
 ### `payout(...)` → Treasury outbound transfer (SELL)
 
 ```
-POST /v1/treasury/outbound_transfers      Authorization: Bearer sk_test_...
-Idempotency-Key: <deterministic key, e.g. `sell:${pool_id}:${userId}:${sellSeq}`>   // REQUIRED
+POST /v1/treasury/outbound_transfers      Authorization: Bearer sk_live_...
+Idempotency-Key: <deterministic key, e.g. `sell:${pool_id}:${userId}:${amount}`>   // REQUIRED
 {
-  "source":      { "treasury_account_id":"ta_...", "currency":"usdc", "chain_id":"mainnet" },  // Solana treasury -> chain_id MUST be "mainnet"
+  "source":      { "treasury_account_id":"ta_...", "currency":"usdc", "chain_id":"8453" },  // Base. NOT "mainnet" — that value means SOLANA.
   "external_user_id": "<app user id>",
-  "destination": { "recipient_address":"<diner Solana USDC addr>", "chain_type":"solana",
-                   "chain_id":"mainnet", "token_address":"<Solana USDC mint>" },
-  "amount": "55100000"     // sell_price_net in USDC base units
+  "destination": { "recipient_address":"0x<diner Base USDC addr>", "chain_type":"ethereum",
+                   "chain_id":"8453", "token_address":"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" },
+  "amount": "5510000"      // sell_price_net in USDC base units
 }
 -> 201 { id:"obt_...", status:"pending"|"processing"|"completed", ... }
 ```
+
+The gateway rejects a non-`0x…` recipient **before** issuing this request, so a Solana address left
+over from the previous configuration fails loudly at our boundary rather than as an opaque 4xx
+after money has started moving.
 Return `{ payout_id: obt.id }`. Settlement confirms via `treasury.outbound_transfer.completed`.
 The idempotency key makes a retried `payout` safe (Unifold returns the existing transfer, 200 not 201).
 

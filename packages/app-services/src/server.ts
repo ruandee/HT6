@@ -33,9 +33,9 @@ const unifoldGateway =
   cfg.gateway === 'unifold'
     ? new UnifoldGateway({
         ...cfg.unifold,
-        // Diner Solana USDC payout address. The x-user-id auth stub has no wallet registry yet;
+        // Diner Base USDC payout address. The x-user-id auth stub has no wallet registry yet;
         // when Auth0 + the custodial wallet service land, resolve it from the user profile here.
-        resolveSolanaAddress: (uid) => process.env.DEMO_DINER_SOLANA_ADDRESS ?? String(uid),
+        resolvePayoutAddress: (uid) => process.env.DEMO_DINER_BASE_ADDRESS ?? String(uid),
       })
     : undefined;
 const gateway = unifoldGateway ?? new StubGateway(`${cfg.baseUrl}/mock/deposit`);
@@ -79,11 +79,23 @@ interface PoolMeta {
 let DEMO_POOL_ID = '';
 const POOLS: PoolMeta[] = [];
 
-/** Party-size bands offered each night: seats up to N, how many such tables, and their economics. */
+/**
+ * Party-size bands offered each night: seats up to N, how many such tables, and their economics.
+ *
+ * `DEMO_PRICE_DIVISOR` scales p0/k down for a real-money run. Unifold has no usable testnet, so
+ * exercising the live rail means mainnet with genuinely small amounts — at the headline params a
+ * single demo click charges $58. Divisor 10 puts a buy near $5.80, which still clears Unifold's
+ * ~3 USDC L2 minimum. The curve's SHAPE is unchanged, so the demo looks identical; only the axis
+ * labels shrink.
+ */
 const BANDS = [
   { party_size: 2, n_max: 20, p0: '40000000', k: '3000000' }, // §7d headline params
   { party_size: 4, n_max: 8, p0: '80000000', k: '6000000' },
-];
+].map((b) => ({
+  ...b,
+  p0: (BigInt(b.p0) / cfg.priceDivisor).toString(),
+  k: (BigInt(b.k) / cfg.priceDivisor).toString(),
+}));
 
 /** seats[] = how many already sold in each band, index-aligned with BANDS. */
 const SEED_PLAN = [
@@ -264,8 +276,10 @@ app.post(
         break;
       case 'deposit_awaiting_refund': {
         // Late deposit after expiry: refund the payer on the SOURCE chain, never buy.
+        // The source chain is now Base (see UnifoldGateway.sourceNetwork), so this must be an
+        // 0x… address — a Solana base58 address would be rejected by the refund endpoint.
         orchestrator.onDepositExpired(n.intentId);
-        const refundTo = process.env.DEMO_DINER_SOLANA_ADDRESS ?? '';
+        const refundTo = process.env.DEMO_DINER_BASE_ADDRESS ?? '';
         if (unifoldGateway && refundTo) {
           try {
             await unifoldGateway.refund(n.intentId, refundTo);
@@ -562,8 +576,37 @@ function mockDepositPage(intent: string): string {
   function expire(){${post('payment_intent.expired')}}</script>`;
 }
 
+/**
+ * Real keys move real money — Unifold's Checkout is mainnet-only, there is no sandbox to fall back
+ * on. Make that impossible to run into by accident: a full-price pool on the live gateway charges
+ * a diner $58 per click, so say so at boot rather than in the transaction history.
+ */
+function announceGateway() {
+  if (cfg.gateway !== 'unifold') {
+    console.log(`  gateway=stub — no keys used, no money moves.`);
+    return;
+  }
+  const sample = BANDS[0];
+  const dollars = (Number(BigInt(sample!.p0)) / 1e6).toFixed(2);
+  console.log(`  gateway=unifold — LIVE. Buys charge REAL USDC on Base.`);
+  console.log(`  meal-credit floor is $${dollars} (DEMO_PRICE_DIVISOR=${cfg.priceDivisor}).`);
+  if (cfg.priceDivisor === 1n) {
+    console.log(
+      `  ⚠  DEMO_PRICE_DIVISOR is unset, so pools run at FULL demo price — about $58 of real\n` +
+        `     money per buy. Set DEMO_PRICE_DIVISOR=10 for a ~$5.80 buy before clicking anything.`,
+    );
+  }
+  if (!process.env.DEMO_DINER_BASE_ADDRESS) {
+    console.log(
+      `  ⚠  DEMO_DINER_BASE_ADDRESS is unset, so payouts fall back to the user id as an address\n` +
+        `     and every sell-back will fail. Set it to a Base (0x…) address you control.`,
+    );
+  }
+}
+
 seed().then(() => {
   app.listen(cfg.port, () => {
-    console.log(`app-services on http://localhost:${cfg.port} (gateway=${cfg.gateway})`);
+    console.log(`app-services on http://localhost:${cfg.port}`);
+    announceGateway();
   });
 });
