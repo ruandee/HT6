@@ -91,3 +91,60 @@ are likely and expected. Most probable sources:
 tests without needing the BPF toolchain or a validator at all. Start there.
 
 Paste any errors and I'll fix them.
+
+---
+
+## Toolchain constraints (resolved 2026-07-18)
+
+`anchor build` now works in the Codespace. Three things had to be pinned down first; all of them
+are recorded in the committed `Cargo.lock`, so a fresh clone just builds.
+
+**1. Use `anchor build --no-idl`.** Anchor 0.30.1's IDL generator calls `proc_macro2::Span::source_file()`,
+a nightly-only API that current `proc-macro2` no longer exposes. IDL generation is the *only* thing
+that needs it; the program itself compiles fine. The TS client uses the checked-in types rather than
+a freshly generated IDL, so nothing downstream depends on this.
+
+**2. The lockfile must stay at `version = 3` and off edition2024.** Anchor 0.30.1's SBF toolchain
+bundles cargo 1.75, which cannot parse `version = 4` lockfiles or any manifest declaring
+`edition2024`. Newer patch releases of several transitive deps moved to edition2024, so they are
+pinned below that boundary:
+
+| crate | pinned | why |
+|---|---|---|
+| `blake3` | 1.8.2 | 1.8.3 wants `constant_time_eq ^0.4` (edition2024); 1.8.4+ wants `digest ^0.11` |
+| `constant_time_eq` | 0.3.1 | 0.4.x is edition2024 |
+| `borsh` | 1.5.7 | 1.8.0 pulls `hashbrown 0.17` |
+| `indexmap` | 2.11.4 | 2.14 pulls `hashbrown 0.17` (edition2024) |
+| `proc-macro-crate` | 3.3.0 | 3.5.0 pulls `toml_edit 0.25` / `toml_datetime 1.x` |
+| `zeroize_derive` | 1.4.3 | 1.5.0 is edition2024 |
+| `jobserver` | 0.1.34 | 0.1.35 requires rustc 1.85 |
+| `unicode-segmentation` | 1.10.1 | 1.11+ requires rustc newer than 1.75 |
+
+If a `cargo update` ever re-breaks the build, regenerate with the SBF cargo rather than the system
+one — it can only select versions it is able to parse:
+
+```bash
+SBF=$HOME/.local/share/solana/install/active_release/bin/sdk/sbf/dependencies/platform-tools/rust/bin
+$SBF/cargo generate-lockfile
+```
+
+**3. `CreatePool` accounts are `Box`ed.** Three `init` constraints in one struct overflowed the
+4KB BPF stack by 432 bytes. Boxing moves them to the heap. Keep them boxed.
+
+## Verified
+
+```
+cargo test -p reservations      # 7 passed (math.rs)
+anchor build --no-idl           # target/deploy/reservations.so, 402512 bytes
+solana program deploy           # deployed to a local validator; program id matches declare_id!
+```
+
+Program id: `65MujywnECN4smLLbtDoTW8ithgnPTfmHcwdx3Hvqbot`
+
+**Devnet deploy is still pending.** The Codespace IP is rate-limited by the devnet faucet, so the
+wallet could not be funded there. Fund `ACnFmyNBFopSpaDjVK3eH2vgTyfPGRYJo4EmQH2gGKcy` from a faucet
+that works (or transfer SOL to it), then re-run:
+
+```bash
+solana program deploy --url devnet target/deploy/reservations.so
+```

@@ -12,3 +12,11 @@ test-ledger/
 # logs
 *.log
 npm-debug.log*
+# markdowns
+DEVPOST.md
+PITCH.md
+
+
+
+# brand faces for scripts/render-architecture.mjs (OFL, fetched on demand)
+.fonts/

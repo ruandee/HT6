@@ -35,7 +35,7 @@ async function ensureVenueForAuthority(
 ): Promise<string> {
   const venueId = `venue_${authority}`;
   await client.query(
-    `INSERT INTO venues (id, name, auth0_org) VALUES ($1, $2, NULL)
+    `INSERT INTO venues (id, name, org_id) VALUES ($1, $2, NULL)
      ON CONFLICT (id) DO NOTHING`,
     [venueId, `Venue ${authority}`],
   );

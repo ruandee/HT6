@@ -17,7 +17,7 @@
 CREATE TABLE IF NOT EXISTS venues (
   id          TEXT PRIMARY KEY,
   name        TEXT        NOT NULL,
-  auth0_org   TEXT,                       -- nullable per VenueRow.auth0_org: string | null
+  org_id   TEXT,                       -- nullable per VenueRow.org_id: string | null
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

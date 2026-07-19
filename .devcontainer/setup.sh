@@ -19,6 +19,8 @@ grep -q 'solana/install/active_release' "$HOME/.bashrc" 2>/dev/null || \
   echo 'export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"' >> "$HOME/.bashrc"
 
 # ---- Anchor (pinned via avm) ----
+# `avm use` prompts when the version isn't present, which deadlocks a non-interactive
+# provision, so install first and only then select.
 cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
 avm install "$ANCHOR_VERSION"
 avm use "$ANCHOR_VERSION"
@@ -35,3 +37,11 @@ echo "=== versions ==="
 rustc --version
 solana --version
 anchor --version
+
+# ---- build the program ----
+# --no-idl is required: Anchor 0.30.1's IDL generator calls a nightly-only proc-macro2 API
+# that no longer exists. The program itself compiles fine. See packages/contract/BUILDING.md.
+# Cargo.lock is committed and pins the graph below the edition2024 boundary that the SBF
+# toolchain's cargo 1.75 cannot parse -- do not regenerate it with the system cargo.
+(cd packages/contract && anchor build --no-idl) || \
+  echo "WARN: anchor build failed; see packages/contract/BUILDING.md"

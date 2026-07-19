@@ -47,6 +47,8 @@ interface LedgerPool {
   n_max: number;
   service_time: number;
   tc_seconds: number;
+  /** late-arrival window, seconds past service_time (§ grace). 0 = door closes at service. */
+  grace_seconds: number;
   party_size: number;
   reserve: bigint; // Σ paid by outstanding tokens (solvency invariant, §4)
   royalties: bigint; // accrued φ spread — the cooperative-issuer number (§4)
@@ -73,9 +75,12 @@ export class IssuerService {
     service_time: number;
     tc_seconds: number;
     party_size: number;
+    /** late-arrival window in seconds; check_in valid until service_time + this. Default 0. */
+    grace_seconds?: number;
   }): void {
     this.pools.set(p.pool_id, {
       ...p,
+      grace_seconds: p.grace_seconds ?? 0,
       p0: BigInt(p.p0),
       k: BigInt(p.k),
       reserve: 0n,
@@ -96,6 +101,8 @@ export class IssuerService {
     if (req.phi_bps < 0 || req.phi_bps > 10_000) throw new Error('phi_bps must be 0..10000');
     if (BigInt(req.p0) <= 0n) throw new Error('p0 must be positive');
     if (BigInt(req.k) < 0n) throw new Error('k must be non-negative');
+    // A negative grace would pull the check-in deadline before service and let sweep run early.
+    if ((req.grace_seconds ?? 0) < 0) throw new Error('grace_seconds must be non-negative');
 
     const { pool_id, mint } = await this.chain.create_pool({
       authority,
@@ -106,6 +113,7 @@ export class IssuerService {
       service_time: req.service_time,
       tc_seconds: req.tc_seconds,
       party_size: req.party_size,
+      grace_seconds: req.grace_seconds ?? 0,
     });
     this.register({
       pool_id,
@@ -119,6 +127,7 @@ export class IssuerService {
       service_time: req.service_time,
       tc_seconds: req.tc_seconds,
       party_size: req.party_size,
+      grace_seconds: req.grace_seconds ?? 0,
     });
     return { pool_id, mint };
   }
@@ -217,6 +226,7 @@ export class IssuerService {
       phi_bps: p.phi_bps,
       service_time: p.service_time,
       tc_seconds: p.tc_seconds,
+      grace_seconds: p.grace_seconds ?? 0,
       frozen: q.frozen,
       theta_bps: q.theta_bps,
       buy_price: q.buy_price,
@@ -294,6 +304,8 @@ export interface IssuerPoolViewPlus extends IssuerPoolView {
   phi_bps: number;
   service_time: number;
   tc_seconds: number;
+  /** late-arrival window in seconds; check_in stays valid until service_time + this. */
+  grace_seconds: number;
   frozen: boolean;
   theta_bps: number;
   buy_price: UsdcBaseUnits;

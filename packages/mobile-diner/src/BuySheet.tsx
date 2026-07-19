@@ -1,6 +1,6 @@
 /**
  * The purchase moment (§7c-A quote-lock made visible), as a bottom sheet. The locked window is a
- * depleting coral ring rather than a digit countdown — frictionless, not clock-anxious. When it
+ * depleting coral ring instead of a digit countdown, so the moment stays calm. When it
  * empties the quote lapses and we tell the diner to try again.
  *
  * On the stub this drives the mock webhook; with the real gateway the same confirm button would
@@ -12,7 +12,7 @@ import { Sheet } from './Sheet';
 
 interface Props {
   price: string;
-  /** this band's meal-credit floor (p0) — scales with party size (§4a). */
+  /** this band's meal-credit floor (p0). Scales with party size (§4a). */
   floor: string;
   partySize: number;
   nightLabel: string;
@@ -68,7 +68,7 @@ export function BuySheet({
           <div style={{ fontSize: 13, color: 'var(--ink-45)', marginTop: 8 }}>{nightLabel}</div>
         </div>
 
-        {/* depleting quote-lock ring — the price you see is the price you pay, for now */}
+        {/* depleting quote-lock ring: the price you see is the price you pay, for now */}
         <svg width="58" height="58" className="ring" aria-label="price held">
           <circle className="ring__track" cx="29" cy="29" r={R} fill="none" strokeWidth="3" />
           <circle

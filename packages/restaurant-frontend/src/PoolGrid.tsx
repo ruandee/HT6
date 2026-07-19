@@ -1,13 +1,15 @@
 /**
- * Pool overview — every (night × party-size band) pool this venue issues (§4a). Each card is one
+ * Pool overview: every (night × party-size band) pool this venue issues (§4a). Each card is one
  * curve: its own fill, reserve, and current price, because a 2-top and a 6-top are not
  * interchangeable and so cannot share a curve (§4).
  *
  * Grouped by service window so the operator reads the room the way they run it: one night at a
  * time, bands side by side.
  */
+import { motion } from 'framer-motion';
 import { Money } from './Money';
 import { usdc, whenLabel, type IssuerPoolRow } from './api';
+import { EASE, fadeUp, group } from './motion';
 
 interface Props {
   pools: IssuerPoolRow[];
@@ -25,7 +27,12 @@ export function PoolGrid({ pools, selected, onSelect }: Props) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 26 }}>
+    <motion.div
+      variants={group(0.04)}
+      initial="hidden"
+      animate="show"
+      style={{ display: 'flex', flexDirection: 'column', gap: 26 }}
+    >
       {[...nights.entries()].map(([serviceTime, band]) => (
         <div key={serviceTime}>
           <div className="eyebrow" style={{ marginBottom: 13 }}>
@@ -43,7 +50,7 @@ export function PoolGrid({ pools, selected, onSelect }: Props) {
           </div>
         </div>
       ))}
-    </div>
+    </motion.div>
   );
 }
 
@@ -60,16 +67,25 @@ function PoolCard({
   const state = pool.settled ? 'settled' : pool.frozen ? 'in service' : 'selling';
 
   return (
-    <button
+    <motion.button
       type="button"
+      variants={fadeUp}
+      /* position-only: the cards are uniform, so there is nothing to scale, and scaling
+         would smear the glass blur while it reflows */
+      layout="position"
+      whileHover={{ y: -2, transition: { duration: 0.18, ease: EASE } }}
+      whileTap={{ scale: 0.995, transition: { duration: 0.1 } }}
       className={`glass pool-card ${selected ? 'pool-card--sel' : ''}`}
       onClick={() => onSelect(pool.pool_id)}
       aria-pressed={selected}
+      /* Two bands on the same night share a label, so nothing visible on this card identifies
+         it uniquely. The demo-reel script targets cards by id (scripts/demo-reel.mjs). */
+      data-pool-id={pool.pool_id}
     >
       <div className="pool-card__top">
         {/* the token means "a table seating UP TO party_size" (§4a) */}
         <span className={`band ${pool.frozen ? 'band--frozen' : 'band--live'}`}>
-          Seats {pool.party_size}
+          {pool.party_size}-top
         </span>
         <Money base={pool.buy_price} />
       </div>
@@ -92,7 +108,7 @@ function PoolCard({
           <strong style={{ color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>
             {pool.n_sold}/{pool.n_max}
           </strong>{' '}
-          claimed · {pct}%
+          sold
         </span>
         <span>{state}</span>
       </div>
@@ -120,6 +136,6 @@ function PoolCard({
           </strong>
         </span>
       </div>
-    </button>
+    </motion.button>
   );
 }

@@ -1,7 +1,7 @@
 {
   "name": "@ttr/mobile-diner",
   "version": "0.0.0",
-  "description": "Stream 4 (mobile): the diner experience as a phone app — live price curve, buy, sell-back, wallet (§10.4 client).",
+  "description": "Stream 4 (mobile): the diner experience as a phone app with a live price curve, buy, sell-back, and wallet (§10.4 client).",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@ttr/shared-types": "*",
+    "framer-motion": "^12.42.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.12.7"

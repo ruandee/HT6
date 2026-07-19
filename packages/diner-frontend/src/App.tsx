@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion, MotionConfig } from 'framer-motion';
 import { api, splitUsdc, usdc, type Holding, type PoolSummary, type Quote } from './api';
 import { CurveChart } from './CurveChart';
 import { BuySheet } from './BuySheet';
 import { DatePicker } from './DatePicker';
 import { PartySize, bandFor } from './PartySize';
+import { ease, fadeUp, group, hoverLift, tapPress } from './motion';
+import { venueState } from './venue';
+import { UnifoldCheckout } from './UnifoldCheckout';
+import { assertKeyMatch, unifoldEnabled } from './unifold';
 
 // p0/k per band, mirroring the server's BANDS table (§4a). Used to draw the curve.
 const BAND_PARAMS: Record<number, { p0: string; k: string }> = {
@@ -17,9 +22,21 @@ export default function App() {
   const [guests, setGuests] = useState(2);
   const [q, setQ] = useState<Quote | null>(null);
   const [holdings, setHoldings] = useState<Holding[]>([]);
-  const [sheet, setSheet] = useState<null | { intentId: string; price: string; expires: string }>(
-    null,
-  );
+  const [sheet, setSheet] = useState<null | {
+    intentId: string;
+    price: string;
+    expires: string;
+    /** present only on the real Unifold path — StubGateway returns a hosted_url instead. */
+    clientSecret?: string;
+  }>(null);
+  /** Non-null while the Unifold checkout modal is open for this intent. */
+  const [checkout, setCheckout] = useState<null | { intentId: string; clientSecret: string }>(null);
+  /**
+   * The diner paid, but the token is minted by the `payment_intent.succeeded` WEBHOOK, not by the
+   * modal's onSuccess. This holds the UI in a "confirming" state until the poll below sees the
+   * holding actually appear — so we never claim a table the chain hasn't granted yet.
+   */
+  const [settling, setSettling] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   const prevN = useRef(0);
 
@@ -74,14 +91,34 @@ export default function App() {
   async function startBuy() {
     try {
       const r = await api.buy(poolId);
-      setSheet({ intentId: r.deposit_intent_id, price: r.max_price, expires: r.expires_at });
+      // Real gateway returns { client_secret, publishable_key }; StubGateway returns { hosted_url }.
+      assertKeyMatch(r.checkout?.publishable_key);
+      setSheet({
+        intentId: r.deposit_intent_id,
+        price: r.max_price,
+        expires: r.expires_at,
+        clientSecret: r.checkout?.client_secret,
+      });
     } catch (e) {
       setFlash(String(e instanceof Error ? e.message : e).replace(/^Error:\s*/, ''));
       setTimeout(() => setFlash(null), 4200);
     }
   }
 
-  async function confirmBuy(intentId: string) {
+  /**
+   * The purchase moment. Two paths behind one button (UNIFOLD_INTEGRATION.md §6):
+   *
+   *  - REAL: hand the locked-quote intent's `client_secret` to Unifold's checkout modal, which
+   *    collects the payment in whatever token the diner holds. We mint NOTHING here — app-services
+   *    mints when Unifold delivers `payment_intent.succeeded` to its webhook.
+   *  - STUB: post the same event shape straight at /webhooks/unifold, so the identical server-side
+   *    handler runs with no Unifold account required.
+   */
+  async function confirmBuy(intentId: string, clientSecret?: string) {
+    if (unifoldEnabled && clientSecret) {
+      setCheckout({ intentId, clientSecret });
+      return;
+    }
     await api.stubSettle(intentId, 'succeeded');
     setSheet(null);
     const label = currentPool?.label;
@@ -97,7 +134,7 @@ export default function App() {
     setTimeout(() => setFlash(null), 4200);
   }
 
-  // scope to the night being viewed — sell-back acts on this pool's token.
+  // scope to the night being viewed, since sell-back acts on this pool's token.
   const held = holdings.filter((h) => h.status === 'held' && h.pool_id === poolId);
   // §7c-C is per SERVICE WINDOW, so holding any band tonight blocks buying another.
   const windowPoolIds = new Set(bandsTonight.map((b) => b.pool_id));
@@ -108,6 +145,21 @@ export default function App() {
   const heldElsewhere = holdings.filter(
     (h) => h.status === 'held' && !windowPoolIds.has(h.pool_id),
   );
+  /**
+   * Settlement lands out-of-band: Unifold posts `payment_intent.succeeded` to app-services, which
+   * mints the token. The 2.5s poll above is what surfaces it, so we watch for the holding to appear
+   * rather than trusting the modal's onSuccess callback.
+   */
+  useEffect(() => {
+    if (!settling || heldThisWindow.length === 0) return;
+    setSettling(false);
+    setSheet(null);
+    setFlash(currentPool?.label ? `You're in. See you ${currentPool.label}.` : "You're in.");
+    const t = setTimeout(() => setFlash(null), 4200);
+    return () => clearTimeout(t);
+  }, [settling, heldThisWindow.length, currentPool?.label]);
+
+  const venue = venueState(bandsTonight);
   const price = q ? splitUsdc(q.buy_price) : { dollars: '—', cents: '00' };
   const left = q ? q.n_max - q.n_sold : 0;
   const floorP0 = currentPool
@@ -115,35 +167,43 @@ export default function App() {
     : '40000000';
 
   return (
-    <>
+    <MotionConfig reducedMotion="user">
       <div className="orbs">
         <div className="orb orb--1" />
         <div className="orb orb--2" />
       </div>
 
-      <div className="shell">
-        <header className="topbar">
+      <motion.div className="shell" variants={group(0.07)} initial="hidden" animate="show">
+        <motion.header className="topbar" variants={fadeUp}>
           <div className="brand">
             <span className="brand-dots">
               <i />
               <i />
             </span>
-            Prime
+            hora
           </div>
           <DatePicker pools={datesInBand} selected={poolId} onSelect={selectPool} />
-        </header>
+        </motion.header>
 
-        <h1 className="headline">
-          The good tables
+        {/* Names the room and reports what it's doing, in the same shape the phone uses. The
+            fill word is derived (see venue.ts), so it stays true as the night sells. */}
+        <motion.h1 className="headline" variants={fadeUp}>
+          {venue.name} is
           <br />
-          go <span className="script">fast</span>.
-        </h1>
-        <p className="muted" style={{ maxWidth: 380, marginTop: 20 }}>
-          Plans change. Sell your table back anytime before service.
-        </p>
+          <span className="script">{venue.fill}</span>.
+        </motion.h1>
+        {/* "all sizes" because the curve panel below counts one band (6 of 20) while this counts
+            the whole night (9 of 28); without it the two numbers look like a bug */}
+        <motion.p className="muted" variants={fadeUp} style={{ maxWidth: 380, marginTop: 20 }}>
+          {currentPool ? `${currentPool.label} · ` : ''}
+          {venue.cap > 0
+            ? `${venue.sold} of ${venue.cap} tables gone, all sizes`
+            : 'Loading tonight'}
+        </motion.p>
 
         {/* ---- main grid ---- */}
-        <div
+        <motion.div
+          variants={group(0.08)}
           style={{
             display: 'grid',
             gridTemplateColumns: 'minmax(0,1.35fr) minmax(0,1fr)',
@@ -153,7 +213,7 @@ export default function App() {
           }}
         >
           {/* curve panel */}
-          <section className="glass" style={{ padding: 26 }}>
+          <motion.section className="glass" variants={fadeUp} style={{ padding: 26 }}>
             <div
               style={{
                 display: 'flex',
@@ -190,10 +250,14 @@ export default function App() {
                   ))}
               </div>
             </div>
-          </section>
+          </motion.section>
 
           {/* buy panel */}
-          <section className="glass glass--strong" style={{ padding: 30 }}>
+          <motion.section
+            className="glass glass--strong"
+            variants={fadeUp}
+            style={{ padding: 30 }}
+          >
             <PartySize bands={bandsTonight} guests={guests} onGuests={selectGuests} />
 
             <div
@@ -203,9 +267,22 @@ export default function App() {
             <div className="eyebrow" style={{ marginBottom: 16 }}>
               Right now
             </div>
+            {/* the §11 "curve ticks up" moment: when another session buys, the poll brings a new
+                price and it rolls over instead of snapping */}
             <div className="price price--hero">
-              <span>${price.dollars}</span>
-              <span className="price__cents">.{price.cents}</span>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={q?.buy_price ?? 'pending'}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={ease(0.26)}
+                  style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}
+                >
+                  <span>${price.dollars}</span>
+                  <span className="price__cents">.{price.cents}</span>
+                </motion.span>
+              </AnimatePresence>
             </div>
             <div className="muted" style={{ marginTop: 14, fontSize: 13.5 }}>
               {usdc(floorP0)} comes off your bill.
@@ -219,8 +296,10 @@ export default function App() {
               )}
             </div>
 
-            <button
+            <motion.button
               className="btn btn--primary"
+              whileHover={hoverLift}
+          whileTap={tapPress}
               style={{ width: '100%', marginTop: 26 }}
               onClick={startBuy}
               disabled={!q || q.frozen || left === 0 || heldThisWindow.length > 0}
@@ -230,7 +309,7 @@ export default function App() {
                 : left === 0
                   ? 'Sold out'
                   : 'Claim this table'}
-            </button>
+            </motion.button>
             {heldOtherBand.length > 0 && (
               <div
                 style={{
@@ -248,27 +327,44 @@ export default function App() {
               </div>
             )}
 
-            {held.length > 0 && (
-              <>
-                <div
-                  style={{
-                    height: 1,
-                    background: 'var(--hairline)',
-                    margin: '26px 0 22px',
-                  }}
-                />
-                <div className="muted" style={{ fontSize: 13.5, marginBottom: 14 }}>
-                  Worth{' '}
-                  <strong style={{ color: 'var(--ink)' }}>
-                    {usdc(held[0]!.recover_value)}
-                  </strong>{' '}
-                  back right now.
-                </div>
-                <button className="btn btn--ghost" style={{ width: '100%' }} onClick={sellBack}>
-                  Can&apos;t make it? Sell it back
-                </button>
-              </>
-            )}
+            {/* the sell-back offer unfolds when you're holding, instead of appearing abruptly
+                and shoving the panel down */}
+            <AnimatePresence initial={false}>
+              {held.length > 0 && (
+                <motion.div
+                  key="sell-back"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={ease(0.3)}
+                  style={{ overflow: 'hidden' }}
+                >
+                  <div
+                    style={{
+                      height: 1,
+                      background: 'var(--hairline)',
+                      margin: '26px 0 22px',
+                    }}
+                  />
+                  <div className="muted" style={{ fontSize: 13.5, marginBottom: 14 }}>
+                    Worth{' '}
+                    <strong style={{ color: 'var(--ink)' }}>
+                      {usdc(held[0]!.recover_value)}
+                    </strong>{' '}
+                    back right now.
+                  </div>
+                  <motion.button
+                    className="btn btn--ghost"
+                    whileHover={hoverLift}
+          whileTap={tapPress}
+                    style={{ width: '100%' }}
+                    onClick={sellBack}
+                  >
+                    Can&apos;t make it? Sell it back
+                  </motion.button>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {heldElsewhere.length > 0 && (
               <div
@@ -281,44 +377,82 @@ export default function App() {
                   .join(', ')}
               </div>
             )}
-          </section>
-        </div>
-      </div>
+          </motion.section>
+        </motion.div>
+      </motion.div>
 
-      {sheet && (
-        <BuySheet
-          price={sheet.price}
-          floor={floorP0}
-          partySize={currentPool?.party_size ?? 2}
-          expiresAt={sheet.expires}
-          onConfirm={() => confirmBuy(sheet.intentId)}
-          onExpire={async () => {
-            await api.stubSettle(sheet.intentId, 'expired');
-            setSheet(null);
-            setFlash('That price expired. Have another look.');
+      {/* AnimatePresence so the sheet can animate OUT on cancel/confirm, not just in */}
+      <AnimatePresence>
+        {sheet && (
+          <BuySheet
+            key="sheet"
+            price={sheet.price}
+            floor={floorP0}
+            partySize={currentPool?.party_size ?? 2}
+            expiresAt={sheet.expires}
+            settling={settling}
+            onConfirm={() => confirmBuy(sheet.intentId, sheet.clientSecret)}
+            onExpire={async () => {
+              // Don't fake an expiry while the diner is mid-payment in the Unifold modal — on the
+              // real path expiry is Unifold's call, delivered as `payment_intent.expired`.
+              if (settling || checkout) return;
+              if (!unifoldEnabled || !sheet.clientSecret) {
+                await api.stubSettle(sheet.intentId, 'expired');
+              }
+              setSheet(null);
+              setFlash('That price expired. Have another look.');
+              setTimeout(() => setFlash(null), 4200);
+            }}
+            onClose={() => setSheet(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Real Unifold checkout. Mounting opens the modal; it renders nothing itself. Present only
+          when a publishable key is configured, so the stub demo is untouched. */}
+      {checkout && (
+        <UnifoldCheckout
+          clientSecret={checkout.clientSecret}
+          onSubmitted={() => {
+            // Paid — but NOT booked until the webhook mints. Hold the sheet in its confirming state.
+            setCheckout(null);
+            setSettling(true);
+            refresh(poolId);
+          }}
+          onFailed={(msg) => {
+            setCheckout(null);
+            setSettling(false);
+            setFlash(msg);
             setTimeout(() => setFlash(null), 4200);
           }}
-          onClose={() => setSheet(null)}
+          onDismissed={() => setCheckout(null)}
         />
       )}
 
-      {flash && (
-        <div
-          className="glass fade-in"
-          style={{
-            position: 'fixed',
-            bottom: 26,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            padding: '15px 26px',
-            zIndex: 30,
-            fontSize: 14,
-            fontWeight: 500,
-          }}
-        >
-          {flash}
-        </div>
-      )}
-    </>
+      <AnimatePresence>
+        {flash && (
+          <motion.div
+            className="glass"
+            /* x holds -50% across every state, because motion writes `transform` wholesale and the
+               usual translateX(-50%) centering would be clobbered */
+            initial={{ opacity: 0, x: '-50%', y: 10, scale: 0.98 }}
+            animate={{ opacity: 1, x: '-50%', y: 0, scale: 1 }}
+            exit={{ opacity: 0, x: '-50%', y: 6, scale: 0.98 }}
+            transition={ease(0.26)}
+            style={{
+              position: 'fixed',
+              bottom: 26,
+              left: '50%',
+              padding: '15px 26px',
+              zIndex: 30,
+              fontSize: 14,
+              fontWeight: 500,
+            }}
+          >
+            {flash}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </MotionConfig>
   );
 }

@@ -1,0 +1,930 @@
+/* ============================================================
+   hora design system
+   Warm near-white canvas + hazy peach/coral/yellow orbs behind
+   prominent Apple-style glass. Type: Archivo (display, condensed
+   caps), Inter (UI), Reenie Beanie (handwritten emphasis).
+
+   Tokens through `.muted` are byte-identical to the other three
+   apps on purpose, because this screen is the frame everything else
+   opens inside, so a drifted shadow or radius would read as a
+   different product. Launcher-only blocks start at "role cards".
+   ============================================================ */
+
+:root {
+  /* canvas, never pure white */
+  --canvas: #f7f6f3;
+  --canvas-deep: #efece7;
+
+  /* warm accent ramp (from the reference orb) */
+  --peach: #ffb38a;
+  --coral: #ff7a59;
+  --coral-deep: #f2542d;
+  --amber: #ffc861;
+  --yellow: #ffe8a3;
+
+  /* ink */
+  --ink: #16130f;
+  --ink-70: rgba(22, 19, 15, 0.7);
+  --ink-45: rgba(22, 19, 15, 0.45);
+  --ink-25: rgba(22, 19, 15, 0.25);
+  --hairline: rgba(22, 19, 15, 0.12);
+
+  /* glass */
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-bg-strong: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.75);
+  --glass-shadow: 0 18px 50px -12px rgba(80, 45, 25, 0.18),
+    0 4px 14px -4px rgba(80, 45, 25, 0.1);
+
+  --r-lg: 28px;
+  --r-md: 20px;
+  --r-pill: 999px;
+
+  --font-display: 'Archivo', system-ui, sans-serif;
+  --font-ui: 'Inter', system-ui, sans-serif;
+  --font-script: 'Reenie Beanie', cursive;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ---- hazy gradient orbs (sit BEHIND the glass so it picks up color) ---- */
+.orbs {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.85;
+}
+.orb--1 {
+  width: 46vw;
+  height: 46vw;
+  right: -6vw;
+  top: -8vw;
+  background: radial-gradient(
+    circle at 35% 35%,
+    var(--coral) 0%,
+    var(--peach) 42%,
+    var(--yellow) 68%,
+    transparent 76%
+  );
+  animation: drift1 22s ease-in-out infinite alternate;
+}
+.orb--2 {
+  width: 34vw;
+  height: 34vw;
+  left: -8vw;
+  bottom: -10vw;
+  background: radial-gradient(
+    circle at 50% 50%,
+    var(--amber) 0%,
+    var(--peach) 45%,
+    transparent 72%
+  );
+  opacity: 0.6;
+  animation: drift2 28s ease-in-out infinite alternate;
+}
+@keyframes drift1 {
+  to {
+    transform: translate3d(-4vw, 3vw, 0) scale(1.08);
+  }
+}
+@keyframes drift2 {
+  to {
+    transform: translate3d(3vw, -2vw, 0) scale(1.12);
+  }
+}
+
+/* ---- glass bevel (the Apple-ish treatment) ---- */
+.glass {
+  position: relative;
+  background: var(--glass-bg);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.25);
+}
+/* bright top-edge highlight, which is what sells the bevel */
+.glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(255, 255, 255, 0.25) 28%,
+    rgba(255, 255, 255, 0) 55%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.glass--strong {
+  background: var(--glass-bg-strong);
+}
+
+/* ---- layout ---- */
+.shell {
+  position: relative;
+  z-index: 1;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px 32px 72px;
+}
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 40px;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  /* the wordmark is lowercase by design, and this keeps it that way no matter how the
+     string is cased in source */
+  text-transform: lowercase;
+  font-size: 13px;
+}
+.brand-dots {
+  display: flex;
+  gap: 5px;
+}
+.brand-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink);
+  display: block;
+}
+.brand-dots i:last-child {
+  background: var(--coral);
+}
+
+/* small-caps label + hairline rule (reference's section marker) */
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-45);
+}
+.eyebrow::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: var(--hairline);
+}
+
+/* ---- headline with handwritten emphasis ---- */
+.headline {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(38px, 5.4vw, 72px);
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  margin: 18px 0 0;
+}
+.script {
+  font-family: var(--font-script);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--coral-deep);
+  /* Reenie Beanie runs small, so bump it to match cap height */
+  font-size: 1.55em;
+  line-height: 0.7;
+  padding: 0 0.06em;
+  display: inline-block;
+  transform: rotate(-2.5deg);
+}
+
+/* ---- misc shared ---- */
+.stat-label {
+  font-family: var(--font-display);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-45);
+}
+.muted {
+  color: var(--ink-70);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+/* ============================================================
+   role cards, launcher only
+   ============================================================ */
+
+.roles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  /* the cards carry only a glyph and a name now, so they sit closer to the headline than a
+     content-bearing grid would */
+  margin-top: 38px;
+  max-width: 960px;
+  align-items: stretch;
+}
+
+/* An <a>, not a button: these are real navigations to other origins, so middle-click and
+   "open in new window" have to work. That's how the two browser profiles get set up.
+
+   `position: relative` anchors the status slot, which is vertically centred on the right edge
+   rather than sitting in a footer, since with two lines of content there is no footer to sit in. */
+.role {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  /* right padding is larger to clear the status slot */
+  padding: 30px 54px 30px 28px;
+  min-height: 148px;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s,
+    background 0.22s;
+}
+.role:hover {
+  transform: translateY(-3px);
+  background: var(--glass-bg-strong);
+  box-shadow: 0 26px 60px -14px rgba(80, 45, 25, 0.24),
+    0 6px 18px -6px rgba(80, 45, 25, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.role:active {
+  transform: translateY(-1px) scale(0.995);
+}
+.role:focus-visible {
+  outline: 2px solid var(--coral-deep);
+  outline-offset: 3px;
+}
+
+/* device glyph, drawn as SVG so there's no icon dependency and the three shapes stay
+   in the same visual family */
+.role__glyph {
+  display: block;
+  color: var(--ink-45);
+  transition: color 0.22s;
+}
+.role:hover .role__glyph {
+  color: var(--coral-deep);
+}
+
+.role__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  /* "A diner on their phone" wraps to two lines at this width; the other two don't. Leading is
+     set so a wrapped card and a single-line card still look like the same object. */
+  line-height: 1.15;
+  margin: 0;
+}
+
+/* Status slot: one position, two possible occupants (ready dot or arrow), vertically centred
+   on the right edge so it reads the same whether the title wrapped or not. */
+.role__ready,
+.role__arrow {
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+}
+
+.role__arrow {
+  font-size: 16px;
+  color: var(--ink-25);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), color 0.22s;
+}
+.role:hover .role__arrow {
+  transform: translateY(-50%) translateX(3px);
+  color: var(--coral-deep);
+}
+
+/* Ready dot. Deliberately one-sided: it appears when a dev server answers and is simply absent
+   otherwise. An "offline" state that false-fires on a slow boot would be worse than no signal at
+   all. The cards navigate regardless of what the probe thinks. Dev-only (see App.tsx). */
+.role__ready i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4a9d6e;
+  display: block;
+  box-shadow: 0 0 0 3px rgba(74, 157, 110, 0.16);
+}
+
+.footnote {
+  margin-top: 30px;
+  max-width: 560px;
+  color: var(--ink-45);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+@media (max-width: 900px) {
+  .roles {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    max-width: none;
+  }
+  .role {
+    min-height: 0;
+    flex-direction: row;
+    align-items: center;
+    gap: 18px;
+    padding: 20px 50px 20px 22px;
+  }
+  .shell {
+    padding: 22px 20px 48px;
+  }
+}
+
+/* ---- respect the OS setting ----
+   Framer handles its own animations via <MotionConfig reducedMotion="user">;
+   this covers what Framer never sees: the ambient orbs and plain CSS transitions. */
+@media (prefers-reduced-motion: reduce) {
+  .orb {
+    animation: none !important;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================
+   landing page, launcher only
+
+   Everything below is the marketing surface at `/`. It reuses the tokens, the glass, and the
+   orbs above without redefining any of them — the landing and the apps have to read as one
+   product, and the fastest way to break that is a second set of shadows.
+   ============================================================ */
+
+/* Long page, so anchor-ish jumps and the browser's own scrolling should ease rather than snap.
+   The reduced-motion block at the bottom of this file turns it back off. */
+html {
+  scroll-behavior: smooth;
+}
+
+.home {
+  position: relative;
+  z-index: 1;
+}
+
+/* reading position. Transform-only (scaleX), so it costs nothing to animate every frame. */
+.progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 10;
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, var(--amber), var(--coral), var(--coral-deep));
+}
+
+/* ---- hero ---- */
+.hero {
+  position: relative;
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24px;
+  text-align: center;
+}
+.hero__inner {
+  max-width: 820px;
+}
+.hero__eyebrow {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-45);
+  margin-bottom: 26px;
+}
+
+/* The wordmark is the whole hero. Set as large as the viewport allows, with the tracking pulled
+   in tight — at display size the default spacing reads as a gap, not as letterforms. */
+.wordmark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: lowercase;
+  font-size: clamp(84px, 17vw, 210px);
+  line-height: 0.82;
+  letter-spacing: -0.045em;
+}
+/* the logo's two dots, promoted to a mark above the name */
+.wordmark__dots {
+  display: flex;
+  gap: 12px;
+}
+.wordmark__dots i {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--ink);
+  display: block;
+}
+.wordmark__dots i:last-child {
+  background: var(--coral);
+}
+
+.hero__sub {
+  margin: 30px auto 0;
+  max-width: 560px;
+  color: var(--ink-70);
+  font-size: clamp(16px, 1.5vw, 19px);
+  line-height: 1.6;
+}
+
+/* ---- the two buttons ----
+   One per logo dot: coral for the demo (the thing we actually want clicked), ink for the
+   write-up. Same shape, same weight, so the pair reads as a choice rather than a CTA with an
+   afterthought stapled to it. */
+.ctas {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 40px;
+}
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 30px;
+  border-radius: var(--r-pill);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid transparent;
+  /* Framer owns transform (hover lift / tap press); CSS owns only the paint properties, so the
+     two never fight over the same channel. */
+  transition: box-shadow 0.24s cubic-bezier(0.16, 1, 0.3, 1), filter 0.24s;
+}
+.cta__arrow {
+  font-size: 15px;
+  transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.cta:hover .cta__arrow {
+  transform: translateX(3px);
+}
+.cta:focus-visible {
+  outline: 2px solid var(--coral-deep);
+  outline-offset: 3px;
+}
+
+.cta--coral {
+  background: linear-gradient(135deg, var(--coral) 0%, var(--coral-deep) 100%);
+  color: #fff;
+  box-shadow: 0 14px 34px -10px rgba(242, 84, 45, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.cta--coral:hover {
+  box-shadow: 0 20px 44px -10px rgba(242, 84, 45, 0.62), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  filter: saturate(1.06);
+}
+
+.cta--ink {
+  background: var(--ink);
+  color: var(--canvas);
+  box-shadow: 0 14px 34px -12px rgba(22, 19, 15, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+.cta--ink:hover {
+  box-shadow: 0 20px 44px -12px rgba(22, 19, 15, 0.58), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* scroll cue */
+.cue {
+  position: absolute;
+  bottom: 34px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--ink-25);
+  font-size: 20px;
+  pointer-events: none;
+}
+
+/* ---- sections ---- */
+.sec {
+  position: relative;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 32px 120px;
+}
+.sec__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(30px, 4vw, 54px);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  margin: 18px 0 0;
+}
+.sec__lede {
+  margin: 24px 0 0;
+  max-width: 620px;
+  color: var(--ink-70);
+  font-size: clamp(15px, 1.4vw, 17px);
+  line-height: 1.65;
+}
+
+/* ---- how it works ----
+   Two up rather than four: the step bodies carry real explanation now, and four columns of it
+   would be four narrow gutters of text nobody finishes. */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 44px;
+}
+.step {
+  padding: 30px 28px 32px;
+}
+/* the number is set in the accent and kept small: it orders the cards without competing with
+   the titles for the first read */
+.step__n {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--coral-deep);
+}
+.step__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 21px;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  margin: 16px 0 12px;
+}
+
+/* ---- see for yourself ----
+   The one card on the page that is a control surface rather than a paragraph, so it gets the
+   heaviest glass and the widest padding: it needs to read as an instrument the reader may touch,
+   not another panel of copy they should skim. */
+.decay {
+  margin-top: 44px;
+  padding: 30px 30px 26px;
+}
+/* Reserves roughly the demo's height while its chunk loads, so the sections under it don't jump
+   upward when recharts lands. Approximate on purpose — the card's own text reflows with the
+   viewport, so an exact number would only be exact at one width. */
+.decay__placeholder {
+  min-height: 700px;
+}
+.decay__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+.decay__caption {
+  margin: 10px 0 0;
+  max-width: 46ch;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ink-70);
+}
+/* the clock. Tabular figures so the number doesn't jitter sideways as the sweep runs — at 60fps
+   a proportional '1' next to a '4' turns the readout into a shiver. */
+.decay__tau {
+  flex: none;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  color: var(--coral-deep);
+  font-variant-numeric: tabular-nums;
+  padding: 7px 15px;
+  border-radius: var(--r-pill);
+  background: rgba(242, 84, 45, 0.09);
+  border: 1px solid rgba(242, 84, 45, 0.16);
+}
+
+.decay__chart {
+  width: 100%;
+  height: 300px;
+}
+
+/* ---- transport ---- */
+.decay__transport {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 18px;
+}
+.decay__play {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  flex: none;
+  padding: 11px 20px;
+  border-radius: var(--r-pill);
+  border: 1px solid transparent;
+  background: linear-gradient(135deg, var(--coral) 0%, var(--coral-deep) 100%);
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
+  /* fixed width so the label swapping between Play/Pause/Again doesn't shove the slider around */
+  min-width: 148px;
+  justify-content: center;
+  transition: box-shadow 0.24s cubic-bezier(0.16, 1, 0.3, 1), filter 0.24s;
+}
+.decay__play:hover {
+  filter: brightness(1.04);
+  box-shadow: 0 10px 26px -10px rgba(242, 84, 45, 0.7);
+}
+.decay__play:focus-visible {
+  outline: 2px solid var(--coral-deep);
+  outline-offset: 3px;
+}
+
+/* The scrubber. Track is the curve's own gradient so the control looks like it belongs to the
+   chart above it rather than to the browser. */
+.decay__slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(90deg, var(--amber), var(--coral), var(--coral-deep));
+  cursor: pointer;
+  min-width: 0;
+}
+.decay__slider:focus-visible {
+  outline: 2px solid var(--coral-deep);
+  outline-offset: 6px;
+}
+.decay__slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2.5px solid var(--coral-deep);
+  box-shadow: 0 2px 8px rgba(80, 45, 25, 0.28);
+  cursor: grab;
+}
+.decay__slider::-webkit-slider-thumb:active {
+  cursor: grabbing;
+}
+.decay__slider::-moz-range-thumb {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2.5px solid var(--coral-deep);
+  box-shadow: 0 2px 8px rgba(80, 45, 25, 0.28);
+  cursor: grab;
+}
+
+/* ---- live readout ---- */
+.decay__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid var(--hairline);
+}
+.decay__value {
+  margin-top: 7px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 25px;
+  letter-spacing: -0.02em;
+  /* these four numbers change every frame during the sweep; tabular is not optional here */
+  font-variant-numeric: tabular-nums;
+}
+/* the sentence that says what just happened, in the accent so it reads as the takeaway */
+.decay__note {
+  margin: 20px 0 0;
+  font-size: 13.5px;
+  line-height: 1.65;
+  max-width: 74ch;
+}
+.decay__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 18px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--coral-deep);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(242, 84, 45, 0.3);
+  padding-bottom: 2px;
+  transition: border-color 0.2s;
+}
+.decay__link:hover {
+  border-bottom-color: var(--coral-deep);
+}
+
+/* ---- under the hood ----
+   Four across, and deliberately quieter than the step cards: this section is the reassurance
+   pass, not the pitch. Smaller type, no numbering, tighter padding. */
+.tech {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 40px;
+}
+.tech__card {
+  padding: 26px 24px 28px;
+}
+.tech__label {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.25;
+  letter-spacing: -0.005em;
+  margin: 0 0 12px;
+}
+/* a step down from .muted's 14px — four columns need the smaller size to breathe */
+.tech__body {
+  font-size: 13.5px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ---- both sides ---- */
+.sides {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 44px;
+}
+.side {
+  padding: 32px 30px 34px;
+}
+.side__who {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-45);
+  margin: 0 0 20px;
+}
+.side__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.side__list li {
+  position: relative;
+  padding-left: 24px;
+  color: var(--ink-70);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.side__list li + li {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid var(--hairline);
+}
+/* a dot from the logo, reused as the bullet */
+.side__list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.6em;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--coral);
+}
+.side__list li + li::before {
+  top: calc(15px + 0.6em);
+}
+
+.home__footer {
+  margin: 44px auto 0;
+  text-align: center;
+  max-width: none;
+}
+
+/* the wordmark in the demo header, once it doubles as a link home */
+.brand--link {
+  text-decoration: none;
+  color: inherit;
+  transition: opacity 0.2s;
+}
+.brand--link:hover {
+  opacity: 0.6;
+}
+
+/* four tech columns are already tight at 1180px; drop to two before the step/side cards need
+   to change at all */
+@media (max-width: 1040px) {
+  .tech {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .steps,
+  .sides,
+  .tech {
+    grid-template-columns: 1fr;
+  }
+  .sec {
+    padding: 0 20px 84px;
+  }
+  .cta {
+    /* one per row on a phone, rather than two cramped pills that wrap mid-label */
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+
+  /* The demo survives a phone, but only by unstacking. The clock moves under the caption, the
+     four readouts go two-up, and the transport goes vertical so the scrubber keeps a full-width
+     drag target — a 90px slider is not something you can scrub with a thumb. */
+  .decay {
+    padding: 24px 20px 22px;
+  }
+  .decay__head {
+    flex-direction: column;
+    gap: 14px;
+  }
+  .decay__chart {
+    height: 250px;
+  }
+  .decay__transport {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 20px;
+  }
+  .decay__slider {
+    width: 100%;
+  }
+  .decay__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 14px;
+  }
+  .decay__value {
+    font-size: 21px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

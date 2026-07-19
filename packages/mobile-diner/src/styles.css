@@ -1,12 +1,12 @@
 /* ============================================================
-   Prime — design system
+   hora design system
    Warm near-white canvas + hazy peach/coral/yellow orbs behind
    prominent Apple-style glass. Type: Archivo (display, condensed
    caps), Inter (UI), Reenie Beanie (handwritten emphasis).
    ============================================================ */
 
 :root {
-  /* canvas — never pure white */
+  /* canvas, never pure white */
   --canvas: #f7f6f3;
   --canvas-deep: #efece7;
 
@@ -34,6 +34,17 @@
   --r-lg: 28px;
   --r-md: 20px;
   --r-pill: 999px;
+
+  /* motion. --ease is the same curve as EASE in motion.ts, so a CSS hover and a Framer
+     entrance on the same element decelerate identically.
+
+     Three speeds, and the split matters more than the numbers: arriving under the pointer is
+     slower than leaving it, and a press is faster than both. Hover is ambient and should never
+     feel like it is reacting to you; a click is a commitment and should answer at once. */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --t-enter: 0.34s;
+  --t-leave: 0.46s;
+  --t-press: 0.09s;
 
   --font-display: 'Archivo', system-ui, sans-serif;
   --font-ui: 'Inter', system-ui, sans-serif;
@@ -123,7 +134,7 @@ body {
   box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.9),
     inset 0 -1px 0 rgba(255, 255, 255, 0.25);
 }
-/* bright top-edge highlight — what sells the bevel */
+/* bright top-edge highlight, which is what sells the bevel */
 .glass::before {
   content: '';
   position: absolute;
@@ -166,7 +177,9 @@ body {
   font-family: var(--font-display);
   font-weight: 700;
   letter-spacing: 0.14em;
-  text-transform: uppercase;
+  /* the wordmark is lowercase by design, and this keeps it that way no matter how the
+     string is cased in source */
+  text-transform: lowercase;
   font-size: 13px;
 }
 .brand-dots {
@@ -219,7 +232,7 @@ body {
   text-transform: none;
   letter-spacing: 0;
   color: var(--coral-deep);
-  /* Reenie Beanie runs small — bump it to match cap height */
+  /* Reenie Beanie runs small, so bump it to match cap height */
   font-size: 1.55em;
   line-height: 0.7;
   padding: 0 0.06em;
@@ -266,11 +279,20 @@ body {
   padding: 16px 30px;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.18s,
-    filter 0.18s;
+  /* background-color is in here deliberately. It used to be missing, so every tint change
+     snapped while the shadow underneath it faded. */
+  transition: transform var(--t-leave) var(--ease), box-shadow var(--t-leave) var(--ease),
+    filter var(--t-leave) var(--ease), background-color var(--t-leave) var(--ease),
+    border-color var(--t-leave) var(--ease);
 }
-.btn:active {
-  transform: scale(0.975);
+.btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  transition-duration: var(--t-enter);
+}
+/* later than the :hover rule and equally specific, so the press wins while held */
+.btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.978);
+  transition-duration: var(--t-press);
 }
 .btn:disabled {
   opacity: 0.45;
@@ -284,8 +306,8 @@ body {
     inset 0 -2px 6px rgba(140, 40, 10, 0.25);
 }
 .btn--primary:hover:not(:disabled) {
-  filter: brightness(1.04);
-  box-shadow: 0 14px 32px -8px rgba(242, 84, 45, 0.7),
+  filter: brightness(1.06) saturate(1.03);
+  box-shadow: 0 18px 38px -10px rgba(242, 84, 45, 0.68),
     inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 .btn--ghost {
@@ -336,34 +358,75 @@ body {
   line-height: 1.55;
 }
 
-/* ---- party-size selector ---- */
-.guest {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  border: 1px solid var(--hairline);
+/* ---- party-size selector ----
+   A native <select>. The diner picks a headcount and we route to the band that seats it, so the
+   table sizes on offer never have to be explained. Native also means the platform's own picker,
+   the arrow keys, and type-ahead, all of which beat anything hand-rolled here. */
+.psize {
+  position: relative;
+  display: block;
+  max-width: 260px;
+}
+.psize__select {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  padding: 15px 46px 15px 18px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--glass-border);
   background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   font-family: var(--font-display);
+  font-size: 14.5px;
   font-weight: 600;
-  font-size: 13.5px;
+  letter-spacing: 0.01em;
   color: var(--ink);
   cursor: pointer;
-  transition: background 0.16s, transform 0.16s, box-shadow 0.16s, color 0.16s;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 6px 18px -10px rgba(80, 45, 25, 0.28);
+  transition: transform var(--t-leave) var(--ease), background-color var(--t-leave) var(--ease),
+    box-shadow var(--t-leave) var(--ease), border-color var(--t-leave) var(--ease);
 }
-.guest:hover:not(:disabled):not(.guest--sel) {
-  background: rgba(255, 255, 255, 0.85);
-  transform: translateY(-1px);
+.psize__select:hover {
+  transform: translateY(-2px);
+  background-color: rgba(255, 255, 255, 0.8);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 14px 28px -12px rgba(80, 45, 25, 0.32);
+  transition-duration: var(--t-enter);
 }
-.guest:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
+.psize__select:active {
+  transform: translateY(0) scale(0.985);
+  transition-duration: var(--t-press);
 }
-.guest--sel {
-  background: linear-gradient(168deg, var(--coral) 0%, var(--coral-deep) 100%);
-  color: #fff;
-  border-color: transparent;
-  box-shadow: 0 6px 16px -6px rgba(242, 84, 45, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+.psize__select:focus-visible {
+  outline: 2px solid var(--coral);
+  outline-offset: 3px;
+}
+/* the chevron warms up with the field so the two read as one control */
+.psize__chev {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  translate: 0 -50%;
+  pointer-events: none;
+  color: var(--ink-45);
+  transition: color var(--t-leave) var(--ease);
+}
+.psize:hover .psize__chev {
+  color: var(--coral-deep);
+  transition-duration: var(--t-enter);
+}
+/* which band the headcount landed on, and what it costs right now */
+.psize__routed {
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-45);
+}
+.psize__routed strong {
+  color: var(--ink-70);
+  font-weight: 600;
 }
 
 /* ---- calendar day cells ---- */
@@ -432,25 +495,25 @@ body {
   display: grid;
   place-items: center;
   padding: 20px;
-  animation: fade 0.25s ease;
 }
+/* enter/exit are Framer's now (BuySheet.tsx), and a CSS animation here would fight it
+   on the way in and do nothing on the way out */
 .sheet {
   width: min(460px, 100%);
   padding: 34px;
-  animation: rise 0.42s cubic-bezier(0.16, 1, 0.3, 1);
 }
-@keyframes fade {
-  from {
-    opacity: 0;
-  }
-}
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(24px) scale(0.97);
-  }
-}
+/* The old `fade` / `rise` keyframes and .fade-in lived here. Every one of their users
+   (the sheet, the date popover, the flash toast) moved to Framer, which can animate
+   exits too, which a CSS keyframe on a mounting element never could. */
 
-.fade-in {
-  animation: fade 0.5s ease both;
+/* ---- respect the OS setting ----
+   Framer handles its own animations via <MotionConfig reducedMotion="user">;
+   this covers what Framer never sees: the ambient orbs and plain CSS transitions. */
+@media (prefers-reduced-motion: reduce) {
+  .orb {
+    animation: none !important;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+  }
 }

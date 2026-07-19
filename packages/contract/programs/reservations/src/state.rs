@@ -29,6 +29,15 @@ pub struct Pool {
     pub service_time: i64,
     /// decay cliff length in seconds (e.g. 86400)
     pub tc_seconds: i64,
+    /// how long after `service_time` the door stays open for check-in, in seconds. The restaurant
+    /// holds the table this long for a late diner.
+    ///
+    /// This is deliberately NOT part of pricing: θ still hits 0 at `service_time` and trading still
+    /// freezes there, so the curve and the solvency invariant are untouched. Grace only moves two
+    /// deadlines — the last moment `check_in` is valid, and the first moment `sweep` is legal.
+    /// Sweep has to wait, or the restaurant could settle at service_time and forfeit a diner who
+    /// was still inside the window they were promised.
+    pub grace_seconds: i64,
     /// true once service reached — trading halted
     pub frozen: bool,
     /// true once `sweep` has run; makes settlement strictly one-shot (a zero-balance pool must
@@ -51,7 +60,7 @@ impl Pool {
         + 32 * 4              // authority, mint, reserve, usdc_mint
         + 8 * 4               // p0, k, n_sold, n_max
         + 2 + 1               // phi_bps, party_size
-        + 8 * 2               // service_time, tc_seconds
+        + 8 * 3               // service_time, tc_seconds, grace_seconds
         + 1 + 1               // frozen, swept
         + 8 * 3               // royalties, reserve_paid_in, consumed_count
         + 32 + 1 + 1;         // pool_seed, bump, reserve_bump

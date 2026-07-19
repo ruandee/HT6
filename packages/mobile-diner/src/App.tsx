@@ -1,10 +1,11 @@
 /**
- * Prime — the diner app on a phone. Three tabs: Tonight (the live curve), Book (browse nights,
+ * hora, the diner app on a phone. Three tabs: Tonight (the live curve), Book (browse nights,
  * pick a table size, claim it) and Wallet (what you hold, and selling it back).
  *
- * Talks ONLY to app-services REST (§8 boundary rule) — never the chain.
+ * Talks ONLY to app-services REST (§8 boundary rule) and never to the chain.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion, MotionConfig } from 'framer-motion';
 import {
   api,
   bandParams,
@@ -17,15 +18,18 @@ import {
 import { CurveChart } from './CurveChart';
 import { BuySheet } from './BuySheet';
 import { NightRail } from './NightRail';
-import { BandPicker } from './BandPicker';
+import { PartySize, bandFor } from './PartySize';
 import { TabBar, type Tab } from './TabBar';
 import { Sheet } from './Sheet';
 import { usePullToRefresh } from './usePullToRefresh';
+import { ease, swap } from './motion';
+import { venueState } from './venue';
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('tonight');
   const [pools, setPools] = useState<PoolSummary[]>([]);
   const [poolId, setPoolId] = useState('');
+  const [guests, setGuests] = useState(2);
   const [q, setQ] = useState<Quote | null>(null);
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [sheet, setSheet] = useState<null | { intentId: string; price: string; expires: string }>(
@@ -87,11 +91,13 @@ export default function App() {
     return [...byDate.values()].sort((a, b) => a.service_time - b.service_time);
   }, [pools]);
 
-  /** every band offered on the selected night — read off the API, never hardcoded (§4a). */
+  /** every band offered on the selected night, read off the API and never hardcoded (§4a). */
   const bandsTonight = useMemo(
     () => pools.filter((p) => p.date_iso === selectedDate),
     [pools, selectedDate],
   );
+
+  const venue = venueState(bandsTonight);
 
   // §7c-C: one table per person per NIGHT, across every band.
   const windowPoolIds = new Set(bandsTonight.map((b) => b.pool_id));
@@ -107,11 +113,18 @@ export default function App() {
   const price = q ? splitUsdc(q.buy_price) : { dollars: '—', cents: '00' };
 
   function selectDate(dateIso: string) {
-    // keep the same party size across nights where possible
-    const wanted = current?.party_size ?? 2;
+    // the headcount is the thing the diner chose, so it survives the night change and we
+    // re-route to whatever band seats it on the new date.
     const onDate = pools.filter((p) => p.date_iso === dateIso);
-    const target = onDate.find((p) => p.party_size === wanted) ?? onDate[0];
+    const target = bandFor(onDate, guests) ?? onDate[0];
     if (target) selectPool(target.pool_id);
+  }
+
+  /** Changing headcount keeps the night and swaps to the band that fits. */
+  function selectGuests(n: number) {
+    setGuests(n);
+    const target = bandFor(bandsTonight, n);
+    if (target && target.pool_id !== poolId) selectPool(target.pool_id);
   }
 
   function selectPool(id: string) {
@@ -135,7 +148,7 @@ export default function App() {
       await api.stubSettle(intentId, 'succeeded');
       setSheet(null);
       const quote = await refresh(poolId);
-      flash(quote ? `Table booked — it's ${usdc(quote.buy_price)} now.` : 'Table booked.');
+      flash(quote ? `Table booked. It's ${usdc(quote.buy_price)} now.` : 'Table booked.');
       setTab('wallet');
     } catch (e) {
       setSheet(null);
@@ -148,7 +161,7 @@ export default function App() {
     try {
       const r = await api.sell(h.pool_id);
       await refresh(poolId);
-      flash(`Sold back — ${usdc(r.payout_amount)} returned to you.`);
+      flash(`Sold back. ${usdc(r.payout_amount)} returned to you.`);
     } catch (e) {
       flash(String(e instanceof Error ? e.message : e).replace(/^Error:\s*/, ''));
     }
@@ -157,7 +170,8 @@ export default function App() {
   const nightLabel = current?.label ?? '';
 
   return (
-    <div className="app">
+    <MotionConfig reducedMotion="user">
+      <div className="app">
       <div className="app__orbs" aria-hidden>
         <div className="orb orb--1" />
         <div className="orb orb--2" />
@@ -180,15 +194,21 @@ export default function App() {
           />
         </div>
 
+        {/* Wallet and the curve view swap as whole pages. Keyed 'wallet' vs 'main' rather than
+            on `tab`, so moving between Tonight and Book does NOT remount the recharts curve.
+            Only the header copy below crossfades. */}
+        <AnimatePresence mode="wait" initial={false}>
         {tab === 'wallet' ? (
+          <motion.div key="wallet" variants={swap} initial="hidden" animate="show" exit="exit">
           <WalletTab
             holdings={allHeld}
             pools={pools}
             onSell={setSellFor}
             onBrowse={() => setTab('book')}
           />
+          </motion.div>
         ) : (
-          <>
+          <motion.div key="main" variants={swap} initial="hidden" animate="show" exit="exit">
             <header className="mhead">
               <div className="mhead__row">
                 <div className="brand">
@@ -196,33 +216,64 @@ export default function App() {
                     <i />
                     <i />
                   </span>
-                  Prime
+                  hora
                 </div>
                 <div className="avatar">MD</div>
               </div>
 
-              {tab === 'tonight' ? (
-                <>
-                  <h1 className="mtitle">
-                    Bar Aurelia is
-                    <br />
-                    <span className="script">filling</span> up.
-                  </h1>
-                  <p className="msub">
-                    Prices move as tables go. Grab one now, sell it back if plans change.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <h1 className="mtitle">Pick a night</h1>
-                  <p className="msub">Bar Aurelia · dinner service</p>
-                </>
-              )}
+              {/* only the copy changes between Tonight and Book, so only the copy moves */}
+              <AnimatePresence mode="wait" initial={false}>
+                {tab === 'tonight' ? (
+                  <motion.div
+                    key="tonight"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={ease(0.22)}
+                  >
+                    {/* same shape as the desktop header, sized for a phone. The fill word is
+                        derived (see venue.ts) rather than asserted, so it stays true. */}
+                    <h1 className="mtitle">
+                      {venue.name} is
+                      <br />
+                      <span className="script">{venue.fill}</span>.
+                    </h1>
+                    <p className="msub">
+                      {venue.cap > 0
+                        ? `${venue.sold} of ${venue.cap} tables gone tonight. Sell yours back any time before service.`
+                        : 'Sell your table back any time before service.'}
+                    </p>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="book"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={ease(0.22)}
+                  >
+                    <h1 className="mtitle">Pick a night</h1>
+                    <p className="msub">{venue.name} · dinner service</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </header>
 
-            {tab === 'book' && (
-              <NightRail nights={nights} selectedDate={selectedDate} onSelect={selectDate} />
-            )}
+            {/* the night rail unfolds rather than shoving the curve down */}
+            <AnimatePresence initial={false}>
+              {tab === 'book' && (
+                <motion.div
+                  key="rail"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={ease(0.28)}
+                  style={{ overflow: 'hidden' }}
+                >
+                  <NightRail nights={nights} selectedDate={selectedDate} onSelect={selectDate} />
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* ---- the live curve: the hero ---- */}
             <section className="glass card">
@@ -268,9 +319,9 @@ export default function App() {
               {tab === 'book' && bandsTonight.length > 0 && (
                 <>
                   <div className="eyebrow" style={{ marginBottom: 12 }}>
-                    How many?
+                    How many people?
                   </div>
-                  <BandPicker bands={bandsTonight} selected={poolId} onSelect={selectPool} />
+                  <PartySize bands={bandsTonight} guests={guests} onGuests={selectGuests} />
                   <div style={{ height: 1, background: 'var(--hairline)', margin: '20px 0 18px' }} />
                 </>
               )}
@@ -280,9 +331,21 @@ export default function App() {
                   <div className="eyebrow" style={{ marginBottom: 10, width: 108 }}>
                     Price now
                   </div>
+                  {/* the §11 "ticks up" moment: the poll brings a new price and it rolls */}
                   <div className="price price--phone">
-                    <span>${price.dollars}</span>
-                    <span className="price__cents">.{price.cents}</span>
+                    <AnimatePresence mode="wait" initial={false}>
+                      <motion.span
+                        key={q?.buy_price ?? 'pending'}
+                        initial={{ opacity: 0, y: 9 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -9 }}
+                        transition={ease(0.26)}
+                        style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}
+                      >
+                        <span>${price.dollars}</span>
+                        <span className="price__cents">.{price.cents}</span>
+                      </motion.span>
+                    </AnimatePresence>
                   </div>
                 </div>
                 {current && (
@@ -342,10 +405,23 @@ export default function App() {
 
             {/* room for the docked button */}
             <div style={{ height: 74 }} />
-          </>
+          </motion.div>
         )}
+        </AnimatePresence>
 
-        {toast && <div className="glass toast">{toast}</div>}
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              className="glass toast"
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              transition={ease(0.3)}
+            >
+              {toast}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* ---- thumb-reachable primary action ---- */}
@@ -378,8 +454,11 @@ export default function App() {
 
       <TabBar tab={tab} onTab={setTab} heldCount={allHeld.length} />
 
+      {/* AnimatePresence so both sheets can animate OUT, not just in */}
+      <AnimatePresence>
       {sheet && (
         <BuySheet
+          key="buy"
           price={sheet.price}
           floor={floorP0}
           partySize={current?.party_size ?? 2}
@@ -397,13 +476,16 @@ export default function App() {
 
       {sellFor && (
         <SellSheet
+          key="sell"
           holding={sellFor}
           label={pools.find((p) => p.pool_id === sellFor.pool_id)?.label ?? 'your table'}
           onConfirm={() => sellBack(sellFor)}
           onClose={() => setSellFor(null)}
         />
       )}
-    </div>
+      </AnimatePresence>
+      </div>
+    </MotionConfig>
   );
 }
 
@@ -429,7 +511,7 @@ function WalletTab({
               <i />
               <i />
             </span>
-            Prime
+            hora
           </div>
           <div className="avatar">MD</div>
         </div>
@@ -457,7 +539,7 @@ function WalletTab({
                 <div>
                   <div className="ticket__when">{pool?.label ?? 'Your table'}</div>
                   <div className="ticket__meta">
-                    Bar Aurelia
+                    {pool?.venue_name ?? 'Your table'}
                     {pool ? ` · table for ${pool.party_size}` : ''}
                     {when
                       ? ` · ${when.toLocaleDateString('en-US', {
@@ -526,7 +608,7 @@ function SellSheet({
         <span className="price__cents">.{p.cents}</span>
       </div>
       <p className="muted" style={{ marginTop: 16, fontSize: 13.5 }}>
-        We&apos;ll take back your {label} table right now — no waiting for someone else to want it.
+        We&apos;ll take back your {label} table right now, with no waiting for someone else to want it.
         The money is on its way as soon as you confirm.
       </p>
       <button className="btn btn--primary btn--block" style={{ marginTop: 22 }} onClick={onConfirm}>

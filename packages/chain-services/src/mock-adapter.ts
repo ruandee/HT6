@@ -80,6 +80,16 @@ export class MockChainAdapter implements ChainAdapter {
     if (!p.frozen && this.now() >= p.service_time) p.frozen = true;
   }
 
+  /**
+   * The instant the check-in door closes. Mirrors `door_closes_at` in the program's math.rs.
+   *
+   * check_in is valid up to and including this; sweep is legal from it. Sharing one boundary makes
+   * "still checkable in" and "already swept" mutually exclusive by construction.
+   */
+  private doorClosesAt(p: MockPool): number {
+    return p.service_time + (p.grace_seconds ?? 0);
+  }
+
   async create_pool(params: CreatePoolParams): Promise<CreatePoolResult> {
     const pool_id = `pool_${nextId++}`;
     const mint: Address = `mint_${pool_id}`;
@@ -94,6 +104,7 @@ export class MockChainAdapter implements ChainAdapter {
       phi_bps: params.phi_bps,
       service_time: params.service_time,
       tc_seconds: params.tc_seconds,
+      grace_seconds: params.grace_seconds ?? 0,
       party_size: params.party_size,
       frozen: false,
       reserve_balance: 0n,
@@ -234,6 +245,12 @@ export class MockChainAdapter implements ChainAdapter {
   ): Promise<CheckInResult> {
     const p = this.get(pool_id);
     if (p.authority !== restaurant_authority) throw new Error('not pool authority');
+    // The door closes at service_time + grace. Mirrors the program's `check_in` guard exactly —
+    // note this is the ONE place a late diner is still welcome even though trading froze back at
+    // service_time and θ is already 0.
+    if (this.now() > this.doorClosesAt(p)) {
+      throw new Error('the check-in window has closed for this service');
+    }
     await this.redeem(pool_id, user_id); // emits its own 'redeem' event
     const tx_sig = `tx_${nextId++}`;
     this.emit(p, pool_id, this.theta(p), {
@@ -249,6 +266,11 @@ export class MockChainAdapter implements ChainAdapter {
     const p = this.get(pool_id);
     if (p.authority !== restaurant_authority) throw new Error('not pool authority');
     if (!p.frozen) throw new Error('pool not frozen; cannot sweep before service');
+    // Settlement waits for the grace window to close, or the restaurant could sweep at service
+    // time and forfeit a diner who was still inside the window they were promised (program parity).
+    if (this.now() < this.doorClosesAt(p)) {
+      throw new Error('cannot sweep yet; the check-in window is still open');
+    }
     const consumed = p.tokens.filter((t) => t.redeemed).length;
     const forfeited = p.tokens.filter((t) => !t.redeemed).length; // no-shows
     const amount = p.reserve_balance + p.royalties;

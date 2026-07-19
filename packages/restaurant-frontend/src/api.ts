@@ -6,11 +6,11 @@
  * diner app); the real system puts an Auth0 JWT with an issuer role on every call.
  *
  * MONEY: every USDC value below is a base-unit STRING with 6 decimals ("40000000" = $40). Never
- * parse it into a float — use splitUsdc/usdc, which do the arithmetic in BigInt.
+ * parse it into a float. Use splitUsdc/usdc, which do the arithmetic in BigInt.
  */
 import type { CreatePoolRequest, SweepResponse } from '@ttr/shared-types';
 
-/** One row of the issuer's pool overview — a (night × party-size band) pool, §4a. */
+/** One row of the issuer's pool overview: a (night × party-size band) pool, §4a. */
 export interface IssuerPoolRow {
   pool_id: string;
   label: string;
@@ -61,9 +61,21 @@ export interface IssuerPoolDetail {
 
 export type { CreatePoolRequest, SweepResponse };
 
-/** Stubbed issuer identity — swap for an Auth0 bearer token with the issuer role. */
+/** Stubbed issuer identity. Swap for an Auth0 bearer token with the issuer role. */
 const ISSUER = 'rest_wallet';
 const headers = { 'content-type': 'application/json', 'x-user-id': ISSUER };
+
+/**
+ * Where app-services lives. Empty (the default) keeps every path RELATIVE, which is what the
+ * Vite dev proxy in vite.config.ts rewrites to :8080 — so local dev is unchanged.
+ *
+ * A deployed build has no such proxy: the dashboard is static hosting on its own origin, and a
+ * relative /restaurant/pools would hit the SPA rewrite and come back as index.html. So set
+ * VITE_API_URL to the app-services origin at build time (Vite inlines VITE_* — changing it needs
+ * a redeploy), and make sure that origin allows this one via CORS_ORIGINS.
+ */
+const API = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '');
+const u = (path: string) => `${API}${path}`;
 
 async function j<T>(r: Response): Promise<T> {
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? r.statusText);
@@ -71,39 +83,67 @@ async function j<T>(r: Response): Promise<T> {
 }
 
 export const api = {
-  /** every pool this venue issues — one per (night, band). */
-  pools: () => fetch('/restaurant/pools', { headers }).then(j<IssuerPoolRow[]>),
+  /** every pool this venue issues, one per (night, band). */
+  pools: () => fetch(u('/restaurant/pools'), { headers }).then(j<IssuerPoolRow[]>),
 
   /** fill, reserve, holders, royalties accrued (§10.4). */
-  pool: (id: string) => fetch(`/restaurant/pools/${id}`, { headers }).then(j<IssuerPoolDetail>),
+  pool: (id: string) => fetch(u(`/restaurant/pools/${id}`), { headers }).then(j<IssuerPoolDetail>),
 
-  /** create_pool passthrough — one call per party-size band (§4a). */
+  /** create_pool passthrough, one call per party-size band (§4a). */
   createPool: (body: CreatePoolRequest) =>
-    fetch('/restaurant/pools', { method: 'POST', headers, body: JSON.stringify(body) }).then(
+    fetch(u('/restaurant/pools'), { method: 'POST', headers, body: JSON.stringify(body) }).then(
       j<{ pool_id: string; mint: string }>,
     ),
 
   /** staff marks a diner arrived -> triggers redeem (token burns, USDC stays in reserve). */
   checkin: (id: string, user_id: string) =>
-    fetch(`/restaurant/pools/${id}/checkin`, {
+    fetch(u(`/restaurant/pools/${id}/checkin`), {
       method: 'POST',
       headers,
       body: JSON.stringify({ user_id }),
     }).then(j<{ tx_sig: string }>),
 
-  /** settle the reserve after service — returns the §7c-B breakdown. */
+  /** settle the reserve after service. Returns the §7c-B breakdown. */
   sweep: (id: string) =>
-    fetch(`/restaurant/pools/${id}/sweep`, { method: 'POST', headers }).then(j<SweepResponse>),
+    fetch(u(`/restaurant/pools/${id}/sweep`), { method: 'POST', headers }).then(j<SweepResponse>),
 
   /**
-   * DEMO ONLY: pull this one pool to service time so sweep becomes legal on stage. Global clock
-   * control (the §11 step-4 θ fast-forward) lives elsewhere and is deliberately not exposed here.
+   * DEMO ONLY: pull this one pool to service time so sweep becomes legal on stage. This is the
+   * SINGLE-pool lever; `demoClock` below is the global one.
    */
   demoFreeze: (id: string) =>
-    fetch(`/restaurant/pools/${id}/demo-freeze`, { method: 'POST', headers }).then(
+    fetch(u(`/restaurant/pools/${id}/demo-freeze`), { method: 'POST', headers }).then(
       j<IssuerPoolDetail>,
     ),
+
+  /**
+   * DEMO ONLY (§11 step 4): advance the global clock so θ decays on every pool at once and the
+   * curve flattens toward the meal-credit floor. `hours` is relative and cumulative; `reset`
+   * returns to the real wall clock and reopens any pool whose service time is future again.
+   */
+  demoClock: (body: { hours: number } | { reset: true }) =>
+    fetch(u('/demo/clock'), { method: 'POST', headers, body: JSON.stringify(body) }).then(
+      j<DemoClockState>,
+    ),
+
+  demoClockState: () => fetch(u('/demo/clock'), { headers }).then(j<DemoClockState>),
 };
+
+/** Where the demo fast-forward currently sits, plus each pool's decayed curve state. */
+export interface DemoClockState {
+  offset_hours: number;
+  now_iso: string;
+  is_shifted: boolean;
+  pools: Array<{
+    pool_id: string;
+    label: string;
+    party_size: number;
+    theta_bps: number;
+    buy_price: string;
+    frozen: boolean;
+    hours_to_service: number;
+  }>;
+}
 
 /** base units (6dp) -> { dollars, cents } for the split-size money display. BigInt, never float. */
 export function splitUsdc(base: string): { dollars: string; cents: string } {
@@ -125,7 +165,7 @@ export function toBaseUnits(dollars: string): string {
   return (BigInt(whole || '0') * 1_000_000n + BigInt(micros || '0')).toString();
 }
 
-/** "in 3 days · Fri 7pm" — the operational way a floor manager reads a service window. */
+/** "in 3 days · Fri 7pm", the operational way a floor manager reads a service window. */
 export function whenLabel(serviceTime: number): string {
   const secs = serviceTime - Math.floor(Date.now() / 1000);
   const d = new Date(serviceTime * 1000);

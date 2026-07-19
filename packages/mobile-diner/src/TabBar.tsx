@@ -1,5 +1,5 @@
 /**
- * Bottom tab bar — the app's primary navigation, thumb-reachable at the bottom edge.
+ * Bottom tab bar: the app's primary navigation, thumb-reachable at the bottom edge.
  * Three destinations: Tonight (the live curve for the soonest night), Book (browse nights and
  * claim a table), Wallet (tables you hold, and selling back).
  */

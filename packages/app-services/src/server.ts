@@ -56,7 +56,7 @@ const orchestrator = new Orchestrator(chain, gateway, siblingPools, {
 
 /** The demo venue. Auth is the x-user-id stub, so the issuer identity is stubbed the same way. */
 const RESTAURANT_AUTHORITY = 'rest_wallet';
-const VENUE_NAME = 'Bar Aurelia';
+const VENUE_NAME = 'Library Bar';
 
 // --- demo seed: one buzzy pool, θ far out, seeded to n=6 (§7d) so the curve already shows premium.
 /**
@@ -95,8 +95,32 @@ const SEED_PLAN = [
   { inDays: 8, hour: 19, seats: [1, 0] },
 ];
 
+/**
+ * Names for the seeded buyers. The issuer dashboard lists holders by user_id, and a floor manager
+ * reading "seed_0_1_3" learns nothing; a name is what they'd actually see at the door.
+ *
+ * Consumed in order by a single counter across the whole seed, so no two holders collide. That
+ * matters beyond looks: §7c-C is one table per person per service window, and the adapter rejects
+ * a buyer who already holds a sibling band that night, so duplicate names would drop inventory.
+ */
+const SEED_NAMES = [
+  'Maya Fontaine', 'Daniel Okafor', 'Priya Raman', 'Tom Whitaker', 'Alice Chen',
+  'Marcus Bell', 'Sofia Marchetti', 'James Ellery', 'Nina Kowalski', 'Andre Duval',
+  'Grace Yamamoto', 'Oliver Bench', 'Rosa Delgado', 'Henry Ashworth', 'Leila Nasser',
+  'Peter Stavros', 'Claire Beaumont', 'Samuel Adeyemi', 'Hannah Lindqvist', 'Victor Moreau',
+  'Iris Tanaka', 'Reuben Castellanos', 'Freya Nilsen', 'Omar Haddad', 'Beatrice Lowell',
+  'Nathan Pryce', 'Camille Rousseau', 'Elias Vogel', 'Tessa Brannigan', 'Jonah Reyes',
+  'Margot Delacroix', 'Felix Nakamura', 'Adaeze Nwosu', 'Rory MacAllister', 'Simone Aubert',
+  'Caleb Fitzgerald', 'Yara Boutros', 'Dominic Sartori', 'Esme Hollander', 'Kofi Mensah',
+  'Lucia Ferreira', 'Bennett Croft', 'Anya Volkova', 'Theo Lindgren', 'Mirela Popescu',
+  'Gideon Frost', 'Saoirse Byrne', 'Rafael Ibarra', 'Wren Callahan', 'Milo Bergström',
+  'Delphine Marchand', 'Casper Voss', 'Amara Sithole', 'Linus Hartmann', 'Verity Sloane',
+  'Ezra Goldman', 'Noor Rahimi', 'Django Pallavicini', 'Harriet Vance', 'Soren Kjeldsen',
+];
+
 async function seed() {
   const now = Math.floor(Date.now() / 1000);
+  let nextName = 0;
   for (const [i, plan] of SEED_PLAN.entries()) {
     const d = new Date();
     if ('inHours' in plan && plan.inHours !== undefined) {
@@ -143,7 +167,7 @@ async function seed() {
       });
       const sold = Math.min(plan.seats[b] ?? 0, band.n_max);
       for (let s = 0; s < sold; s++) {
-        const buyer = `seed_${i}_${b}_${s}`;
+        const buyer = SEED_NAMES[nextName++ % SEED_NAMES.length]!;
         const r = await chain.buy(pool_id, buyer, '9990000000');
         if (r.status === 'filled') issuer.onBuy(pool_id, buyer, r.price_paid ?? '0');
       }
@@ -160,6 +184,38 @@ async function seed() {
 }
 
 const app = express();
+
+/**
+ * CORS. Local dev needs none — the Vite proxy makes every call same-origin — but a deployed
+ * build has the frontends on their own origins (static hosting) calling app-services on another,
+ * so without these headers the browser blocks the request before it is ever sent.
+ *
+ * Mounted FIRST so preflights are answered for every route, including the raw-body webhook below.
+ *
+ * CORS_ORIGINS is a comma-separated allowlist; unset falls back to `*`, which is only safe here
+ * because auth is still the x-user-id header stub and nothing rides on cookies. The moment Auth0
+ * lands (or anything uses credentials), set the allowlist — `*` is illegal with credentials and
+ * the browser will reject it.
+ */
+const CORS_ORIGINS = (process.env.CORS_ORIGINS ?? '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+app.use((req: Request, res: Response, next) => {
+  const origin = req.header('origin');
+  if (CORS_ORIGINS.length === 0) res.setHeader('access-control-allow-origin', '*');
+  else if (origin && CORS_ORIGINS.includes(origin)) {
+    res.setHeader('access-control-allow-origin', origin);
+    // the response varies by request origin, so caches must not serve one origin's copy to another
+    res.setHeader('vary', 'Origin');
+  }
+  res.setHeader('access-control-allow-methods', 'GET,POST,OPTIONS');
+  // x-user-id is the auth stub; x-stub drives the mock webhook from the browser (§10.5)
+  res.setHeader('access-control-allow-headers', 'content-type,x-user-id,x-stub');
+  res.setHeader('access-control-max-age', '86400');
+  if (req.method === 'OPTIONS') return void res.sendStatus(204);
+  next();
+});
 
 // simple stubbed auth: userId from header (replace with Auth0 JWT middleware later).
 function userId(req: Request): string {
@@ -252,6 +308,9 @@ app.get('/pools', async (_req, res) => {
     out.push({
       pool_id: p.pool_id,
       label: p.label,
+      // the diner headers name the room they're booking, so the venue travels with the pool
+      // rather than being hardcoded in two frontends
+      venue_name: VENUE_NAME,
       date_iso: p.date_iso,
       service_time: p.service_time,
       party_size: p.party_size,
@@ -381,6 +440,84 @@ app.post('/restaurant/pools/:id/demo-freeze', async (req, res) => {
     return res.status(400).json({ error: msg(e) });
   }
 });
+
+/**
+ * DEMO ONLY — §11 step 4, the θ-decay fast-forward.
+ *
+ * Moves the adapter's injectable clock forward so the scarcity premium decays on every pool at
+ * once and the curve visibly flattens toward the meal-credit floor. This is the GLOBAL lever, as
+ * opposed to `demo-freeze` above which pulls a single pool to service time for the sweep.
+ *
+ * Only `k·n·θ` decays — `p0` never does, so the curve settles onto the floor rather than to zero
+ * (§7b). Advancing the clock can also trip the adapter's own freeze rule (`now >= service_time`)
+ * on nights the offset moves past, which is the intended behaviour: those tables stop trading.
+ *
+ * Body: `{ "hours": <number> }` — relative, cumulative, and may be negative to rewind. `{ "reset":
+ * true }` returns to the real wall clock. Like `demo-freeze`, this route goes away with SWAP A:
+ * against a real validator you cannot move the block clock, you wait for it.
+ */
+let demoClockOffsetSeconds = 0;
+chain.now = () => Math.floor(Date.now() / 1000) + demoClockOffsetSeconds;
+
+app.post('/demo/clock', async (req, res) => {
+  try {
+    const body = (req.body ?? {}) as { hours?: unknown; reset?: unknown };
+    if (body.reset === true) {
+      demoClockOffsetSeconds = 0;
+    } else {
+      const hours = Number(body.hours);
+      if (!Number.isFinite(hours)) {
+        return res.status(400).json({ error: 'body must be { hours: <number> } or { reset: true }' });
+      }
+      demoClockOffsetSeconds += Math.round(hours * 3600);
+    }
+    unfreezeFuturePools();
+    return res.json(await demoClockState());
+  } catch (e) {
+    return res.status(400).json({ error: msg(e) });
+  }
+});
+
+/** Current demo clock, so a dashboard control can render where the fast-forward is sitting. */
+app.get('/demo/clock', async (_req, res) => res.json(await demoClockState()));
+
+/**
+ * Rewinding the demo clock has to un-latch `frozen`, or the fast-forward is one-way: the mock's
+ * `syncFrozen` only ever sets the flag (correct against a real chain, where time does not run
+ * backwards), so a rehearsal would leave pools permanently untradeable. Only pools whose service
+ * time is genuinely in the future are reopened — anything still past stays frozen, and a pool
+ * frozen by `demo-freeze` stays frozen because that route rewrites service_time into the past.
+ */
+function unfreezeFuturePools(): void {
+  const pools = (chain as unknown as { pools: Map<string, { service_time: number; frozen: boolean }> })
+    .pools;
+  if (!pools) return;
+  const now = chain.now();
+  for (const p of pools.values()) if (p.frozen && now < p.service_time) p.frozen = false;
+}
+
+async function demoClockState() {
+  const now = chain.now();
+  return {
+    offset_hours: demoClockOffsetSeconds / 3600,
+    now_iso: new Date(now * 1000).toISOString(),
+    is_shifted: demoClockOffsetSeconds !== 0,
+    pools: await Promise.all(
+      POOLS.map(async (p) => {
+        const q = await chain.quote(p.pool_id);
+        return {
+          pool_id: p.pool_id,
+          label: p.label,
+          party_size: p.party_size,
+          theta_bps: q.theta_bps,
+          buy_price: q.buy_price,
+          frozen: q.frozen,
+          hours_to_service: Math.round(((p.service_time - now) / 3600) * 10) / 10,
+        };
+      }),
+    ),
+  };
+}
 
 function msg(e: unknown): string {
   return e instanceof Error ? e.message : String(e);

@@ -1,12 +1,12 @@
 /* ============================================================
-   Prime — design system
+   hora design system
    Warm near-white canvas + hazy peach/coral/yellow orbs behind
    prominent Apple-style glass. Type: Archivo (display, condensed
    caps), Inter (UI), Reenie Beanie (handwritten emphasis).
    ============================================================ */
 
 :root {
-  /* canvas — never pure white */
+  /* canvas, never pure white */
   --canvas: #f7f6f3;
   --canvas-deep: #efece7;
 
@@ -123,7 +123,7 @@ body {
   box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.9),
     inset 0 -1px 0 rgba(255, 255, 255, 0.25);
 }
-/* bright top-edge highlight — what sells the bevel */
+/* bright top-edge highlight, which is what sells the bevel */
 .glass::before {
   content: '';
   position: absolute;
@@ -166,7 +166,9 @@ body {
   font-family: var(--font-display);
   font-weight: 700;
   letter-spacing: 0.14em;
-  text-transform: uppercase;
+  /* the wordmark is lowercase by design, and this keeps it that way no matter how the
+     string is cased in source */
+  text-transform: lowercase;
   font-size: 13px;
 }
 .brand-dots {
@@ -219,7 +221,7 @@ body {
   text-transform: none;
   letter-spacing: 0;
   color: var(--coral-deep);
-  /* Reenie Beanie runs small — bump it to match cap height */
+  /* Reenie Beanie runs small, so bump it to match cap height */
   font-size: 1.55em;
   line-height: 0.7;
   padding: 0 0.06em;
@@ -457,8 +459,8 @@ body {
 
 /* ============================================================
    Issuer dashboard extensions (stream 5)
-   Same visual family as the diner app — warm canvas, drifting
-   orbs, prominent Apple-style glass — but DENSER and more
+   Same visual family as the diner app (warm canvas, drifting
+   orbs, prominent Apple-style glass) but DENSER and more
    operational. Tighter shell, tabular data rows, hero numbers
    sized to read from across a room (§11 demo steps 3 and 5).
    ============================================================ */
@@ -482,13 +484,12 @@ body {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 30px;
-  letter-spacing: -0.03em;
   line-height: 1;
   font-variant-numeric: tabular-nums;
   margin-top: 9px;
   display: flex;
   align-items: baseline;
-  gap: 1px;
+  gap: 0.05em;
 }
 .kpi__cents {
   font-size: 0.5em;
@@ -501,7 +502,7 @@ body {
   margin-top: 7px;
   line-height: 1.4;
 }
-/* the cooperative-issuer number — royalties. Warm, unmissable. */
+/* the cooperative-issuer number: royalties. Warm, unmissable. */
 .kpi--accent .kpi__value {
   color: var(--coral-deep);
 }
@@ -519,16 +520,20 @@ body {
   cursor: pointer;
   font: inherit;
   color: inherit;
-  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.18s;
+  /* transparent ring by default so selecting animates its colour instead of
+     snapping a new outline into existence */
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  transition: box-shadow 0.18s, outline-color 0.2s ease;
 }
+/* the lift moved to Framer's whileHover, because motion writes `transform` inline, which
+   would win over anything declared here */
 .pool-card:hover {
-  transform: translateY(-2px);
   box-shadow: 0 24px 56px -14px rgba(80, 45, 25, 0.24),
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 .pool-card--sel {
-  outline: 2px solid var(--coral);
-  outline-offset: -2px;
+  outline-color: var(--coral);
 }
 .pool-card__top {
   display: flex;
@@ -540,11 +545,20 @@ body {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 19px;
-  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
 
-/* band chip — "seats up to N" (§4a) */
+/* Tight tracking belongs on the digits, never on the flex container that holds them. Applied to
+   the container it also lands after the LAST dollar digit, which is what pulled ".00" back
+   underneath the dollars at hero size. */
+.money__dollars {
+  letter-spacing: -0.03em;
+}
+.hero-number .money__dollars {
+  letter-spacing: -0.045em;
+}
+
+/* band chip, "seats up to N" (§4a) */
 .band {
   font-family: var(--font-display);
   font-size: 10px;
@@ -587,6 +601,8 @@ body {
 .rows {
   display: flex;
   flex-direction: column;
+  /* anchors the rows AnimatePresence uses popLayout to pull out of flow on filter */
+  position: relative;
 }
 .row {
   display: flex;
@@ -643,16 +659,17 @@ body {
   font-weight: 700;
   font-size: clamp(74px, 11vw, 148px);
   line-height: 0.86;
-  letter-spacing: -0.045em;
   font-variant-numeric: tabular-nums;
   color: var(--coral-deep);
   display: flex;
   align-items: baseline;
-  gap: 2px;
+  /* em, not px: the gap has to grow with a number that scales from 74px to 148px */
+  gap: 0.05em;
 }
 .hero-number__cents {
   font-size: 0.36em;
   color: rgba(242, 84, 45, 0.5);
+  letter-spacing: -0.01em;
 }
 .sweep-split {
   display: grid;
@@ -670,12 +687,11 @@ body {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 27px;
-  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
   margin-top: 8px;
   display: flex;
   align-items: baseline;
-  gap: 1px;
+  gap: 0.05em;
 }
 .sweep-cell__value .kpi__cents {
   font-size: 0.5em;
@@ -769,10 +785,9 @@ body {
   cursor: pointer;
   transition: background 0.16s, color 0.16s;
 }
+/* background + shadow now live on .tab__pill, the shared element that slides */
 .tabs .tab--on {
-  background: #fff;
   color: var(--ink);
-  box-shadow: 0 2px 8px -3px rgba(80, 45, 25, 0.28);
 }
 
 /* scrollable operational list without letting the page scroll sideways */
@@ -780,4 +795,112 @@ body {
   max-height: 330px;
   overflow-y: auto;
   overflow-x: hidden;
+}
+
+/* ============================================================
+   Motion
+   Entrances, swaps and the tab pill all live in Framer now
+   (src/motion.ts holds the shared curve and distances). What
+   stays here is the plain CSS this file still owns: hover and
+   focus micro-states, and the ambient orb drift.
+   ============================================================ */
+
+/* popLayout pulls the outgoing panel out of flow with position:absolute, which
+   needs a positioned ancestor to anchor to */
+.swap {
+  position: relative;
+}
+
+/* sliding tab indicator. The white background moved off .tab--on and onto a single
+   shared element, so it travels between tabs instead of blinking on and off. */
+.tabs button {
+  position: relative;
+  isolation: isolate;
+}
+.tab__pill {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-pill);
+  background: #fff;
+  box-shadow: 0 2px 8px -3px rgba(80, 45, 25, 0.28);
+  z-index: -1;
+}
+.tab__label {
+  position: relative;
+}
+
+/* ---- respect the OS setting ----
+   Framer handles its own animations via <MotionConfig reducedMotion="user">;
+   this covers what Framer never sees. */
+@media (prefers-reduced-motion: reduce) {
+  .fade-in,
+  .sheet,
+  .sheet-backdrop,
+  .orb {
+    animation: none !important;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* --- demo clock (§11 step 4: the θ fast-forward) -------------------------------------------
+   Sits above the pool rail on the Floor tab. Deliberately quiet — it is stage scaffolding, not
+   a product surface, and it disappears with SWAP A. */
+.demo-clock {
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+.demo-clock__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.demo-clock__now {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+  margin-top: 7px;
+  font-variant-numeric: tabular-nums;
+}
+.demo-clock__lead {
+  text-align: right;
+}
+.demo-clock__price {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+  margin-top: 7px;
+  font-variant-numeric: tabular-nums;
+  color: var(--coral-deep);
+}
+/* θ rides under the price so the decay reads as one story, not two numbers */
+.demo-clock__theta {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-45);
+  margin-top: 4px;
+}
+.demo-clock__row {
+  display: flex;
+  gap: 7px;
+  margin-top: 14px;
+}
+.demo-clock__row .btn {
+  flex: 1;
+  padding-left: 0;
+  padding-right: 0;
+}
+.demo-clock__note {
+  font-size: 11.5px;
+  color: var(--ink-45);
+  margin-top: 11px;
+  line-height: 1.45;
 }

@@ -20,7 +20,7 @@ pub mod math;
 pub mod state;
 
 use error::ReservationError;
-use math::{buy_price, sell_payout, sell_price, theta_bps};
+use math::{buy_price, door_closes_at, sell_payout, sell_price, theta_bps};
 use state::{Holding, Pool, WindowTicket};
 
 declare_id!("Res1111111111111111111111111111111111111111");
@@ -40,12 +40,16 @@ pub mod reservations {
         service_time: i64,
         tc_seconds: i64,
         party_size: u8,
+        grace_seconds: i64,
     ) -> Result<()> {
         require!(n_max > 0, ReservationError::InvalidParams);
         require!(tc_seconds > 0, ReservationError::InvalidParams);
         require!((phi_bps as u64) < state::BPS_DENOM, ReservationError::InvalidParams);
         require!(party_size > 0, ReservationError::InvalidParams);
         require!(p0 > 0, ReservationError::InvalidParams);
+        // A negative grace would pull the check-in deadline BEFORE service and let sweep run early,
+        // stranding diners who arrived on time. Zero (no grace) is valid.
+        require!(grace_seconds >= 0, ReservationError::InvalidParams);
 
         let pool = &mut ctx.accounts.pool;
         pool.authority = ctx.accounts.authority.key();
@@ -60,6 +64,7 @@ pub mod reservations {
         pool.party_size = party_size;
         pool.service_time = service_time;
         pool.tc_seconds = tc_seconds;
+        pool.grace_seconds = grace_seconds;
         pool.frozen = false;
         pool.swept = false;
         pool.royalties = 0;
@@ -80,6 +85,7 @@ pub mod reservations {
             service_time,
             tc_seconds,
             party_size,
+            grace_seconds,
         });
         Ok(())
     }
@@ -258,12 +264,18 @@ pub mod reservations {
     /// Note the `window_ticket` is NOT closed here: once you have taken the night's table you do
     /// not get to buy another for that window (§7c-C).
     pub fn check_in(ctx: Context<CheckIn>) -> Result<()> {
+        let now = Clock::get()?.unix_timestamp;
         let pool = &mut ctx.accounts.pool;
         require!(
             ctx.accounts.authority.key() == pool.authority,
             ReservationError::NotAuthority
         );
         require!(!ctx.accounts.holding.redeemed, ReservationError::AlreadyRedeemed);
+        // The door closes at service_time + grace. Past that the diner is a no-show, their table
+        // forfeits, and `sweep` becomes legal (see below) — the two deadlines are the same instant,
+        // so a token can never be both still-checkable-in and already-swept.
+        let door_closes = door_closes_at(pool.service_time, pool.grace_seconds)?;
+        require!(now <= door_closes, ReservationError::GraceExpired);
 
         // Burn with the pool PDA as mint authority. Seed material is copied out first so the
         // signer seeds don't borrow from `pool` across the CPI.
@@ -312,7 +324,11 @@ pub mod reservations {
             ctx.accounts.authority.key() == pool.authority,
             ReservationError::NotAuthority
         );
-        require!(now >= pool.service_time, ReservationError::NotYetFrozen);
+        // Settlement waits for the grace window to close. Sweeping at service_time would forfeit a
+        // diner who is still inside the window the restaurant promised them, which would make the
+        // whole setting cosmetic. Trading, separately, still froze back at service_time.
+        let settle_at = door_closes_at(pool.service_time, pool.grace_seconds)?;
+        require!(now >= settle_at, ReservationError::NotYetFrozen);
         require!(!pool.swept, ReservationError::AlreadySwept);
         pool.frozen = true;
         pool.swept = true;
@@ -378,7 +394,7 @@ pub struct CreatePool<'info> {
         seeds = [b"pool", pool_seed.as_ref()],
         bump
     )]
-    pub pool: Account<'info, Pool>,
+    pub pool: Box<Account<'info, Pool>>,
     /// pool token mint, authority = pool PDA
     #[account(
         init,
@@ -388,7 +404,7 @@ pub struct CreatePool<'info> {
         seeds = [b"mint", pool.key().as_ref()],
         bump
     )]
-    pub mint: Account<'info, Mint>,
+    pub mint: Box<Account<'info, Mint>>,
     /// USDC reserve, owned by the pool PDA
     #[account(
         init,
@@ -398,8 +414,8 @@ pub struct CreatePool<'info> {
         seeds = [b"reserve", pool.key().as_ref()],
         bump
     )]
-    pub reserve: Account<'info, TokenAccount>,
-    pub usdc_mint: Account<'info, Mint>,
+    pub reserve: Box<Account<'info, TokenAccount>>,
+    pub usdc_mint: Box<Account<'info, Mint>>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
@@ -529,6 +545,7 @@ pub struct PoolCreated {
     pub service_time: i64,
     pub tc_seconds: i64,
     pub party_size: u8,
+    pub grace_seconds: i64,
 }
 
 #[event]

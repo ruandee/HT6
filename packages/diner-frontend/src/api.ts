@@ -1,5 +1,6 @@
 /**
- * app-services REST client (§10.4). The frontend talks ONLY to this — never the chain (§8).
+ * app-services REST client (§10.4). The frontend talks to this and nothing else. It never touches
+ * the chain (§8).
  * Auth is the x-user-id stub for now; swap for an Auth0 bearer token later.
  */
 export interface Quote {
@@ -25,13 +26,15 @@ export interface Holding {
   recover_value: string;
 }
 
-/** §10.4 GET /pools — one entry per service window (each its own curve). */
+/** §10.4 GET /pools. One entry per service window, each with its own curve. */
 export interface PoolSummary {
   pool_id: string;
   label: string;
+  /** the room this pool seats, so the header doesn't have to hardcode it */
+  venue_name: string;
   date_iso: string;
   service_time: number;
-  /** seats UP TO this many — a party of 3 books the 4-top band (§4a). */
+  /** seats UP TO this many, so a party of 3 books the 4-top band (§4a). */
   party_size: number;
   n_sold: number;
   n_max: number;
@@ -43,25 +46,37 @@ export interface PoolSummary {
 const USER = 'alice';
 const headers = { 'content-type': 'application/json', 'x-user-id': USER };
 
+/**
+ * Where app-services lives. Empty (the default) keeps every path RELATIVE, which is what the
+ * Vite dev proxy in vite.config.ts rewrites to :8080 — so local dev is unchanged.
+ *
+ * A deployed build has no such proxy: the frontend is static hosting on its own origin, and a
+ * relative /pools would hit the SPA rewrite and come back as index.html. So set VITE_API_URL to
+ * the app-services origin at build time (Vite inlines VITE_* — changing it needs a redeploy),
+ * and make sure that origin allows this one via CORS_ORIGINS.
+ */
+const API = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '');
+const u = (path: string) => `${API}${path}`;
+
 async function j<T>(r: Response): Promise<T> {
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? r.statusText);
   return r.json() as Promise<T>;
 }
 
 export const api = {
-  demoPoolId: () => fetch('/demo/pool-id').then(j<{ pool_id: string }>),
-  pools: () => fetch('/pools', { headers }).then(j<PoolSummary[]>),
-  quote: (id: string) => fetch(`/pools/${id}`, { headers }).then(j<Quote>),
+  demoPoolId: () => fetch(u('/demo/pool-id')).then(j<{ pool_id: string }>),
+  pools: () => fetch(u('/pools'), { headers }).then(j<PoolSummary[]>),
+  quote: (id: string) => fetch(u(`/pools/${id}`), { headers }).then(j<Quote>),
   buy: (id: string) =>
-    fetch(`/pools/${id}/buy`, { method: 'POST', headers }).then(j<BuyResponse>),
+    fetch(u(`/pools/${id}/buy`), { method: 'POST', headers }).then(j<BuyResponse>),
   sell: (id: string) =>
-    fetch(`/pools/${id}/sell`, { method: 'POST', headers }).then(
+    fetch(u(`/pools/${id}/sell`), { method: 'POST', headers }).then(
       j<{ payout_intent: string; payout_amount: string }>,
     ),
-  holdings: () => fetch('/me/holdings', { headers }).then(j<Holding[]>),
+  holdings: () => fetch(u('/me/holdings'), { headers }).then(j<Holding[]>),
   /** stub-only: drive the mock webhook exactly as the mock deposit page would. */
   stubSettle: (intentId: string, type: 'succeeded' | 'expired') =>
-    fetch('/webhooks/unifold', {
+    fetch(u('/webhooks/unifold'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-stub': '1' },
       body: JSON.stringify({

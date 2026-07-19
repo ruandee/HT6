@@ -20,8 +20,10 @@ pub enum ReservationError {
     AlreadyRedeemed,
     #[msg("Only the pool authority may perform this action")]
     NotAuthority,
-    #[msg("Pool is not frozen yet; cannot sweep before service time")]
+    #[msg("Cannot sweep yet; the check-in grace window is still open")]
     NotYetFrozen,
+    #[msg("The check-in grace window has closed for this pool")]
+    GraceExpired,
     #[msg("Pool has already been swept")]
     AlreadySwept,
     #[msg("Reserve does not cover the payout — refusing to break the solvency invariant")]

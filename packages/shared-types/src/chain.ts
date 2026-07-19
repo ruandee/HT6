@@ -30,6 +30,16 @@ export interface Pool {
   phi_bps: Bps; // royalty spread (e.g. 500)
   service_time: UnixSeconds;
   tc_seconds: number; // decay cliff length (e.g. 86400)
+  /**
+   * How long after `service_time` the restaurant holds the table for a late diner, in seconds.
+   * Defaults to 0 (door closes at service).
+   *
+   * Grace does NOT touch pricing: θ still hits 0 and trading still freezes at `service_time`, so
+   * the curve and the solvency invariant are unchanged. It moves exactly two deadlines — the last
+   * moment `check_in` is valid, and the first moment `sweep` is legal. Sweep has to wait, or the
+   * restaurant could settle at service time and forfeit a diner still inside their window.
+   */
+  grace_seconds?: number;
   frozen: boolean; // true once service reached / trading halted
   /**
    * Party-size band: this pool sells tables that seat UP TO `party_size` (§4a). A pool is
@@ -54,6 +64,8 @@ export interface CreatePoolParams {
   tc_seconds: number;
   /** seats UP TO this many (§4a). One pool per band; p0/k typically scale with it. */
   party_size: number;
+  /** late-arrival window in seconds; check_in stays valid until service_time + this. Default 0. */
+  grace_seconds?: number;
 }
 export interface CreatePoolResult {
   pool_id: PoolId;

@@ -1,8 +1,8 @@
 /* ============================================================
-   Prime — MOBILE layer.
+   hora mobile layer.
    Extends styles.css (copied verbatim from diner-frontend) with the
    phone shell, bottom tab bar, sheets, chips and touch states.
-   Nothing here overrides the design tokens — same canvas, orbs,
+   Nothing here overrides the design tokens. Same canvas, orbs,
    glass, type ramp and accent ramp.
    ============================================================ */
 
@@ -44,7 +44,8 @@ body {
   font-weight: 600;
   font-size: 11.5px;
   letter-spacing: 0.16em;
-  text-transform: uppercase;
+  /* lowercase to match the wordmark, since this caption spells the brand name out */
+  text-transform: lowercase;
   color: var(--ink-45);
 }
 
@@ -215,7 +216,7 @@ body {
   bottom: 60px;
 }
 
-/* scrolling content area — the tab bar floats above it */
+/* scrolling content area, with the tab bar floating above it */
 .scroll {
   position: relative;
   z-index: 1;
@@ -317,6 +318,8 @@ body {
   display: none;
 }
 .chip {
+  position: relative;
+  isolation: isolate;
   flex: 0 0 auto;
   scroll-snap-align: start;
   min-width: 76px;
@@ -363,12 +366,20 @@ body {
   font-variant-numeric: tabular-nums;
   color: var(--ink-70);
 }
-.chip--sel {
+/* A CSS gradient cannot be transitioned, and swapping it snaps. So the coral state is its own
+   layer that crossfades underneath the label (see NightRail.tsx). */
+.chip__fill {
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
   background: linear-gradient(168deg, var(--coral) 0%, var(--coral-deep) 100%);
-  color: #fff;
-  border-color: transparent;
   box-shadow: 0 10px 24px -10px rgba(242, 84, 45, 0.65),
     inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  z-index: -1;
+}
+.chip--sel {
+  color: #fff;
+  border-color: transparent;
 }
 .chip--sel .chip__day,
 .chip--sel .chip__price {
@@ -392,64 +403,18 @@ body {
   margin-bottom: 14px;
 }
 
-/* ---------- party-size band picker (two options: 2 or 4) ---------- */
-.bands {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+/* ---------- party size ----------
+   The base sheet styles .psize; this only sizes it for a thumb. font-size must stay at or above
+   16px, or iOS Safari zooms the whole viewport the moment the picker opens. */
+.psize {
+  max-width: none;
 }
-.band {
-  min-height: 84px;
-  padding: 14px 15px;
-  border-radius: var(--r-md);
-  border: 1px solid var(--glass-border);
-  background: rgba(255, 255, 255, 0.5);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  text-align: left;
-  cursor: pointer;
-  color: var(--ink);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 5px;
-  transition: transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.16s,
-    box-shadow 0.16s, color 0.16s;
+.psize__select {
+  padding: 17px 48px 17px 18px;
+  font-size: 16px;
 }
-.band:active:not(:disabled) {
-  transform: scale(0.96);
-}
-.band:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-.band__seats {
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-.band__price {
-  font-family: var(--font-display);
-  font-size: 21px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-.band__left {
-  font-size: 11px;
-  color: var(--ink-45);
-}
-.band--sel {
-  background: linear-gradient(168deg, var(--coral) 0%, var(--coral-deep) 100%);
-  color: #fff;
-  border-color: transparent;
-  box-shadow: 0 10px 24px -10px rgba(242, 84, 45, 0.65),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45);
-}
-.band--sel .band__left {
-  color: rgba(255, 255, 255, 0.85);
+.psize__routed {
+  font-size: 13.5px;
 }
 
 /* ---------- price block ---------- */
@@ -463,7 +428,7 @@ body {
   gap: 14px;
 }
 
-/* meal-credit split bar — "this isn't scalping" made visual */
+/* meal-credit split bar: "this isn't scalping" made visual */
 .split {
   margin-top: 16px;
 }
@@ -599,8 +564,9 @@ body {
   -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: flex-end;
-  animation: fade 0.22s ease;
 }
+/* enter, exit and the drag gesture are Framer's now (Sheet.tsx), so a mount-time CSS
+   keyframe here would fight the spring on the way in and do nothing on the way out */
 .msheet {
   width: 100%;
   max-height: 88%;
@@ -609,22 +575,28 @@ body {
   border-radius: 34px 34px 0 0;
   padding: 12px 22px calc(28px + var(--safe-bottom));
   background: var(--glass-bg-strong);
-  animation: sheet-up 0.42s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .msheet::-webkit-scrollbar {
   display: none;
 }
-@keyframes sheet-up {
-  from {
-    transform: translateY(100%);
-  }
+/* generous touch target: the drag starts here, which leaves the sheet body free to scroll */
+.msheet__handle {
+  display: block;
+  width: 100%;
+  padding: 6px 0 16px;
+  touch-action: none;
+  cursor: grab;
+}
+.msheet__handle:active {
+  cursor: grabbing;
 }
 .msheet__grab {
+  display: block;
   width: 38px;
   height: 5px;
   border-radius: 3px;
   background: var(--ink-25);
-  margin: 0 auto 18px;
+  margin: 0 auto;
 }
 
 /* ---------- holdings / wallet ---------- */
@@ -717,26 +689,28 @@ body {
   font-size: 13.5px;
   font-weight: 500;
   line-height: 1.4;
-  animation: toast-up 0.34s cubic-bezier(0.16, 1, 0.3, 1);
 }
-@keyframes toast-up {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-}
+/* enter/exit are Framer's now (App.tsx), since a mount-time keyframe could never dismiss it */
 
 /* ---------- touch hygiene ----------
    No hover-dependent interaction: every hover rule from the base sheet is
    suppressed on touch devices so nothing needs a mouse to be discoverable. */
 @media (hover: none) {
+  .btn:hover:not(:disabled),
   .btn--primary:hover:not(:disabled),
   .btn--ghost:hover:not(:disabled),
-  .guest:hover:not(:disabled):not(.guest--sel),
+  .psize__select:hover,
   .day--has:hover {
     filter: none;
     transform: none;
     background: inherit;
+  }
+  /* the press states stay. On touch they are the only feedback there is. */
+  .btn:active:not(:disabled) {
+    transform: scale(0.978);
+  }
+  .psize__select:active {
+    transform: scale(0.985);
   }
 }
 
@@ -744,4 +718,17 @@ body {
 button {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+}
+
+/* ---------- respect the OS setting ----------
+   Framer handles its own animations via <MotionConfig reducedMotion="user">;
+   this covers what Framer never sees: the orbs, the refresh spinner, CSS transitions. */
+@media (prefers-reduced-motion: reduce) {
+  .orb,
+  .ptr--spinning .ptr__spinner {
+    animation: none !important;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+  }
 }

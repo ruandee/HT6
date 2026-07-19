@@ -39,7 +39,7 @@ export class ReadModelRepository {
     const r = await this.db.query(`SELECT * FROM venues WHERE id = $1`, [id]);
     const row = r.rows[0];
     return row
-      ? { id: row.id, name: row.name, auth0_org: row.auth0_org, created_at: toIso(row.created_at) }
+      ? { id: row.id, name: row.name, org_id: row.org_id, created_at: toIso(row.created_at) }
       : null;
   }
 

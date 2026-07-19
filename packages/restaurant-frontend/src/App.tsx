@@ -6,17 +6,26 @@
  * touches the chain. Money is always a USDC base-unit string; splitUsdc/usdc do the arithmetic in
  * BigInt so no float ever touches it.
  *
- * Same visual family as the diner app (shared design system), but denser and more operational —
- * this is a screen someone works behind a host stand, not a consumer hero page.
+ * Same visual family as the diner app (shared design system), but denser and more operational.
+ * Someone works this screen from behind a host stand, so it reads like a tool.
  */
 import { useCallback, useEffect, useState } from 'react';
+import { AnimatePresence, motion, MotionConfig } from 'framer-motion';
 import { api, usdc, type CreatePoolRequest, type IssuerPoolDetail, type IssuerPoolRow } from './api';
 import { PoolGrid } from './PoolGrid';
 import { PoolDetail } from './PoolDetail';
+import { DemoClock } from './DemoClock';
 import { SweepPanel } from './SweepPanel';
 import { CreatePool } from './CreatePool';
+import { ease, fadeUp, group, pill, swap } from './motion';
 
 type Tab = 'floor' | 'settle' | 'new';
+
+const TABS: Array<{ id: Tab; label: string }> = [
+  { id: 'floor', label: 'Floor' },
+  { id: 'settle', label: 'Settle' },
+  { id: 'new', label: 'New pool' },
+];
 
 export default function App() {
   const [pools, setPools] = useState<IssuerPoolRow[]>([]);
@@ -25,6 +34,7 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('floor');
   const [busyUser, setBusyUser] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
 
   const say = useCallback((m: string) => {
@@ -47,7 +57,7 @@ export default function App() {
   }, [refresh, say]);
 
   // poll so fill/reserve/royalties move live while diners trade in the other browser session
-  // (§11 steps 2–3 — the curve ticking up and the royalty accruing on stage)
+  // (§11 steps 2 and 3: the curve ticking up and the royalty accruing on stage)
   useEffect(() => {
     if (!selected) return;
     const t = setInterval(async () => {
@@ -56,19 +66,24 @@ export default function App() {
         setPools(rows);
         setDetail(d);
       } catch {
-        /* transient — keep the last good render rather than flashing an error */
+        /* transient, so keep the last good render instead of flashing an error */
       }
     }, 2500);
     return () => clearInterval(t);
   }, [selected]);
 
   async function selectPool(id: string) {
+    if (id === selected) return;
     setSelected(id);
-    setDetail(null);
+    // Keep the outgoing panel on screen while the next one loads. Blanking to null here is what
+    // made the swap flash an empty box and jump the page height.
+    setPending(true);
     try {
       setDetail(await api.pool(id));
     } catch (e) {
       say(msg(e));
+    } finally {
+      setPending(false);
     }
   }
 
@@ -77,7 +92,7 @@ export default function App() {
     try {
       await api.checkin(selected, userId);
       await refresh(selected);
-      say(`${userId} checked in — table redeemed, their USDC stays in reserve.`);
+      say(`${userId} checked in.`);
     } catch (e) {
       say(msg(e));
     } finally {
@@ -91,9 +106,9 @@ export default function App() {
       const r = await api.sweep(selected);
       await refresh(selected);
       say(
-        `Swept ${usdc(r.amount_swept)} — ${r.forfeited_count} no-show${
+        `${usdc(r.amount_swept)} swept, ${r.forfeited_count} no-show${
           r.forfeited_count === 1 ? '' : 's'
-        } recovered, ${usdc(r.credits_to_honor)} in credits to honor.`,
+        }, ${usdc(r.credits_to_honor)} in credits to honor.`,
       );
     } catch (e) {
       say(msg(e));
@@ -107,7 +122,7 @@ export default function App() {
     try {
       await api.demoFreeze(selected);
       await refresh(selected);
-      say('Service reached — trading halted. The pool can now settle.');
+      say('Service time. Trading is closed, and you can settle now.');
     } catch (e) {
       say(msg(e));
     } finally {
@@ -121,7 +136,7 @@ export default function App() {
       const { pool_id } = await api.createPool(body);
       await refresh(pool_id);
       setTab('floor');
-      say(`Pool open — ${body.n_max} tables seating up to ${body.party_size}.`);
+      say(`Pool open with ${body.n_max} tables, up to ${body.party_size} seats.`);
     } catch (e) {
       say(msg(e));
       throw e;
@@ -130,7 +145,7 @@ export default function App() {
     }
   }
 
-  // venue-wide totals across every pool — what the owner actually cares about
+  // venue-wide totals across every pool, which is what the owner actually cares about
   const totals = pools.reduce(
     (a, p) => ({
       reserve: a.reserve + BigInt(p.reserve_balance),
@@ -143,125 +158,182 @@ export default function App() {
   const fillPct = totals.cap > 0 ? Math.round((totals.sold / totals.cap) * 100) : 0;
 
   return (
-    <>
+    <MotionConfig reducedMotion="user">
       <div className="orbs">
         <div className="orb orb--1" />
         <div className="orb orb--2" />
       </div>
 
-      <div className="shell shell--ops">
-        <header className="topbar" style={{ marginBottom: 28 }}>
+      <motion.div
+        className="shell shell--ops"
+        variants={group(0.06)}
+        initial="hidden"
+        animate="show"
+      >
+        <motion.header className="topbar" variants={fadeUp} style={{ marginBottom: 28 }}>
           <div className="brand">
             <span className="brand-dots">
               <i />
               <i />
             </span>
-            Prime · Issuer
+            hora · restaurant
           </div>
           <div className="tabs">
-            <button className={tab === 'floor' ? 'tab--on' : ''} onClick={() => setTab('floor')}>
-              Floor
-            </button>
-            <button className={tab === 'settle' ? 'tab--on' : ''} onClick={() => setTab('settle')}>
-              Settle
-            </button>
-            <button className={tab === 'new' ? 'tab--on' : ''} onClick={() => setTab('new')}>
-              New pool
-            </button>
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                className={tab === t.id ? 'tab--on' : ''}
+                onClick={() => setTab(t.id)}
+              >
+                {/* one shared element slides between tabs instead of three separate
+                    backgrounds blinking on and off */}
+                {tab === t.id && (
+                  <motion.span layoutId="tab-pill" className="tab__pill" transition={pill} />
+                )}
+                <span className="tab__label">{t.label}</span>
+              </button>
+            ))}
           </div>
-        </header>
+        </motion.header>
 
-        <h1 className="headline" style={{ fontSize: 'clamp(32px, 4.2vw, 56px)' }}>
-          Your no-shows are
-          <br />
-          <span className="script">earning</span> tonight.
-        </h1>
-
-        {/* venue-wide KPI strip */}
-        <div className="kpis" style={{ marginTop: 30 }}>
-          <div className="glass kpi">
-            <div className="stat-label">Royalties accrued</div>
+        {/* venue-wide KPI strip. This is the top of the page now: the numbers are the headline,
+            and a slogan above them only pushed them below the fold. */}
+        <motion.div className="kpis" variants={group(0.055)} style={{ marginTop: 8 }}>
+          <motion.div className="glass kpi" variants={fadeUp}>
+            <div className="stat-label">Royalties</div>
             <MoneyKpi base={totals.royalties.toString()} accent />
-            <div className="kpi__sub">Your spread on every resale, across all pools.</div>
-          </div>
-          <div className="glass kpi">
-            <div className="stat-label">Reserve held</div>
+            <div className="kpi__sub">Your cut of every resale.</div>
+          </motion.div>
+          <motion.div className="glass kpi" variants={fadeUp}>
+            <div className="stat-label">Reserve</div>
             <MoneyKpi base={totals.reserve.toString()} />
-            <div className="kpi__sub">Fully collateralizes every outstanding table.</div>
-          </div>
-          <div className="glass kpi">
-            <div className="stat-label">Tables claimed</div>
+            <div className="kpi__sub">Backs every table sold.</div>
+          </motion.div>
+          <motion.div className="glass kpi" variants={fadeUp}>
+            <div className="stat-label">Tables sold</div>
             <div className="kpi__value">
               {totals.sold}
               <span className="kpi__cents"> / {totals.cap}</span>
             </div>
-            <div className="kpi__sub">{fillPct}% of inventory across every night and band.</div>
-          </div>
-          <div className="glass kpi">
+            <div className="kpi__sub">{fillPct}% full.</div>
+          </motion.div>
+          <motion.div className="glass kpi" variants={fadeUp}>
             <div className="stat-label">Pools open</div>
             <div className="kpi__value">{pools.filter((p) => !p.settled).length}</div>
-            <div className="kpi__sub">One per night × party-size band.</div>
-          </div>
-        </div>
+            <div className="kpi__sub">One per night, per party size.</div>
+          </motion.div>
+        </motion.div>
 
-        <div style={{ marginTop: 34 }}>
-          {tab === 'new' ? (
-            <CreatePool onCreate={createPool} busy={busy} />
-          ) : (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'minmax(0, 320px) minmax(0, 1fr)',
-                gap: 20,
-                alignItems: 'start',
-              }}
-            >
-              {/* left rail: every pool */}
-              <div className="scroll-y" style={{ maxHeight: '78vh', paddingRight: 4 }}>
-                <PoolGrid pools={pools} selected={selected} onSelect={selectPool} />
-              </div>
+        {/* position:relative anchors the outgoing tab panel, which popLayout takes out of flow */}
+        <motion.div variants={fadeUp} style={{ marginTop: 34, position: 'relative' }}>
+          <AnimatePresence mode="popLayout" initial={false}>
+            {tab === 'new' ? (
+              <motion.div key="new" variants={swap} initial="hidden" animate="show" exit="exit">
+                <CreatePool onCreate={createPool} busy={busy} />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="board"
+                variants={swap}
+                initial="hidden"
+                animate="show"
+                exit="exit"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'minmax(0, 320px) minmax(0, 1fr)',
+                  gap: 20,
+                  alignItems: 'start',
+                }}
+              >
+                {/* left rail: the demo clock, then every pool */}
+                <div className="scroll-y" style={{ maxHeight: '78vh', paddingRight: 4 }}>
+                  {/* §11 step 4. θ is global, so this moves every curve at once — refresh the
+                      selected pool afterwards so the chart redraws at the decayed price. */}
+                  <DemoClock onChange={() => refresh(selected)} busy={busy} />
+                  <PoolGrid pools={pools} selected={selected} onSelect={selectPool} />
+                </div>
 
-              {/* right: the selected pool */}
-              <div>
-                {!detail ? (
-                  <div className="glass" style={{ padding: 40 }}>
-                    <p className="muted">
-                      {pools.length === 0
-                        ? 'No pools yet — open one from the New pool tab.'
-                        : 'Loading pool…'}
-                    </p>
-                  </div>
-                ) : tab === 'settle' ? (
-                  <SweepPanel pool={detail} onSweep={sweep} onFreeze={freeze} busy={busy} />
-                ) : (
-                  <PoolDetail pool={detail} onCheckin={checkin} busy={busyUser} />
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+                {/* right: the selected pool. popLayout pulls the outgoing panel out of flow so
+                    the incoming one takes its place immediately, so you get a crossfade and never
+                    a gap. Keyed on pool+tab, so the 2.5s poll never retriggers it. */}
+                <motion.div
+                  className="swap"
+                  animate={{ opacity: pending ? 0.7 : 1 }}
+                  transition={ease(0.2)}
+                >
+                  <AnimatePresence mode="popLayout" initial={false}>
+                    {!detail ? (
+                      <motion.div
+                        key="empty"
+                        className="glass"
+                        variants={swap}
+                        initial="hidden"
+                        animate="show"
+                        exit="exit"
+                        style={{ padding: 40 }}
+                      >
+                        <p className="muted">
+                          {pools.length === 0
+                            ? 'No pools yet. Open one from the New pool tab.'
+                            : 'Loading…'}
+                        </p>
+                      </motion.div>
+                    ) : tab === 'settle' ? (
+                      <motion.div
+                        key={`${detail.pool_id}-settle`}
+                        variants={swap}
+                        initial="hidden"
+                        animate="show"
+                        exit="exit"
+                      >
+                        <SweepPanel pool={detail} onSweep={sweep} onFreeze={freeze} busy={busy} />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key={`${detail.pool_id}-floor`}
+                        variants={swap}
+                        initial="hidden"
+                        animate="show"
+                        exit="exit"
+                      >
+                        <PoolDetail pool={detail} onCheckin={checkin} busy={busyUser} />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+      </motion.div>
 
-      {flash && (
-        <div
-          className="glass fade-in"
-          style={{
-            position: 'fixed',
-            bottom: 26,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            padding: '15px 26px',
-            zIndex: 30,
-            fontSize: 14,
-            fontWeight: 500,
-            maxWidth: 'min(620px, 92vw)',
-            textAlign: 'center',
-          }}
-        >
-          {flash}
-        </div>
-      )}
-    </>
+      <AnimatePresence>
+        {flash && (
+          <motion.div
+            className="glass"
+            /* x stays at -50% through every state, because motion writes `transform` wholesale and the
+               usual translateX(-50%) centering trick would be overwritten */
+            initial={{ opacity: 0, x: '-50%', y: 10, scale: 0.98 }}
+            animate={{ opacity: 1, x: '-50%', y: 0, scale: 1 }}
+            exit={{ opacity: 0, x: '-50%', y: 6, scale: 0.98 }}
+            transition={ease(0.26)}
+            style={{
+              position: 'fixed',
+              bottom: 26,
+              left: '50%',
+              padding: '15px 26px',
+              zIndex: 30,
+              fontSize: 14,
+              fontWeight: 500,
+              maxWidth: 'min(620px, 92vw)',
+              textAlign: 'center',
+            }}
+          >
+            {flash}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </MotionConfig>
   );
 }
 

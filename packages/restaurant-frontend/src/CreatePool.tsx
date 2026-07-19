@@ -1,8 +1,8 @@
 /**
- * Create pool — set p0, k, N, φ, service_time, Tc, party_size (§8 stream 5, §10.4).
+ * Create pool: set p0, k, N, φ, service_time, Tc, party_size (§8 stream 5, §10.4).
  *
  * ONE POOL PER PARTY-SIZE BAND (§4a). A 2-top and a 6-top are not interchangeable, so they cannot
- * share a curve without breaking the fungibility rule the single-curve AMM rests on — each band
+ * share a curve without breaking the fungibility rule the single-curve AMM rests on, so each band
  * gets its own honest (and for bigger tables, steeper) curve. p0 scales ≈ $20/head because the
  * meal credit is per person.
  *
@@ -10,7 +10,7 @@
  * configuration HERE, at pool creation. It is never a trade-time decision, because N must stay
  * fixed for the solvency invariant (reserve = area under the curve) to hold.
  *
- * The form works in DOLLARS for the operator and converts to base units on submit — money crosses
+ * The form works in DOLLARS for the operator and converts to base units on submit, since money crosses
  * the wire only as a base-unit string.
  */
 import { useState } from 'react';
@@ -21,14 +21,14 @@ interface Props {
   busy: boolean;
 }
 
-/** §4a suggested economics per band — p0 ≈ $20/head, k scaling with it. */
+/** §4a suggested economics per band: p0 ≈ $20/head, k scaling with it. */
 const BAND_DEFAULTS: Record<number, { p0: string; k: string; n_max: string }> = {
   2: { p0: '40', k: '3', n_max: '20' }, // §7d headline demo params
   4: { p0: '80', k: '6', n_max: '8' },
   6: { p0: '120', k: '10', n_max: '3' },
 };
 
-/** default service window: 7pm, two days out — a prime weekend-ish slot, not a sleepy Tuesday (§7). */
+/** default service window: 7pm, two days out, which lands on a prime weekend-ish slot (§7). */
 function defaultServiceLocal(): string {
   const d = new Date();
   d.setDate(d.getDate() + 2);
@@ -47,6 +47,8 @@ export function CreatePool({ onCreate, busy }: Props) {
   const [phiPct, setPhiPct] = useState('5');
   const [serviceLocal, setServiceLocal] = useState(defaultServiceLocal());
   const [tcHours, setTcHours] = useState('24');
+  /** minutes the restaurant holds a table past service before the diner counts as a no-show. */
+  const [graceMin, setGraceMin] = useState('15');
   const [label, setLabel] = useState('');
   const [err, setErr] = useState<string | null>(null);
 
@@ -61,6 +63,7 @@ export function CreatePool({ onCreate, busy }: Props) {
   }
 
   const nMaxNum = Number(nMax) || 0;
+  const graceMinNum = Math.max(0, Math.floor(Number(graceMin) || 0));
   const p0Base = toBaseUnits(p0 || '0');
   const kBase = toBaseUnits(k || '0');
 
@@ -76,10 +79,10 @@ export function CreatePool({ onCreate, busy }: Props) {
     setErr(null);
     const serviceTime = Math.floor(new Date(serviceLocal).getTime() / 1000);
     if (!Number.isFinite(serviceTime)) return setErr('Pick a valid service time.');
-    if (nMaxNum < 1) return setErr('N must be at least 1 table.');
+    if (nMaxNum < 1) return setErr('Need at least 1 table.');
     const phiBps = Math.round(Number(phiPct) * 100);
     if (!Number.isFinite(phiBps) || phiBps < 0 || phiBps > 10_000) {
-      return setErr('Royalty must be between 0% and 100%.');
+      return setErr('Your cut has to be between 0% and 100%.');
     }
     try {
       await onCreate({
@@ -97,6 +100,7 @@ export function CreatePool({ onCreate, busy }: Props) {
         phi_bps: phiBps,
         service_time: serviceTime,
         tc_seconds: Math.round(Number(tcHours) * 3600),
+        grace_seconds: graceMinNum * 60,
       });
     } catch (e2) {
       setErr(e2 instanceof Error ? e2.message : String(e2));
@@ -110,15 +114,14 @@ export function CreatePool({ onCreate, busy }: Props) {
         Open a new pool
       </div>
       <p className="muted" style={{ fontSize: 13.5, marginTop: 12, marginBottom: 24, maxWidth: 560 }}>
-        One pool per party-size band. Each band is internally fungible — any 4-top is like any
-        other 4-top — so each gets its own curve. Combining tables is a decision you make{' '}
-        <span className="script" style={{ fontSize: '1.5em' }}>here</span>, by setting N, never at
-        trade time.
+        One pool per party size. Any 4-top is like any other, so each size prices on its own. How
+        many tables you run is set{' '}
+        <span className="script" style={{ fontSize: '1.5em' }}>here</span>, up front.
       </p>
 
       {/* band */}
       <div className="field" style={{ marginBottom: 20 }}>
-        <label className="stat-label">Party-size band — seats up to</label>
+        <label className="stat-label">Party size</label>
         <div className="seg">
           {[2, 4, 6].map((n) => (
             <button
@@ -132,15 +135,15 @@ export function CreatePool({ onCreate, busy }: Props) {
           ))}
         </div>
         <span className="hint">
-          A party of 3 books the 4-top — the smallest band that fits. Picks sensible p0/k/N for the
-          band; override anything below.
+          A party of 3 books a 4-top. Picking a size fills in sensible defaults, and you can change
+          anything below.
         </span>
       </div>
 
       <div className="form-grid">
         <div className="field">
           <label className="stat-label" htmlFor="p0">
-            p0 · floor ($)
+            Starting price ($)
           </label>
           <input
             id="p0"
@@ -149,12 +152,12 @@ export function CreatePool({ onCreate, busy }: Props) {
             value={p0}
             onChange={(e) => setP0(e.target.value)}
           />
-          <span className="hint">Meal credit, redeemable against the bill.</span>
+          <span className="hint">Comes off their bill.</span>
         </div>
 
         <div className="field">
           <label className="stat-label" htmlFor="k">
-            k · slope ($/table)
+            Price step ($)
           </label>
           <input
             id="k"
@@ -163,12 +166,12 @@ export function CreatePool({ onCreate, busy }: Props) {
             value={k}
             onChange={(e) => setK(e.target.value)}
           />
-          <span className="hint">How fast scarcity prices in.</span>
+          <span className="hint">What each table adds to the price.</span>
         </div>
 
         <div className="field">
           <label className="stat-label" htmlFor="nmax">
-            N · tables
+            Tables
           </label>
           <input
             id="nmax"
@@ -177,12 +180,12 @@ export function CreatePool({ onCreate, busy }: Props) {
             value={nMax}
             onChange={(e) => setNMax(e.target.value)}
           />
-          <span className="hint">Fixed supply. Your room configuration.</span>
+          <span className="hint">Fixed once the pool opens.</span>
         </div>
 
         <div className="field">
           <label className="stat-label" htmlFor="phi">
-            φ · royalty (%)
+            Your cut (%)
           </label>
           <input
             id="phi"
@@ -191,7 +194,7 @@ export function CreatePool({ onCreate, busy }: Props) {
             value={phiPct}
             onChange={(e) => setPhiPct(e.target.value)}
           />
-          <span className="hint">Your cut of every resale.</span>
+          <span className="hint">On every resale.</span>
         </div>
 
         <div className="field">
@@ -205,12 +208,12 @@ export function CreatePool({ onCreate, busy }: Props) {
             value={serviceLocal}
             onChange={(e) => setServiceLocal(e.target.value)}
           />
-          <span className="hint">Trading halts here.</span>
+          <span className="hint">Trading stops here.</span>
         </div>
 
         <div className="field">
           <label className="stat-label" htmlFor="tc">
-            Tc · decay cliff (h)
+            Premium fades over (h)
           </label>
           <input
             id="tc"
@@ -219,7 +222,26 @@ export function CreatePool({ onCreate, busy }: Props) {
             value={tcHours}
             onChange={(e) => setTcHours(e.target.value)}
           />
-          <span className="hint">Premium bleeds to the floor across this window.</span>
+        </div>
+
+        {/* Grace is a service policy, not a pricing knob: it never touches θ or the curve, it only
+            moves the check-in deadline (and with it, when you can settle). */}
+        <div className="field">
+          <label className="stat-label" htmlFor="grace">
+            Hold the table (min)
+          </label>
+          <input
+            id="grace"
+            className="input"
+            inputMode="numeric"
+            value={graceMin}
+            onChange={(e) => setGraceMin(e.target.value)}
+          />
+          <span className="hint">
+            {graceMinNum > 0
+              ? `Late diners can still check in for ${graceMinNum} min. Settle after that.`
+              : 'No grace — a diner who misses service is a no-show.'}
+          </span>
         </div>
       </div>
 
@@ -230,13 +252,13 @@ export function CreatePool({ onCreate, busy }: Props) {
         <input
           id="label"
           className="input"
-          placeholder="Fri 7–9pm"
+          placeholder="Fri 7-9pm"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
         />
       </div>
 
-      {/* live economics preview — the solvency invariant, before you commit */}
+      {/* live economics preview: the solvency invariant, before you commit */}
       <div
         style={{
           marginTop: 24,
@@ -267,8 +289,7 @@ export function CreatePool({ onCreate, busy }: Props) {
         </div>
       </div>
       <p className="hint" style={{ marginTop: 10 }}>
-        A full pool locks Σ p(i) = the area under the curve. Every sell-back removes exactly
-        p(n−1), so the reserve can always pay out — insolvency is mathematically impossible.
+        Every dollar stays in the reserve until you settle, so a sell-back can always be paid.
       </p>
 
       {err && (

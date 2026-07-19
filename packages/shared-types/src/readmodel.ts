@@ -27,7 +27,7 @@ export type HoldingStatus = 'held' | 'redeemed' | 'sold';
 export interface VenueRow {
   id: string;
   name: string;
-  auth0_org: string | null;
+  org_id: string | null;
   created_at: string; // ISO8601
 }
 

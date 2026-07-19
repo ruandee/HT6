@@ -1,0 +1,22 @@
+# Build context sent to Cloud Build. node_modules alone is 281MB and is reinstalled in the image
+# from the lockfile, so shipping it would only slow the upload down and risk platform-specific
+# binaries leaking in from a Windows host.
+node_modules
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+.git
+.github
+.devcontainer
+
+# secrets never belong in an image layer — Cloud Run env vars carry them instead
+.env
+.env.*
+!.env.example
+
+# not part of the server build
+packages/contract/target
+packages/contract/test-ledger
+**/*.log
+.fonts
+scratchpad

@@ -1,6 +1,6 @@
 /**
  * On-screen device shell, for demoing on a laptop projected to a room. On a real phone (or any
- * narrow viewport) the frame drops away entirely via CSS and the app fills the screen — the same
+ * narrow viewport) the frame drops away entirely via CSS and the app fills the screen. The same
  * build is both the stage prop and the real thing.
  */
 import { useEffect, useState } from 'react';
@@ -30,7 +30,7 @@ export function PhoneFrame({ children }: { children: React.ReactNode }) {
           <i />
           <i />
         </span>
-        Prime — diner app
+        hora diner app
       </div>
 
       <div className="phone">

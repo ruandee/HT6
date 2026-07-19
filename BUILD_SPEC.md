@@ -21,16 +21,19 @@
 | Chain access | **TypeScript** Solana client (`@solana/web3.js` + Anchor IDL) + **mock-chain adapter** | chain-services | Only module that touches the chain. Ships mock FIRST so others don't block. |
 | Indexer + read model | **TypeScript** event listener → **Postgres** | chain-services | Subscribes to program events, writes read-cache. UI never hits RPC directly. |
 | Backend API | **Node + TypeScript** (Express/Fastify) | app-services | REST for both frontends; orchestrates buy/sell; owns auth + payments seams. |
-| Identity | **Auth0** (email login, JWT) | app-services | `sub` = Unifold `externalUserId`. Hits MLH Auth0 track. |
+| Identity | **App-managed user id** (stubbed `x-user-id` header now; pluggable JWT provider later) | app-services | The app user id **is** the Unifold `externalUserId`. One middleware is the whole seam. |
 | Payments | **Unifold** — locked-quote Payment Intents for buy (settle **Base USDC**, v1), **Treasury outbound transfers** for payout (Solana USDC OK), signed webhooks, test mode — **stubbed until API key; architecture REWORKED from real docs, see [UNIFOLD_INTEGRATION.md](UNIFOLD_INTEGRATION.md)** | app-services | Behind `PaymentGateway` (§10.5). Server side is REST (`sk_` key), no `@unifold/node`. StubGateway runs the full demo without the key. Hits Unifold track. |
-| Diner app | **React** (+ charting lib for live curve) | diner-frontend | Talks only to app-services REST. Hero = live bonding-curve chart. |
-| Restaurant app | **React** dashboard | restaurant-frontend | Create pool, monitor fill/reserve, check-in, sweep. |
+| Website | **React** (+ charting lib for live curve) | `diner-frontend` | The desktop diner experience. Talks only to app-services REST. Hero = live bonding-curve chart. |
+| Mobile app | **React** PWA in a phone frame | `mobile-diner` | The same diner product, phone-native. Same REST surface as the website. |
+| Operator Console | **React** dashboard | `restaurant-frontend` | The restaurant-side business app: create pool, monitor fill/reserve, check-in, sweep. |
+| Interactive time decay | **React** pricing sandbox | `decay-lab` | Scrub the clock and the knobs against the real pricing code. Explanatory surface, no backend. |
+| Landing page | **React** static site | `launcher` | What hora is, plus the "who are you" demo picker that routes to the three apps. |
 | Shared | **TypeScript types package** (§10 contracts) | PHASE 0 (all) | Frozen interfaces every stream imports. Build this FIRST. |
 
 **Money-authority rule:** the Solana program is the single source of truth for funds; Postgres
 is only a read cache; frontends never touch the chain; app-services reaches the chain only via
 chain-services. **Language:** TypeScript everywhere except the Anchor program (Rust).
-**Prize tracks touched:** Solana, Auth0, Unifold, Base44 (consumer-product framing).
+**Prize tracks touched:** Solana, Unifold, Base44 (consumer-product framing).
 
 ---
 
@@ -158,9 +161,9 @@ Guiding principle: put TRUST-CRITICAL state on-chain, abstract the wallet away s
   must be trustless: fungible token mint per pool, bonding-curve `buy()/sell()/redeem()`
   program, stablecoin reserve, fee routing, redemption/expiry. The curve functions in §4 ARE
   the smart contract. Solvency invariant enforced by the program holding the reserve.
-- **Payment / accessibility layer — Unifold SDK** (genuine fit, not a bolt-on). Frictionless
-  stablecoin deposits; embedded/email-login wallet; diner never touches Metamask/gas. This is
-  the wallet-cliff remover that preserves the everyday-person UX.
+- **Payment / accessibility layer — Unifold** (genuine fit, not a bolt-on). Frictionless
+  stablecoin deposits; custodial wallet keyed off the app user id; diner never touches
+  Metamask/gas. This is the wallet-cliff remover that preserves the everyday-person UX.
 - **Backend service (Node or Python)** — orchestration + speed. Venue onboarding + pool
   creation (mint new token type per service window). Runs an **event indexer** listening to
   on-chain buy/sell/redeem events → writes to Postgres. UI never hits an RPC node to render a
@@ -168,7 +171,7 @@ Guiding principle: put TRUST-CRITICAL state on-chain, abstract the wallet away s
 - **Postgres** — fast read-model (NOT authoritative over money; chain is). Holds venues,
   pools, current supply per pool, price-history time series (powers the live curve chart),
   user holdings, redemption/check-in status.
-- **Frontend (React)** — where the project is won (design is a scored criterion; core is clean
+- **Clients (React)** — where the project is won (design is a scored criterion; core is clean
   so polish differentiates). Hero screen = live bonding curve for a pool: price climbing as
   tables sell, big "buy this table" button at current spot price, "can't make it? sell it
   back" button showing current recover value. Price ticking up as slots sell during the demo
@@ -178,7 +181,6 @@ Guiding principle: put TRUST-CRITICAL state on-chain, abstract the wallet away s
 
 - **Unifold** — stablecoin settlement rail is central (depth-of-integration scores itself).
 - **MLH Best Use of Solana** — the tokenization + AMM program.
-- **MLH Best Use of Auth0** — email/identity login; justified because auth is needed anyway.
 - **Base44** — framed as a launchable consumer product (execution-focused).
 
 **On-chain arithmetic note:** θ is fractional and Solana programs use integer math. Represent
@@ -324,7 +326,38 @@ Edge cases (all LOCKED):
   restaurant, which is what happens today. §4a already declines to model table-combining for the
   same reason.
 - **Residual, not closed:** multiple accounts. That is the identity problem every ticketing system
-  has; Auth0 email verification raises the cost, payment identity would raise it further.
+  has; verified-email signup raises the cost, payment identity would raise it further.
+
+## 7c-D. Late arrival / grace period (LOCKED)
+A restaurant sets `grace_seconds` per pool at creation: how long it holds the table past
+`service_time` before the diner counts as a no-show. Typical value 15 min; 0 means the door closes
+at service.
+
+**Grace is a service policy, not a pricing knob.** It moves exactly two deadlines and nothing else:
+
+| | keyed off |
+|---|---|
+| θ decay, buy/sell price | `service_time` — UNCHANGED |
+| trading freeze | `service_time` — UNCHANGED |
+| last valid `check_in` | `service_time + grace_seconds` |
+| first legal `sweep` | `service_time + grace_seconds` |
+
+So inside the grace window the pool is frozen and θ is already 0 — the table is off the market and
+priced at the meal-credit floor — but the diner can still walk in and be counted as CONSUMED.
+
+Two consequences worth stating, because both are load-bearing:
+
+1. **Sweep must wait.** If settlement stayed legal at `service_time`, a restaurant could sweep
+   immediately and forfeit a diner who was still inside the window it promised them. That would
+   make the setting cosmetic. `sweep` therefore requires `now >= service_time + grace_seconds`.
+2. **One shared boundary.** `check_in` is valid up to and including that instant and `sweep` from
+   it, so "still checkable in" and "already swept" are mutually exclusive by construction — there
+   is no interval where a token could be both.
+
+Pricing math is untouched, so the solvency invariant (§4) and the decay argument (§7b) carry over
+unchanged. Enforced on-chain (`door_closes_at` in `math.rs`, guards in `check_in`/`sweep`) and
+mirrored in `MockChainAdapter`. `grace_seconds < 0` is rejected at creation — it would pull the
+check-in deadline before service and let sweep run early.
 
 ## 7d. Suggested demo parameters (so the curve visibly MOVES on stage)
 p0 = 40 USDC, k = 3 USDC, N = 20, φ = 500 bps (5%), Tc = 86400s (24h).
@@ -345,14 +378,16 @@ source of truth — an agent changing any signature there must flag it, because 
 2. **chain-services** — Solana client wrapper + **mock-chain adapter** (same interface, so
    others build before the program is ready) + **event indexer** (subscribes to program
    events → Postgres) + AMM read model (current n, spot price, price history). Owns §10.2, §10.3.
-3. **app-services** — Auth0 (identity) + Unifold (money, PROVISIONAL — see §10.5) + the REST
-   API the diner frontend calls (§10.4). Maps Auth0 `sub` → user's Unifold externalUserId →
+3. **app-services** — identity (app user id) + Unifold (money, PROVISIONAL — see §10.5) + the REST
+   API the clients call (§10.4). Maps the app user id → the user's Unifold externalUserId →
    app-managed token holdings. Owns §10.4, §10.5.
-4. **diner-frontend** — React consumer app: live bonding curve (hero), buy / sell-back / redeem
-   flows, holdings view. Talks ONLY to app-services REST (never the chain directly). Owns §10.4 client.
-5. **restaurant-frontend** — React issuer dashboard: create pool (set p0, k, N, φ, service_time,
-   Tc, party_size — one pool per band, §4a), monitor pool fill + reserve, trigger check-in per
-   diner, sweep reserve after service.
+4. **Website** (`diner-frontend`) — React consumer app: live bonding curve (hero), buy / sell-back /
+   redeem flows, holdings view. Talks ONLY to app-services REST (never the chain directly).
+   Owns §10.4 client. The **Mobile app** (`mobile-diner`) is the same product, phone-native, on the
+   same REST surface.
+5. **Operator Console** (`restaurant-frontend`) — React issuer dashboard, the restaurant-side
+   business app: create pool (set p0, k, N, φ, service_time, Tc, party_size — one pool per band,
+   §4a), monitor pool fill + reserve, trigger check-in per diner, sweep reserve after service.
    Talks ONLY to app-services REST. Owns §10.4 issuer client.
 
 Boundary rule (LOCKED): frontends never touch the chain; app-services never talks to the chain
@@ -377,8 +412,8 @@ This is the contract that lets everyone build in parallel — until it exists, D
 | contract | nothing — owns the math | — | YES (independent) |
 | chain-services | its OWN mock adapter (§10.2) | — | YES — ship mock first, real Solana client second |
 | app-services | chain-services mock + Unifold **StubGateway** (§10.5) | Unifold API key (ONLY for real gateway) | YES on everything except real payments |
-| diner-frontend | app-services REST (mockable via §10.4 types) | — | YES (against mock REST) |
-| restaurant-frontend | app-services REST (issuer routes) | — | YES (against mock REST) |
+| Website (`diner-frontend`) | app-services REST (mockable via §10.4 types) | — | YES (against mock REST) |
+| Operator Console (`restaurant-frontend`) | app-services REST (issuer routes) | — | YES (against mock REST) |
 
 Key point for Claude Code: **the mock-chain adapter (§10.2) and StubGateway (§10.5) are
 first-class deliverables, not throwaways.** chain-services builds the mock adapter BEFORE the
@@ -395,7 +430,7 @@ arrives. Nobody blocks.
 **Wait-gate summary (the only real dependencies):**
 1. Everyone waits on PHASE 0 shared types. (Minutes, do it first.)
 2. app-services' REAL payment path waits on the Unifold API key. Everything else in
-   app-services (auth, REST, chain calls, buy/sell orchestration against the stub) does NOT wait.
+   app-services (identity, REST, chain calls, buy/sell orchestration against the stub) does NOT wait.
 3. chain-services' REAL chain path waits on `contract` devnet deploy. The mock path does NOT wait.
 
 Nothing else blocks. If a stream finds itself waiting on something not in this list, the
@@ -423,6 +458,7 @@ Pool {
   phi_bps:        u16         // royalty spread, basis points (e.g. 500 = 5%)
   service_time:   i64         // unix ts of service window
   tc_seconds:     i64         // decay cliff length (e.g. 86400)
+  grace_seconds:  i64         // late-arrival window past service_time (§7c-D); 0 = no grace
   frozen:         bool        // true once service reached / trading halted
   party_size:     u8          // seats UP TO this many (§4a); pool = (venue, window, party_size)
 }
@@ -432,7 +468,7 @@ Pool {
 `chain-services` MUST expose a TS interface with these exact methods so diner/app agents build
 against the mock, then swap to the real program with no caller changes:
 ```
-create_pool(authority, p0, k, n_max, phi_bps, service_time, tc_seconds, party_size) -> { pool_id, mint }
+create_pool(authority, p0, k, n_max, phi_bps, service_time, tc_seconds, party_size, grace_seconds) -> { pool_id, mint }
 quote(pool_id) -> { n_sold, n_max, theta_bps, buy_price, sell_price, frozen }   // read-only
 buy(pool_id, buyer_user_id, max_price)  -> { tx_sig, status:'filled'|'rejected_slippage', price_paid?, refund? }
                                           // n -> n+1 if current buy_price <= max_price; else reject+refund (§7c-A)
@@ -455,7 +491,7 @@ sell_price = p0 + floor(k * (n_sold-1) * theta_bps / 10000) ; payout = sell_pric
 ## 10.3 Indexer event schema + Postgres (owned by `chain-services`)
 Program emits events on each state change; indexer writes them. Postgres tables (read-model only):
 ```
-venues(id, name, auth0_org, created_at)
+venues(id, name, org_id, created_at)            // org_id = external org handle from whatever IdP is wired
 pools(id, venue_id, mint, p0, k, n_max, phi_bps, service_time, tc_seconds, party_size, frozen, created_at)
 pool_state(pool_id PK, n_sold, last_buy_price, last_sell_price, theta_bps, reserve_balance, updated_at)
 price_history(id, pool_id, ts, n_sold, spot_price, theta_bps, event_type)   // powers the live chart
@@ -463,20 +499,21 @@ holdings(id, user_id, pool_id, token_amount, status[held|redeemed|sold], acquire
 events_raw(id, tx_sig, pool_id, kind[create|buy|sell|redeem|checkin|sweep], payload_json, block_time)
 ```
 
-## 10.4 REST API (owned by `app-services`; consumed by both frontends)
-Auth: Bearer JWT from Auth0 on every call; `restaurant-*` routes require issuer role.
+## 10.4 REST API (owned by `app-services`; consumed by every client)
+Auth: an app user id on every call — an `x-user-id` header today, a Bearer JWT from whatever IdP
+gets wired later. `restaurant-*` routes require issuer role.
 ```
 GET  /pools                       -> [pool summary]   // incl. party_size; one entry per (night, band) §4a
 GET  /pools/:id                   -> pool detail + current quote (proxies chain-services.quote)
 GET  /pools/:id/history?since=    -> price_history rows (for the curve chart)
 POST /pools/:id/buy               -> { deposit_intent_id, max_price, expires_at, checkout }   // §7c-A quote-lock; see §10.5 buy flow
                                   //   checkout = { client_secret, publishable_key } for beginCheckout() (real gateway),
-                                  //   or { hosted_url } for the StubGateway mock deposit page. Diner-frontend uses whichever is present.
+                                  //   or { hosted_url } for the StubGateway mock deposit page. Website/mobile use whichever is present.
 POST /pools/:id/sell              -> { payout_intent }    // see §10.5 sell flow (payout = Treasury outbound transfer)
-GET  /me/holdings                 -> holdings for Auth0 user
+GET  /me/holdings                 -> holdings for the calling user
 POST /me/redeem  {pool_id}        -> triggers redeem (or restaurant-side check_in)
 
-// issuer (restaurant-frontend):
+// issuer (Operator Console):
 POST /restaurant/pools            -> create_pool passthrough (one call per party-size band, §4a)
 GET  /restaurant/pools/:id        -> fill %, reserve, holders, royalties accrued
 POST /restaurant/pools/:id/checkin {user_id}
@@ -525,7 +562,7 @@ POST /restaurant/pools/:id/sweep
   via the "Verify Webhook Signatures" guide + Node `Webhook Verification` helper. Relevant event
   groups: **payment-intent events** (buy settlement), **withdraw / treasury events** (payout).
 - **Testnet mode CONFIRMED** ("Testnet Support" page) — resolves the devnet question. Use testnet.
-- **User model CONFIRMED:** project users filterable by `external_user_id` → our Auth0 `sub` maps
+- **User model CONFIRMED:** project users filterable by `external_user_id` → our app user id maps
   to Unifold `external_user_id` (seam holds). "List users" endpoint exists.
 - **Frontend:** `@unifold/connect-react` — `UnifoldProvider`, Checkout flow (fixed-amount crypto
   payment = our buy UI), Withdraw flow, and a **headless** option (`useDeposit`, build-your-own UI)
@@ -565,21 +602,21 @@ Mapping to real Unifold (fill exact fields from llms-full.txt):
 
 **Buy flow (LOCKED except Unifold internals; real mapping → UNIFOLD_INTEGRATION.md §4):** diner taps
 buy → app-services `quote()` → previews a locked quote (`lqq_`, ~30s) and commits it into a
-locked-quote payment intent for `buy_price` → returns `client_secret` → diner-frontend runs
-`beginCheckout({client_secret})` and deposits (gas sponsorship: confirm in Dashboard, not required
-for demo) → `payment_intent.succeeded` webhook (signature-verified) → app-services calls
+locked-quote payment intent for `buy_price` → returns `client_secret` → the website (or mobile app)
+runs `beginCheckout({client_secret})` and deposits (gas sponsorship: confirm in Dashboard, not
+required for demo) → `payment_intent.succeeded` webhook (signature-verified) → app-services calls
 `chain-services.buy(pool_id, userId, maxPrice)` → token to app-managed holding → holdings updated.
 Late deposit after expiry → `payment_intent.expired` → (deposit lands) `awaiting_refund` →
 app-services calls the refund endpoint → `refunded` → diner re-quotes.
 **Sell flow:** diner taps sell → app-services calls `chain-services.sell` → USDC returns to reserve
 → app-services `payout(userId, sell_price_net)` via **Treasury outbound transfer** (Solana USDC
 destination, `Idempotency-Key`) → `treasury.outbound_transfer.completed` webhook → holdings updated.
-**Auth0↔Unifold seam:** Auth0 `sub` = Unifold `external_user_id`. Map in app-services.
+**Identity↔Unifold seam:** the app user id = Unifold `external_user_id`. Map in app-services.
 
 **RESOLVED from real docs** (`.claude/skills/unifold/{SKILL.md,llms-full.txt}`; details in
 [UNIFOLD_INTEGRATION.md](UNIFOLD_INTEGRATION.md)): payment-intent & locked-quote request/response
 fields ✅; webhook payload shape + exact event names ✅; payout on Solana = **Treasury outbound
-transfer** (not withdraw) ✅; test mode via `*_test_` keys ✅; `external_user_id` = Auth0 `sub` ✅.
+transfer** (not withdraw) ✅; test mode via `*_test_` keys ✅; `external_user_id` = app user id ✅.
 **Still decide-at-build (both fine, gateway hides it — do NOT block):** Base-USDC buy proceeds →
 Solana reserve (treasury-float vs per-buy bridge); gas-sponsorship flag (Dashboard config); your
 project's Base/Solana treasury addresses + Solana USDC mint.
@@ -592,34 +629,35 @@ project's Base/Solana treasury addresses + Solana USDC mint.
   pool-creation decision, never trade-time. LOCKED (§4a).
 - One table per diner per (venue, service_window) — across all bands — enforced on-chain.
   LOCKED (§7c-C).
-- Check-in = restaurant staff action in dashboard (no geofencing). CONFIRMED.
-- Auth beyond email login (Auth0) not required for demo. CONFIRMED.
+- Check-in = restaurant staff action in the Operator Console (no geofencing). CONFIRMED.
+- Identity is a stubbed app user id for the demo; a real IdP is one middleware behind the same
+  seam and is not required to ship. CONFIRMED.
 
 ---
 
 # 11. Demo script (~2 min, runs on StubGateway + mock or devnet)
 
 Pre-seed: one buzzy venue, pool "Fri 7–9pm, N=20", seeded to n=6 so the curve already shows a
-premium. Two browser sessions: diner app + restaurant dashboard.
+premium. Two browser sessions: the website + the Operator Console.
 
 1. **(15s) Frame the problem.** "Hot restaurants lose money to no-shows; scarce Friday tables
    have no legit resale market. We tokenize the reservation and let an AMM price it — the
    restaurant earns on resales instead of fighting them."
-2. **(25s) Buy live.** Diner logs in (Auth0, email — no wallet). Taps the pool: curve chart
-   shows current price ~$58 (n=6). Buys. On the stub, the mock deposit page → Confirm → webhook
-   → on-chain buy. Token appears in holdings; **curve ticks UP** on the dashboard in real time.
-   Do it twice more (different sessions) — price visibly climbs.
+2. **(25s) Buy live.** Diner opens the website — email-style identity, no wallet. Taps the pool:
+   curve chart shows current price ~$58 (n=6). Buys. On the stub, the mock deposit page → Confirm →
+   webhook → on-chain buy. Token appears in holdings; **curve ticks UP** on the Operator Console in
+   real time. Do it twice more (mobile app + another session) — price visibly climbs.
 3. **(20s) Sell-back / liquidity.** A holder can't make it → taps "sell it back." Curve is the
-   counterparty (no waiting for a buyer). Price **drops** one step; restaurant dashboard shows
+   counterparty (no waiting for a buyer). Price **drops** one step; the Operator Console shows
    **royalty accrued** from the spread. "Always liquid, and the restaurant just earned a fee."
 4. **(25s) Decay.** Fast-forward the clock toward service (mock block_time). The whole curve
    **flattens toward the floor** — the scarcity premium decays (θ), meal-credit floor remains.
    "Resale value bleeds out as service approaches; you never lose the prepaid-dinner value."
 5. **(20s) Service + sweep.** Restaurant checks in the diners who showed (redeem). Pool freezes;
-   hit **Sweep**: dashboard breaks out consumed vs. **forfeited (recovered no-shows)**, total
+   hit **Sweep**: the console breaks out consumed vs. **forfeited (recovered no-shows)**, total
    swept, and meal-credits-to-honor. "No-shows became revenue; the diner still gets their credit."
 6. **(15s) Close on tracks.** "On-chain AMM + reserve on Solana; provably solvent by
-   construction; gas-free stablecoin UX via Unifold; email login via Auth0. It's a real
+   construction; gas-free stablecoin UX via Unifold; no wallet anywhere in the flow. It's a real
    consumer product a restaurant could launch."
 
 Talking points to keep ready: solvency invariant (reserve = area under curve; decay only makes

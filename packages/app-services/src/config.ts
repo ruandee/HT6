@@ -20,7 +20,12 @@ export interface Config {
 }
 
 export function loadConfig(): Config {
-  const port = Number(process.env.APP_SERVICES_PORT ?? 8080);
+  /**
+   * PORT first: Render (and most PaaS) assign a port and inject it as PORT, then health-check
+   * that exact port — bind anything else and the deploy is marked failed. APP_SERVICES_PORT stays
+   * the local-dev knob, so `npm run dev` on :8080 is unaffected.
+   */
+  const port = Number(process.env.PORT ?? process.env.APP_SERVICES_PORT ?? 8080);
   const gateway = (process.env.PAYMENT_GATEWAY ?? 'stub') as 'stub' | 'unifold';
   return {
     port,

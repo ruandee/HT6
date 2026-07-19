@@ -1,17 +1,19 @@
 /**
- * Sweep — the §7c-B settlement, and demo step 5.
+ * Sweep: the §7c-B settlement, and demo step 5.
  *
  * At service time the pool freezes and every outstanding token is in exactly one terminal state:
- *   CONSUMED  — diner checked in (redeem fired). Their USDC sweeps to the restaurant, and the
+ *   CONSUMED:  diner checked in (redeem fired). Their USDC sweeps to the restaurant, and the
  *               meal-credit floor (p0) is honored against their bill off-chain.
- *   FORFEITED — no-show: never checked in, never sold back. Their USDC sweeps in full. This is
+ *   FORFEITED: no-show, never checked in and never sold back. Their USDC sweeps in full. This is
  *               the no-show recovery, and it is the whole point of the product.
- *   SOLD-BACK — already settled at sell time (φ retained). Not part of sweep.
+ *   SOLD-BACK: already settled at sell time (φ retained). Not part of sweep.
  *
  * So FORFEITED is the hero number: money that used to be a pure loss, now revenue.
  */
+import { AnimatePresence, motion } from 'framer-motion';
 import { Money } from './Money';
 import { usdc, type IssuerPoolDetail, type SweepResponse } from './api';
+import { ease } from './motion';
 
 interface Props {
   pool: IssuerPoolDetail;
@@ -36,7 +38,7 @@ export function SweepPanel({ pool, onSweep, onFreeze, busy }: Props) {
   return (
     <section className="glass glass--strong" style={{ padding: 32 }}>
       <div className="eyebrow" style={{ marginBottom: 22 }}>
-        {swept ? 'Settled' : pool.frozen ? 'Ready to sweep' : 'Sweep preview · service not reached'}
+        {swept ? 'Settled' : pool.frozen ? 'Ready to sweep' : "Preview · service hasn't started"}
       </div>
 
       {/* THE hero: no-shows that became revenue */}
@@ -53,7 +55,20 @@ export function SweepPanel({ pool, onSweep, onFreeze, busy }: Props) {
               fontVariantNumeric: 'tabular-nums',
             }}
           >
-            {s.forfeited_count}
+            {/* the count rolls over when the pool freezes and again at sweep, keyed on the
+                value so it only moves when the number actually changes */}
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.span
+                key={s.forfeited_count}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={ease(0.24)}
+                style={{ display: 'inline-block' }}
+              >
+                {s.forfeited_count}
+              </motion.span>
+            </AnimatePresence>
           </div>
         </div>
         <div style={{ paddingBottom: 10, maxWidth: 380 }}>
@@ -70,16 +85,17 @@ export function SweepPanel({ pool, onSweep, onFreeze, busy }: Props) {
           </div>
           <p className="muted" style={{ marginTop: 10, fontSize: 14 }}>
             {s.forfeited_count === 0 ? (
-              <>Every table was claimed or checked in. Nothing forfeited this service.</>
+              <>Everyone showed up. Nothing forfeited tonight.</>
             ) : (
               <>
-                {s.forfeited_count} table{s.forfeited_count === 1 ? '' : 's'} paid for and never
-                walked in. That used to be a{' '}
-                <span style={{ color: 'var(--ink)', fontWeight: 600 }}>pure loss</span>. It is now{' '}
+                {s.forfeited_count} table{s.forfeited_count === 1 ? '' : 's'} paid for, nobody came.
+                That used to be a{' '}
+                <span style={{ color: 'var(--ink)', fontWeight: 600 }}>pure loss</span>. Tonight
+                it&apos;s{' '}
                 <span className="script" style={{ fontSize: '1.5em' }}>
                   revenue
                 </span>
-                {' '}— {usdc(recovered)} of it.
+                {' '}of {usdc(recovered)}.
               </>
             )}
           </p>
@@ -91,25 +107,24 @@ export function SweepPanel({ pool, onSweep, onFreeze, busy }: Props) {
         <div className="sweep-cell">
           <div className="stat-label">Total swept</div>
           <Money base={s.amount_swept} variant="cell" />
-          <div className="kpi__sub">Reserve + accrued royalties, to your wallet.</div>
+          <div className="kpi__sub">Reserve plus royalties.</div>
         </div>
         <div className="sweep-cell">
-          <div className="stat-label">Consumed</div>
+          <div className="stat-label">Dined</div>
           <div className="sweep-cell__value">{s.consumed_count}</div>
-          <div className="kpi__sub">Diners who checked in and dined.</div>
         </div>
         <div className="sweep-cell">
           <div className="stat-label">Forfeited</div>
           <div className="sweep-cell__value" style={{ color: 'var(--coral-deep)' }}>
             {s.forfeited_count}
           </div>
-          <div className="kpi__sub">No-shows. Their USDC sweeps in full.</div>
+          <div className="kpi__sub">You keep what they paid.</div>
         </div>
         <div className="sweep-cell">
-          <div className="stat-label">Meal credits to honor</div>
+          <div className="stat-label">Credits to honor</div>
           <Money base={s.credits_to_honor} variant="cell" />
           <div className="kpi__sub">
-            {usdc(pool.p0)} × {s.consumed_count} — applied against their bill at the table.
+            {usdc(pool.p0)} × {s.consumed_count}, off their bill.
           </div>
         </div>
       </div>
@@ -117,32 +132,36 @@ export function SweepPanel({ pool, onSweep, onFreeze, busy }: Props) {
       {/* actions */}
       <div style={{ display: 'flex', gap: 12, marginTop: 26, flexWrap: 'wrap' }}>
         {!swept && !pool.frozen && (
-          <button className="btn btn--ghost" onClick={onFreeze} disabled={busy}>
+          <motion.button
+            className="btn btn--ghost"
+            whileTap={{ scale: 0.98, transition: { duration: 0.1 } }}
+            onClick={onFreeze}
+            disabled={busy}
+          >
             Advance to service time
-          </button>
+          </motion.button>
         )}
         {!swept && (
-          <button
+          <motion.button
             className="btn btn--primary"
+            whileTap={{ scale: 0.98, transition: { duration: 0.1 } }}
             onClick={onSweep}
             disabled={busy || !pool.frozen}
-            title={pool.frozen ? undefined : 'The pool must reach service time before it can settle'}
+            title={pool.frozen ? undefined : 'Service time has to pass first'}
           >
             {busy ? 'Settling…' : 'Sweep reserve'}
-          </button>
+          </motion.button>
         )}
         {swept && (
           <div className="muted" style={{ fontSize: 13.5 }}>
-            Settled. {usdc(swept.amount_swept)} transferred to your wallet; the diner still gets
-            their credit.
+            Settled. {usdc(swept.amount_swept)} is in your wallet. Diners still get their credit.
           </div>
         )}
       </div>
 
       {!pool.frozen && !swept && (
         <p className="hint" style={{ marginTop: 14 }}>
-          Trading halts at service time (θ → 0). Sweep only settles once the pool is frozen — these
-          numbers are a live preview until then.
+          These numbers move until service time. You can settle after that.
         </p>
       )}
     </section>

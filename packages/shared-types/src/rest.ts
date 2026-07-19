@@ -98,6 +98,12 @@ export interface CreatePoolRequest {
   phi_bps: Bps;
   service_time: UnixSeconds;
   tc_seconds: number;
+  /**
+   * Late-arrival window in seconds. The restaurant holds the table this long past `service_time`
+   * before the diner counts as a no-show. Optional; 0 (or omitted) means the door closes at
+   * service. Pricing is unaffected — see `Pool.grace_seconds`.
+   */
+  grace_seconds?: number;
 }
 export interface CreatePoolResponse {
   pool_id: PoolId;

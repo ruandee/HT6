@@ -4,10 +4,12 @@
  * whose weight hints at how full that night already is.
  */
 import { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { usdc, type PoolSummary } from './api';
+import { EASE } from './motion';
 
 interface Props {
-  /** already filtered to the chosen party-size band — one pool per date. */
+  /** already filtered to the chosen party-size band, one pool per date. */
   pools: PoolSummary[];
   selected: string; // pool_id
   onSelect: (poolId: string) => void;
@@ -66,22 +68,29 @@ export function DatePicker({ pools, selected, onSelect }: Props) {
         <span style={{ opacity: 0.4, fontSize: 9 }}>▼</span>
       </button>
 
-      {open && (
-        <div
-          className="glass glass--strong"
-          role="dialog"
-          aria-label="Choose a service window"
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 10px)',
-            right: 0,
-            zIndex: 40,
-            width: 316,
-            padding: 20,
-            borderRadius: 24,
-            animation: 'rise 0.28s cubic-bezier(0.16,1,0.3,1)',
-          }}
-        >
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            className="glass glass--strong"
+            role="dialog"
+            aria-label="Choose a service window"
+            /* scales from the top-right, so it reads as unfolding out of the button
+               rather than materializing next to it */
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98, transition: { duration: 0.14, ease: EASE } }}
+            transition={{ duration: 0.26, ease: EASE }}
+            style={{
+              position: 'absolute',
+              top: 'calc(100% + 10px)',
+              right: 0,
+              zIndex: 40,
+              width: 316,
+              padding: 20,
+              borderRadius: 24,
+              transformOrigin: 'top right',
+            }}
+          >
           {/* month nav */}
           <div
             style={{
@@ -177,9 +186,10 @@ export function DatePicker({ pools, selected, onSelect }: Props) {
                 {usdc(current.buy_price)}
               </div>
             </div>
-          )}
-        </div>
-      )}
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

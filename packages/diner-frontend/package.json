@@ -1,17 +1,19 @@
 {
   "name": "@ttr/diner-frontend",
   "version": "0.0.0",
-  "description": "Stream 4: React diner app — live bonding curve, buy/sell-back/redeem, holdings (§10.4 client).",
+  "description": "Stream 4: React diner app with a live bonding curve, buy/sell-back/redeem, and holdings (§10.4 client).",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "typecheck": "tsc --noEmit",
     "preview": "vite preview"
   },
   "dependencies": {
     "@ttr/shared-types": "*",
     "@unifold/connect-react": "^0.1.70",
+    "framer-motion": "^12.42.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.12.7"

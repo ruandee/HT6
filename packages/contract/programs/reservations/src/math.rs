@@ -72,6 +72,19 @@ pub fn sell_payout(sell_price: u64, phi_bps: u16) -> Result<u64> {
     u64::try_from(net).map_err(|_| ReservationError::MathOverflow.into())
 }
 
+/// The instant the check-in door closes = `service_time + grace_seconds`.
+///
+/// This is the ONLY thing grace moves. θ and the freeze still key off `service_time`, so pricing
+/// and the solvency invariant are untouched (§7b/§4). `check_in` is valid up to and including this
+/// instant; `sweep` is legal from this instant on. Sharing one boundary is deliberate — it makes
+/// "still checkable in" and "already swept" mutually exclusive by construction.
+pub fn door_closes_at(service_time: i64, grace_seconds: i64) -> Result<i64> {
+    require!(grace_seconds >= 0, ReservationError::InvalidParams);
+    service_time
+        .checked_add(grace_seconds)
+        .ok_or(ReservationError::MathOverflow.into())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -151,5 +164,26 @@ mod tests {
     fn no_overflow_at_extremes() {
         assert!(buy_price(u64::MAX, 1, 1, FULL).is_err());
         assert!(premium(u64::MAX, u64::MAX, FULL, true).is_err());
+    }
+
+    #[test]
+    fn grace_moves_only_the_door_not_the_curve() {
+        const SERVICE: i64 = 1_000_000;
+        const GRACE: i64 = 15 * 60; // 15 minutes
+
+        // the door closes after service, by exactly the grace
+        assert_eq!(door_closes_at(SERVICE, GRACE).unwrap(), SERVICE + 900);
+        // zero grace = door closes at service (the old behaviour)
+        assert_eq!(door_closes_at(SERVICE, 0).unwrap(), SERVICE);
+        // negative grace would let sweep run before service; refuse it
+        assert!(door_closes_at(SERVICE, -1).is_err());
+        assert!(door_closes_at(i64::MAX, 1).is_err());
+
+        // THE POINT: inside the grace window θ is already 0 and trading is frozen, but the diner
+        // can still walk in. Grace must not resurrect the premium.
+        let inside = SERVICE + 60;
+        assert_eq!(theta_bps(SERVICE, inside, 86_400).unwrap(), 0);
+        assert_eq!(buy_price(P0, K, 6, 0).unwrap(), P0); // price sits on the floor, not the curve
+        assert!(inside <= door_closes_at(SERVICE, GRACE).unwrap()); // ...and check-in is still open
     }
 }

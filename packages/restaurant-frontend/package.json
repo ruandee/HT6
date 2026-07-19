@@ -1,7 +1,7 @@
 {
   "name": "@ttr/restaurant-frontend",
   "version": "0.0.0",
-  "description": "Stream 5: React issuer dashboard — create pool, monitor fill/reserve/royalties, check-in, sweep (§10.4 issuer client).",
+  "description": "Stream 5: React issuer dashboard for creating pools and monitoring fill/reserve/royalties, check-in, and sweep (§10.4 issuer client).",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@ttr/shared-types": "*",
+    "framer-motion": "^12.42.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

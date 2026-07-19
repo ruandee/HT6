@@ -1,5 +1,5 @@
 /**
- * The live price curve — the hero (§5), sized for a phone. Renders p(n) = p0 + k·n·θ across the
+ * The live price curve, the hero (§5), sized for a phone. Renders p(n) = p0 + k·n·θ across the
  * pool with the current position marked by a glowing dot. As θ decays the whole curve FLATTENS
  * toward the meal-credit floor (§7b), so the floor is drawn as a dashed reference line.
  *
@@ -36,7 +36,7 @@ interface Datum {
   state: 'sold' | 'current' | 'remaining';
 }
 
-/** Per-slot detail on tap — what this unit of the curve actually means. */
+/** Per-slot detail on tap, showing what this unit of the curve actually means. */
 function CurveTip({
   active,
   payload,
@@ -157,14 +157,18 @@ export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500, height 
             tickFormatter={(v) => `$${Math.round(v)}`}
           />
 
-          {/* meal-credit floor — the value that never decays (§7b) */}
+          {/* meal-credit floor, the value that never decays (§7b) */}
           <ReferenceLine
             y={p0n}
             stroke="rgba(22,19,15,0.28)"
             strokeDasharray="3 4"
             label={{
               value: 'MEAL CREDIT',
-              position: 'insideBottomLeft',
+              /* Right, not left: the curve leaves the floor at n=0 and climbs away from it, so the
+                 left end of this line is the one place on the chart the label is guaranteed to
+                 collide with the stroke. At the right end the curve is at its highest and the
+                 floor is empty. */
+              position: 'insideBottomRight',
               fontSize: 8.5,
               fill: 'rgba(22,19,15,0.45)',
               fontFamily: 'Archivo',

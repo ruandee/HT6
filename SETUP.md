@@ -2,7 +2,7 @@
 
 Everything needed before (and during) the build. Ordered so you can start the parallel streams as
 early as §8.1 allows. **The whole demo runs on the StubGateway + mock chain with NO external keys**
-— the credentials below are only for swapping in the *real* Auth0 / Unifold / Solana paths.
+— the credentials below are only for swapping in the *real* Unifold / Solana paths.
 
 ---
 
@@ -13,7 +13,6 @@ early as §8.1 allows. **The whole demo runs on the StubGateway + mock chain wit
 | Node 22+ / npm (✅ installed: Node 26, npm 11) | everything | now |
 | `npm install` at repo root | all TS streams | now (wires workspaces) |
 | **Phase 0 types** (✅ done, `@ttr/shared-types`) | all streams | done |
-| Auth0 tenant | real login on REST | when you wire real auth (stub JWT works earlier) |
 | Unifold `sk_`/`pk_` keys, treasury id, webhook secret | **real payments only** (SWAP B) | late — StubGateway covers the demo |
 | Rust + Anchor + Solana CLI | **real contract only** (SWAP A) | late — MockChainAdapter covers the demo |
 | Postgres (Docker ✅ installed) | §10.3 indexer | when chain-services persists the read model |
@@ -40,15 +39,69 @@ cp .env.example .env
 
 ### Run the app (no keys needed)
 
-Two terminals — the demo runs entirely on StubGateway + MockChainAdapter:
+The demo runs entirely on StubGateway + MockChainAdapter:
 
 ```bash
 # terminal 1 — backend REST + webhook ingress on :8080
 npm run dev --workspace @ttr/app-services
 
-# terminal 2 — diner app on :5173 (proxies /pools, /me, /webhooks -> :8080)
+# terminal 2 — the website on :5173 (proxies /pools, /me, /webhooks -> :8080)
 npm run dev --workspace @ttr/diner-frontend
+
+# optional — the other two apps
+npm run dev --workspace @ttr/restaurant-frontend   # :5174  Operator Console
+npm run dev --workspace @ttr/mobile-diner          # :5175  mobile app
+
+# optional — landing page + role picker that routes to all three
+npm run dev --workspace @ttr/launcher              # :5170
+
+# optional — the interactive time-decay lab, linked from the landing page's decay demo
+npm run dev --workspace @ttr/decay-lab             # :5176
 ```
+
+**http://localhost:5170** is the landing page: what hora is, for someone who has never seen it.
+It's the only surface in the repo with a selling job, which is why the three apps don't do any.
+
+Its *See for yourself* section is a live decay demo: one table priced across the run-up to service,
+computed in the browser from `@ttr/shared-types` — the same pricing code the contract runs — so
+scrubbing to the door shows the real answer rather than a drawing of one. It plays itself once on
+approach, then hands over the scrubber. The demo needs no backend and no lab server; only its
+*turn the knobs yourself* link points at :5176.
+
+**http://localhost:5170/demo** is the demo entry point: a "who are you" screen offering *a diner*
+(the website, :5173), *a diner on their phone* (the mobile app, :5175), and *the restaurant* (the
+Operator Console, :5174). Each card shows a green
+`ready` dot once that dev server answers a proxied liveness probe, so you can see at a glance
+which terminals are up. Cards always navigate regardless of what the probe thinks — a missing dot
+means "unconfirmed", never "blocked". Nothing else depends on the launcher; skip it and open the
+apps directly if you prefer.
+
+### Deploying the launcher (Vercel)
+
+The five clients are independent static builds, so each is its own Vercel project pointed at its
+package directory (`packages/launcher`, `packages/diner-frontend`, …) with **Root Directory** set
+accordingly. `packages/launcher/vercel.json` already declares the build command, output dir, and
+the SPA rewrite.
+
+The launcher's outbound links come from env vars, falling back to the local dev ports when unset:
+
+| Var | Points at |
+|---|---|
+| `VITE_DINER_URL` | deployed website (default `http://localhost:5173`) |
+| `VITE_MOBILE_URL` | deployed mobile app (default `http://localhost:5175`) |
+| `VITE_RESTAURANT_URL` | deployed Operator Console (default `http://localhost:5174`) |
+| `VITE_DEVPOST_URL` | the Devpost writeup, linked from both landing CTAs (default `https://devpost.com`) |
+| `VITE_LAB_URL` | the interactive time-decay lab, linked from the landing page's decay demo (default `http://localhost:5176`) |
+
+Set them in Project → Settings → Environment Variables. **Vite inlines `VITE_*` at build time**, so
+changing one requires a redeploy, not just an env edit. The liveness probes are dev-only and are
+dead-code-eliminated from the production bundle — deployed, the cards show their arrow and never
+call `/up/*`, so there is no CORS noise in the console.
+
+One thing that does *not* carry over automatically: the clients proxy REST calls to
+`localhost:8080` via their Vite dev configs (`/pools`, `/me`, `/webhooks`, …). Deploying them means
+hosting app-services somewhere and replacing those dev proxies with a real API base URL — the
+launcher is standalone and has no such dependency, so it can go up first on its own.
 
 Open **http://localhost:5173**. On boot the backend seeds 5 nights × 3 party-size bands (§4a) =
 15 pools, each with its own curve. The nearest night sits inside the 24h decay cliff so θ decay is
@@ -58,10 +111,13 @@ Buy flow on the stub: click Claim → the sheet opens with the price locked → 
 simulated `payment_intent.succeeded` to `/webhooks/unifold` → the on-chain buy executes → the
 curve ticks up. The same handler runs with the real gateway; only signature verification differs.
 
-Auth is stubbed as an `x-user-id` header (defaults to `alice`) until Auth0 is wired. To act as a
-different diner — useful for driving the curve up on stage, since it's one table per person per
-pool (§7c-C) — change `USER` in `packages/diner-frontend/src/api.ts` or use a second browser
-profile once real auth lands.
+Auth is stubbed as an `x-user-id` header. Every route takes a user id and everything downstream —
+including the payment rail's `external_user_id` — keys off it, so wiring a real identity provider
+is one middleware that sets that value. The website's diner is `alice`
+(`diner-frontend/src/api.ts`) and the mobile app's is `mobile_diner` (`mobile-diner/src/api.ts`) —
+**already two distinct identities**, which is what makes the launcher's two-profile setup work.
+Since it's one table per person per service window (§7c-C), driving the curve up on stage needs
+both. For a third diner, change `USER` in either file or use another browser profile.
 
 ---
 
@@ -69,14 +125,14 @@ profile once real auth lands.
 
 **Short version: put them in `.env` yourself. Do NOT paste secret keys into the chat.**
 
-`sk_...` (Unifold secret) and the Auth0 client secret are bearer credentials — anything that can read
-them can move money / mint tokens as you. Chat transcripts are the wrong place for them. The clean flow:
+`sk_...` (the Unifold secret) is a bearer credential — anything that can read it can move money /
+mint tokens as you. Chat transcripts are the wrong place for it. The clean flow:
 
 ### Recommended: you populate `.env`, I write code that reads `process.env`
 
-1. You create the resources in the two dashboards (steps 3–4 below) and paste the values into your
+1. You create the resources in the Unifold dashboard (§3 below) and paste the values into your
    local `.env`.
-2. I write all gateway/auth code to read them via `process.env.UNIFOLD_SECRET_KEY` etc. — I never see
+2. I write all gateway code to read them via `process.env.UNIFOLD_SECRET_KEY` etc. — I never see
    or hardcode the actual value. The code is testable with the stub, and "goes live" the moment your
    `.env` has real values and you flip `PAYMENT_GATEWAY=unifold`.
 
@@ -87,16 +143,14 @@ them can move money / mint tokens as you. Chat transcripts are the wrong place f
 | Publishable key | `pk_test_` | ✅ fine | designed to ship in the browser bundle |
 | Treasury account id | `ta_...` | ✅ fine | an identifier, not a credential |
 | Treasury **address** | `0x…` / Solana addr | ✅ fine | a public on-chain address |
-| Auth0 domain / client **id** / audience | — | ✅ fine | public config |
 | **Secret key** | `sk_test_` / `sk_live_` | ❌ never | full API authority |
 | **Webhook signing secret** | `whsec_...` | ❌ never | lets anyone forge settlement webhooks → fake "paid" |
-| Auth0 **client secret** | — | ❌ never | full token-issuing authority |
 
-So: if you want to hand me the non-secret ids (`pk_test_`, `ta_`, Auth0 domain/clientId/audience) in
-chat so I can pre-fill the config, that's fine. The four ❌ rows go into `.env` by your hand only.
+So: if you want to hand me the non-secret ids (`pk_test_`, `ta_`) in chat so I can pre-fill the
+config, that's fine. The two ❌ rows go into `.env` by your hand only.
 
 > Use **test-mode** keys (`pk_test_`/`sk_test_`) for the whole hackathon. If a real secret ever lands
-> in a commit or the chat, rotate it in the Unifold/Auth0 dashboard immediately — assume it's burned.
+> in a commit or the chat, rotate it in the Unifold dashboard immediately — assume it's burned.
 
 ---
 
@@ -163,21 +217,7 @@ curl -sX POST https://api.unifold.io/v1/webhook_endpoints \
 
 ---
 
-## 4. Auth0 — identity
-
-1. Create a tenant at https://auth0.com, then an **application** (Regular Web App or SPA) and an **API**
-   (this gives you the `audience`).
-2. From the app settings copy: **Domain**, **Client ID**, **Client Secret**, and the API **Identifier**
-   (audience).
-3. Fill `.env`: `AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`, `AUTH0_AUDIENCE` (shareable) and `AUTH0_CLIENT_SECRET`
-   (secret — your hand only).
-4. Seam (§10.5): app-services maps Auth0 `sub` → Unifold `external_user_id` on every intent/transfer.
-
-Until this is wired, app-services can accept a stub/dev JWT so the other streams don't wait.
-
----
-
-## 5. Solana / Anchor toolchain (contract stream only — SWAP A)
+## 4. Solana / Anchor toolchain (contract stream only — SWAP A)
 
 Not installed yet, and NOT required for any other stream (MockChainAdapter stands in). Install when you
 build the real program:
@@ -203,7 +243,7 @@ bit-for-bit (buy rounds up, sell rounds down).
 
 ---
 
-## 6. Postgres (chain-services read model — §10.3)
+## 5. Postgres (chain-services read model — §10.3)
 
 Docker is installed. Bring up a local Postgres when the indexer needs to persist:
 
@@ -217,7 +257,7 @@ Remember: Postgres is a **read cache**, never authoritative over money.
 
 ---
 
-## 7. Environment-variable reference
+## 6. Environment-variable reference
 
 See `.env.example` (committed). Summary of who reads what:
 
@@ -225,23 +265,20 @@ See `.env.example` (committed). Summary of who reads what:
 |---|---|---|
 | `PAYMENT_GATEWAY` (`stub`\|`unifold`) | app-services | no |
 | `UNIFOLD_API_BASE` (`https://api.unifold.io/v1`) | app-services | no |
-| `UNIFOLD_PUBLISHABLE_KEY` (`pk_test_`) | app-services → diner-frontend | no |
+| `UNIFOLD_PUBLISHABLE_KEY` (`pk_test_`) | app-services → website / mobile app | no |
 | `UNIFOLD_SECRET_KEY` (`sk_test_`) | app-services | **YES** |
 | `UNIFOLD_TREASURY_ID` (`ta_`) | app-services | no |
 | `UNIFOLD_WEBHOOK_SECRET` (`whsec_`) | app-services | **YES** |
-| `AUTH0_DOMAIN` / `AUTH0_CLIENT_ID` / `AUTH0_AUDIENCE` | app-services + frontends | no |
-| `AUTH0_CLIENT_SECRET` | app-services | **YES** |
 | `DATABASE_URL` | chain-services | (local dev pw) |
 | `SOLANA_RPC_URL` / `ANCHOR_WALLET` | chain-services (SWAP A) | wallet is **YES** |
 
 ---
 
-## 8. Verify you're ready
+## 7. Verify you're ready
 
 - [ ] `npm install && npm run build && npm run typecheck` all pass.
 - [ ] `.env` exists (copied from `.env.example`), is gitignored, and holds whatever keys you have.
 - [ ] Demo path works with `PAYMENT_GATEWAY=stub` + MockChainAdapter — no external keys.
 - [ ] (For real payments) `ta_` treasury funded with test USDC; webhook endpoint registered to a
       reachable HTTPS URL with all 8 events; `sk_`/`whsec_` in `.env`.
-- [ ] (For real auth) Auth0 app + API created; domain/clientId/audience/secret in `.env`.
-- [ ] No secret (`sk_`, `whsec_`, client secret, wallet key) is in git or the chat.
+- [ ] No secret (`sk_`, `whsec_`, wallet key) is in git or the chat.

@@ -11,6 +11,11 @@
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
+    "@fontsource/archivo": "^5.2.8",
+    "@fontsource/inter": "^5.2.8",
+    "@resvg/resvg-js": "^2.6.2",
+    "mathjax-full": "^3.2.1",
+    "playwright": "^1.61.1",
     "typescript": "^5.6.0"
   }
 }

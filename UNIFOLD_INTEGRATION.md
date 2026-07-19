@@ -48,14 +48,14 @@ webhooks, testnet) is right. Seven concrete details were wrong or underspecified
 ```
 UNIFOLD_API_BASE        = https://api.unifold.io/v1
 UNIFOLD_SECRET_KEY      = sk_test_...        # server only, never bundled
-UNIFOLD_PUBLISHABLE_KEY = pk_test_...        # handed to diner-frontend UnifoldProvider
+UNIFOLD_PUBLISHABLE_KEY = pk_test_...        # handed to the website's UnifoldProvider
 UNIFOLD_WEBHOOK_SECRET  = whsec_...          # from GET /v1/webhook_endpoints/{id}/secret
 UNIFOLD_TREASURY_ID     = ta_...             # created once via POST /v1/treasury/accounts
 ```
 
 - Use **test keys** (`*_test_`) for the hackathon — Unifold has explicit testnet/test mode. Don't
   mix test and live.
-- Auth seam holds exactly as specced: Auth0 `sub` → Unifold `external_user_id` on every call.
+- Auth seam holds exactly as specced: our app user id → Unifold `external_user_id` on every call.
 
 ---
 
@@ -142,7 +142,7 @@ POST /v1/payment_intents/locked_quotes              Authorization: Bearer sk_tes
 {
   "quote_id":         "lqq_...",
   "recipient_address":"<Base treasury / recipient>",
-  "external_user_id": "<Auth0 sub>",
+  "external_user_id": "<app user id>",
   "metadata": { "pool_id":"...", "max_price":"58000000", "kind":"buy" }   // correlation
 }
 -> 200 { id:"pi_...", client_secret:"pi_..._secret_...", status:"requires_payment", type:"locked_quote", ... }
@@ -151,7 +151,7 @@ POST /v1/payment_intents/locked_quotes              Authorization: Bearer sk_tes
 Return from `beginDeposit`:
 ```
 { deposit_intent_id: pi.id,
-  sdk_params: { client_secret: pi.client_secret },   // -> beginCheckout on diner-frontend
+  sdk_params: { client_secret: pi.client_secret },   // -> beginCheckout on the website / mobile app
   quote_expires_at: <intent expiry> }
 ```
 
@@ -166,7 +166,7 @@ POST /v1/treasury/outbound_transfers      Authorization: Bearer sk_test_...
 Idempotency-Key: <deterministic key, e.g. `sell:${pool_id}:${userId}:${sellSeq}`>   // REQUIRED
 {
   "source":      { "treasury_account_id":"ta_...", "currency":"usdc", "chain_id":"mainnet" },  // Solana treasury -> chain_id MUST be "mainnet"
-  "external_user_id": "<Auth0 sub>",
+  "external_user_id": "<app user id>",
   "destination": { "recipient_address":"<diner Solana USDC addr>", "chain_type":"solana",
                    "chain_id":"mainnet", "token_address":"<Solana USDC mint>" },
   "amount": "55100000"     // sell_price_net in USDC base units
@@ -227,7 +227,7 @@ Only §10.5 / this file changes when the stub becomes real.
 
 ---
 
-## 6. Diner-frontend (client SDK) — BUY UI
+## 6. Website / mobile app (client SDK) — BUY UI
 
 ```tsx
 import { UnifoldProvider, useUnifold } from '@unifold/connect-react';
@@ -254,7 +254,7 @@ Resolved by the real docs (no longer TODO):
 - ✅ Payout on Solana = Treasury outbound transfer with `Idempotency-Key` (§4). (`beginWithdraw`
   rejected: client-signed, not custodial.)
 - ✅ Testnet: use `*_test_` keys / test mode.
-- ✅ User model: `external_user_id` = Auth0 `sub`.
+- ✅ User model: `external_user_id` = our app user id.
 
 Genuinely decide-at-build (both fine, gateway hides it):
 - [ ] Base-USDC buy proceeds → Solana reserve: treasury-float (recommended, §2) vs. per-buy bridge.
@@ -270,6 +270,6 @@ Genuinely decide-at-build (both fine, gateway hides it):
 - [ ] `payout`: outbound transfer with deterministic `Idempotency-Key`, Solana destination.
 - [ ] `POST /webhooks/unifold`: raw-body signature verify (`v1,<hex>`, HMAC over `id.ts.rawBody`), 5-min skew, dedupe by `unifold-id`.
 - [ ] Event switch mapping (§4 table); fulfill buy ONLY on `payment_intent.succeeded`; refund on `awaiting_refund`.
-- [ ] Auth0 `sub` → `external_user_id` on every intent/transfer.
+- [ ] App user id → `external_user_id` on every intent/transfer.
 - [ ] Test keys only; secret key server-side; publishable key to frontend.
 - [ ] Stub deposit page with Confirm / Expired buttons hitting the same webhook handler.

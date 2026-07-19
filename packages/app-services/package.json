@@ -8,7 +8,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "dev": "node --experimental-strip-types --watch src/server.ts",
+    "_comment_dev": "Runs from the build rather than the sources. `node --experimental-strip-types src/server.ts` cannot resolve this package's './config.js'-style specifiers back to .ts and dies with ERR_MODULE_NOT_FOUND, so the previous watch-mode dev script did not start at all on Node 22+. Building first costs ~3s and works everywhere; use `dev:watch` if you want reload while editing.",
+    "dev": "npm run build && node dist/server.js",
+    "dev:watch": "node --watch dist/server.js",
     "start": "node dist/server.js"
   },
   "dependencies": {
