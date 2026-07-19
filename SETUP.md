@@ -91,7 +91,7 @@ The launcher's outbound links come from env vars, falling back to the local dev 
 | `VITE_MOBILE_URL` | deployed mobile app (default `http://localhost:5175`) |
 | `VITE_RESTAURANT_URL` | deployed Operator Console (default `http://localhost:5174`) |
 | `VITE_DEVPOST_URL` | the Devpost writeup, linked from both landing CTAs (default `https://devpost.com`) |
-| `VITE_LAB_URL` | the interactive time-decay lab, linked from the landing page's decay demo (default `http://localhost:5176`) |
+| `VITE_LAB_URL` | the interactive time-decay lab, linked from the landing page's decay demo (default `https://ttr-decay-lab.vercel.app/`; set to `http://localhost:5176` to point at a local lab) |
 
 Set them in Project → Settings → Environment Variables. **Vite inlines `VITE_*` at build time**, so
 changing one requires a redeploy, not just an env edit. The liveness probes are dev-only and are

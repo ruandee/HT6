@@ -26,7 +26,7 @@ import { DECAY_PATH, POOL, START_HOURS, pricesAt, tauLabel, type DecayPoint } fr
 import { reveal, hoverLift, tapPress } from './motion';
 
 const AXIS = { fontSize: 10, fill: 'rgba(22,19,15,0.4)', fontFamily: 'Archivo' } as const;
-const LAB_URL = import.meta.env.VITE_LAB_URL ?? 'http://localhost:5176';
+const LAB_URL = import.meta.env.VITE_LAB_URL ?? 'https://ttr-decay-lab.vercel.app/';
 
 /** One sweep from the shoulder to the door, in seconds. Slow enough to read the numbers move. */
 const SWEEP_SECONDS = 9;
