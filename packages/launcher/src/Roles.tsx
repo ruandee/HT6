@@ -12,14 +12,16 @@ import { fadeUp, group } from './motion';
 import { Desktop, Phone, Counter } from './Glyphs';
 
 /**
- * Targets are env-driven so a deployed build points at real hosts; the fallbacks are the local
- * dev ports the demo runs on. Vite inlines VITE_* at build time, so a changed URL needs a redeploy,
- * not just an env edit.
+ * Targets are env-driven so a build can be pointed elsewhere; the fallbacks are the deployed
+ * hosts, so the landing page works without any env set. Point these at the local dev ports
+ * (5173/5175/5174) to drive a local stack. Vite inlines VITE_* at build time, so a changed URL
+ * needs a redeploy, not just an env edit.
  */
 const URLS = {
-  diner: import.meta.env.VITE_DINER_URL ?? 'http://localhost:5173',
-  mobile: import.meta.env.VITE_MOBILE_URL ?? 'http://localhost:5175',
-  restaurant: import.meta.env.VITE_RESTAURANT_URL ?? 'http://localhost:5174',
+  diner: import.meta.env.VITE_DINER_URL ?? 'https://ht-6-diner-frontend-xzc7.vercel.app/',
+  mobile: import.meta.env.VITE_MOBILE_URL ?? 'https://ht-6-mobile-diner.vercel.app/',
+  restaurant:
+    import.meta.env.VITE_RESTAURANT_URL ?? 'https://ht-6-restaurant-frontend-three.vercel.app/',
 };
 
 interface Role {
