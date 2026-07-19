@@ -195,58 +195,53 @@ export default function App() {
           <WalletPill holdings={allHeld} />
         </motion.header>
 
-        {/* Names the room and reports what it's doing, in the same shape the phone uses. The
-            fill word is derived (see venue.ts), so it stays true as the night sells. */}
-        <motion.h1 className="headline" variants={fadeUp}>
-          {venue.name} is
-          <br />
-          <span className="script">{venue.fill}</span>.
-        </motion.h1>
-        {/* "all sizes" because the curve panel below counts one band (6 of 20) while this counts
-            the whole night (9 of 28); without it the two numbers look like a bug */}
-        <motion.p className="muted" variants={fadeUp} style={{ maxWidth: 380, marginTop: 20 }}>
-          {currentPool ? `${currentPool.label} · ` : ''}
-          {venue.cap > 0
-            ? `${venue.sold} of ${venue.cap} tables gone, all sizes`
-            : 'Loading tonight'}
-        </motion.p>
-
         {/* ---- main grid ----
-            Calendar first and unglazed, so the night you're pricing is settled before anything
-            asks you to pay for it. The two glass panels to its right are the consequence. */}
+            The rail leads: the room's name, what it's doing tonight, and the month you pick from,
+            all unglazed so they read as the canvas rather than as cards. The night is settled
+            there before either glass panel asks you to pay for it. */}
         <motion.div className="grid" variants={group(0.08)}>
-          <motion.div variants={fadeUp}>
-            <Calendar pools={pools} selected={poolId} guests={guests} onSelect={selectPool} />
+          <motion.div className="rail" variants={fadeUp}>
+            {/* Names the room and reports what it's doing, in the same shape the phone uses. The
+                fill word is derived (see venue.ts), so it stays true as the night sells. */}
+            <h1 className="headline">
+              {venue.name} is
+              <br />
+              <span className="script">{venue.fill}</span>.
+            </h1>
+            {/* "all sizes" because the curve panel counts one band (6 of 20) while this counts the
+                whole night (9 of 28); without it the two numbers look like a bug */}
+            <p className="muted lede">
+              {currentPool ? `${currentPool.label} · ` : ''}
+              {venue.cap > 0
+                ? `${venue.sold} of ${venue.cap} tables gone, all sizes`
+                : 'Loading tonight'}
+            </p>
+
+            <div className="rail__cal">
+              <Calendar pools={pools} selected={poolId} guests={guests} onSelect={selectPool} />
+            </div>
           </motion.div>
 
-          {/* curve panel */}
-          <motion.section className="glass" variants={fadeUp} style={{ padding: 26 }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: 18,
-                gap: 16,
-              }}
-            >
-              <div className="eyebrow" style={{ flex: 1 }}>
-                Tonight&apos;s pricing
-              </div>
+          {/* curve panel. The chart is the one thing here worth extra room, so it's the child that
+              absorbs whatever height the column has left over. */}
+          <motion.section className="glass panel" variants={fadeUp} style={{ padding: 26 }}>
+            <div className="eyebrow" style={{ marginBottom: 16 }}>
+              Tonight&apos;s pricing
             </div>
-            {q && currentPool ? (
-              <CurveChart
-                p0={BAND_PARAMS[currentPool.party_size]?.p0 ?? '40000000'}
-                k={BAND_PARAMS[currentPool.party_size]?.k ?? '3000000'}
-                nMax={q.n_max}
-                nSold={q.n_sold}
-                thetaBps={q.theta_bps}
-                phiBps={500}
-              />
-            ) : (
-              <div style={{ height: 260 }} />
-            )}
-            <div style={{ marginTop: 20 }}>
+            <div className="panel__grow">
+              {q && currentPool && (
+                <CurveChart
+                  p0={BAND_PARAMS[currentPool.party_size]?.p0 ?? '40000000'}
+                  k={BAND_PARAMS[currentPool.party_size]?.k ?? '3000000'}
+                  nMax={q.n_max}
+                  nSold={q.n_sold}
+                  thetaBps={q.theta_bps}
+                  phiBps={500}
+                />
+              )}
+            </div>
+            {/* pinned to the panel's floor, so it lines up with the buy button beside it */}
+            <div style={{ marginTop: 'auto', paddingTop: 18 }}>
               <div className="stat-label" style={{ marginBottom: 9 }}>
                 {q ? `${q.n_sold} of ${q.n_max} taken` : ' '}
               </div>
@@ -259,11 +254,12 @@ export default function App() {
             </div>
           </motion.section>
 
-          {/* buy panel */}
-          <motion.section
-            className="glass glass--strong"
-            variants={fadeUp}
-            style={{ padding: 30 }}
+          {/* buy panel over wallet: the thing you press, and directly beneath it the thing pressing
+              it gives you. Both stay on screen, so booking never scrolls anything out of view. */}
+          <motion.div className="stack" variants={fadeUp}>
+          <section
+            className="glass glass--strong panel"
+            style={{ padding: 28, flex: '1 1 auto' }}
           >
             <PartySize bands={bandsTonight} guests={guests} onGuests={selectGuests} />
 
@@ -292,47 +288,50 @@ export default function App() {
               )}
             </div>
 
-            <button
-              className="btn btn--primary"
-              style={{ width: '100%', marginTop: 26 }}
-              onClick={startBuy}
-              disabled={!q || q.frozen || left === 0 || heldThisWindow.length > 0}
-            >
-              {heldThisWindow.length > 0
-                ? "You're booked"
-                : left === 0
-                  ? 'Sold out'
-                  : 'Claim this table'}
-            </button>
-            {heldOtherBand.length > 0 && (
-              <div
-                style={{
-                  fontSize: 11.5,
-                  color: 'var(--ink-45)',
-                  textAlign: 'center',
-                  marginTop: 10,
-                  lineHeight: 1.5,
-                }}
+            {/* auto margin, so the panel's spare height collects ABOVE the button instead of
+                trailing under it. The action always sits on the panel's floor. */}
+            <div style={{ marginTop: 'auto', paddingTop: 26 }}>
+              <button
+                className="btn btn--primary"
+                style={{ width: '100%' }}
+                onClick={startBuy}
+                disabled={!q || q.frozen || left === 0 || heldThisWindow.length > 0}
               >
-                You have the table for{' '}
-                {bandsTonight.find((b) => b.pool_id === heldOtherBand[0]!.pool_id)?.party_size ??
-                  ''}{' '}
-                this night. Sell it back below to switch sizes.
-              </div>
-            )}
-          </motion.section>
-        </motion.div>
+                {heldThisWindow.length > 0
+                  ? "You're booked"
+                  : left === 0
+                    ? 'Sold out'
+                    : 'Claim this table'}
+              </button>
+              {heldOtherBand.length > 0 && (
+                <div
+                  style={{
+                    fontSize: 11.5,
+                    color: 'var(--ink-45)',
+                    textAlign: 'center',
+                    marginTop: 10,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  You have the table for{' '}
+                  {bandsTonight.find((b) => b.pool_id === heldOtherBand[0]!.pool_id)?.party_size ??
+                    ''}{' '}
+                  this night. Sell it back below to switch sizes.
+                </div>
+              )}
+            </div>
+          </section>
 
-        {/* Selling used to live in the buy panel, which meant the panel changed shape depending
-            on what you held and could only ever offer back the night you happened to be looking
-            at. It's the wallet's job, and the wallet holds every night at once. */}
-        <motion.div variants={fadeUp}>
-          <Wallet
-            holdings={allHeld}
-            pools={pools}
-            viewingPoolId={poolId}
-            onSell={setSellFor}
-          />
+            {/* Selling used to live in the buy panel, which meant the panel changed shape
+                depending on what you held and could only ever offer back the night you happened
+                to be looking at. It's the wallet's job, and the wallet holds every night. */}
+            <Wallet
+              holdings={allHeld}
+              pools={pools}
+              viewingPoolId={poolId}
+              onSell={setSellFor}
+            />
+          </motion.div>
         </motion.div>
       </motion.div>
 

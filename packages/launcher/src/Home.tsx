@@ -62,22 +62,22 @@ const STEPS: Step[] = [
   {
     n: '01',
     title: 'Pick a night, get a price',
-    body: 'Choose the date and how many of you there are. Every table of that size on that night shares one price, and most of what you pay is a credit off your bill when you turn up — so you are mostly just paying for dinner early.',
+    body: 'Choose the date and party size; every party with n members shares the same price, and most of what you pay is a credit off your bill when you arrive. So you prepay for your food, and for preserving your optionality.',
   },
   {
     n: '02',
     title: 'The price follows the room',
-    body: 'Each table sold nudges the price up for the next one, so booking early is genuinely cheaper and a nearly full Saturday costs what a nearly full Saturday is worth. As service gets close the premium fades away again, back down to the dinner credit it started from.',
+    body: 'Each table sold nudges the price up for the next one, so booking early is cheaper and a nearly full Saturday costs what a nearly full Saturday is worth. As service gets close, the premium fades away again, back down to the dinner credit it started from.',
   },
   {
     n: '03',
-    title: 'Changed your mind? Sell it back',
-    body: 'There is always someone to sell to, because the app itself is the buyer. Hand the table back any time before service and the money returns immediately, minus a small cut for the restaurant. No phone call, no pleading with the host, no writing off the whole thing because Tuesday fell apart.',
+    title: 'Plans changed? Sell it back',
+    body: 'There is always someone to sell to, because the app itself is the buyer, as an automated market maker (AMM). Hand the table back any time before service and the money returns immediately, minus a small cut for the restaurant. No need to call in!',
   },
   {
     n: '04',
     title: 'A no-show finally pays',
-    body: 'If nobody shows and nobody sold it back, the table was still paid for, and that money goes to the restaurant at the end of the night. No card holds, no penalty emails, no chasing anyone. The empty seat simply stops being a loss.',
+    body: 'If nobody shows and nobody sold it back, the table was still paid for, and that money goes to the restaurant at the end of the night. No card holds or blacklists. The restaurant recoups on the empty seats.',
   },
 ];
 
@@ -119,9 +119,9 @@ const SIDES: Side[] = [
   {
     who: 'For diners',
     lines: [
-      'Book early and pay less for it.',
-      'Change your mind and get most of it back.',
-      'Most of the price is dinner you have already paid for.',
+      'Book early and pay less for it; all while keeping your optionality.',
+      'Change your mind, and get most of it back.',
+      'Most of the price is prepaying for your dinner',
       'A table you cannot use costs you almost nothing.',
     ],
   },
@@ -129,8 +129,8 @@ const SIDES: Side[] = [
     who: 'For restaurants',
     lines: [
       'Every seat is paid for before service, not after.',
-      'A no-show turns into revenue instead of a hole in the night.',
-      'Every resale pays the house a cut, so reselling stops being the enemy.',
+      'A no-show turns into revenue instead of an automatic loss',
+      'Every resale pays the house a cut, so reservation scalpers are cut out of the equation.',
       'You see the room filling in real time, and what you are owed at the end.',
     ],
   },
@@ -244,9 +244,8 @@ export default function Home({ onEnter }: { onEnter: (e: React.MouseEvent) => vo
         </motion.h2>
         <motion.p className="sec__lede" variants={disclose}>
           The hardest table in town costs the same as an empty Tuesday: nothing. So the good one
-          gets hoarded and quietly resold in a group chat, the easy one gets abandoned at 7:58, and
-          the restaurant pays for both. A reservation is one of the last genuinely scarce things
-          nobody ever bothered to put a price on.
+          gets hoarded and quietly resold in a third-party auction, the easy one gets abandoned at 7:58, and
+          the restaurant pays for both. 
         </motion.p>
       </Section>
 

@@ -112,7 +112,9 @@ export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500 }: Props
   const current = data[Math.min(nSold, nMax)];
 
   return (
-    <div style={{ width: '100%', height: 260 }}>
+    /* 100%, not a fixed 260: the panel is stretched to its column and hands the leftover height
+       to this chart, which is the one thing on the page that earns extra room. */
+    <div style={{ width: '100%', height: '100%' }}>
       <ResponsiveContainer>
         <AreaChart data={data} margin={{ top: 18, right: 14, bottom: 4, left: 4 }}>
           <defs>

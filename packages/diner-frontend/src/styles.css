@@ -141,24 +141,29 @@ body {
   background: var(--glass-bg-strong);
 }
 
-/* ---- layout ---- */
+/* ---- layout ----
+   The page is one screen. Everything the diner needs to pick a night and pay for it is visible
+   at once, so there is no scroll to hunt through and nothing important below a fold. That is a
+   HARD constraint here, not a preference, and it's what the column rules below are protecting:
+   the shell owns the viewport's height and hands what's left to the grid, which hands it to the
+   panels. Anything that can't fit gets its own contained scroll rather than pushing the page. */
 .shell {
   position: relative;
   z-index: 1;
-  max-width: 1320px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 28px 32px 72px;
+  padding: 24px 34px 30px;
 }
 
-/* Calendar · curve · buy. The calendar column is narrow on purpose: it's a month, and a month
-   is only ever seven columns wide. Below 1120px the calendar takes the full width and the two
+/* Masthead+calendar · curve · buy+wallet. The rail is narrow on purpose: it's a month, and a
+   month is only ever seven columns wide. Below 1120px the rail takes the full width and the two
    panels sit under it, which is the same reading order, just stacked. */
 .grid {
   display: grid;
-  grid-template-columns: 296px minmax(0, 1.3fr) minmax(0, 1fr);
-  gap: 30px;
-  margin-top: 46px;
-  align-items: start;
+  grid-template-columns: 344px minmax(0, 1.25fr) minmax(0, 0.95fr);
+  gap: 28px;
+  margin-top: 26px;
+  align-items: stretch;
 }
 @media (max-width: 1120px) {
   .grid {
@@ -173,11 +178,81 @@ body {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* The one-screen lock. Gated on BOTH axes: a short window (or a phone) gets the ordinary
+   scrolling document back, because clipping the claim button to save a scrollbar would be a
+   straight downgrade. Only where the layout genuinely fits do we hold it to the viewport. */
+@media (min-width: 1121px) and (min-height: 660px) {
+  html,
+  body,
+  #root {
+    overflow: hidden;
+  }
+  .shell {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+  .grid {
+    flex: 1;
+    /* without this the grid refuses to shrink below its content and the lock leaks */
+    min-height: 0;
+    /* A ceiling, because "fill the viewport" stops being a good instruction on a tall monitor:
+       past this the panels are just stretched, and stretched is not the same as designed. The
+       slack below is canvas, and the canvas here is two gradient orbs — it can carry it. */
+    max-height: 720px;
+  }
+}
+
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 40px;
+  flex: 0 0 auto;
+}
+
+/* ---- left rail: the masthead sits ON the calendar column ----
+   It used to run full width above the grid, which cost ~250px of height and left the entire
+   right half of that band empty. As a column head it costs nothing: the room's name reads down
+   into the month you're picking, and the bottom of the calendar lands on the bottom of the two
+   panels beside it. */
+.rail {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+/* pinned low so all three columns share one baseline; the headline stays up top */
+.rail__cal {
+  margin-top: auto;
+  padding-top: 30px;
+}
+@media (max-width: 1120px) {
+  .rail__cal {
+    margin-top: 26px;
+    padding-top: 0;
+  }
+}
+
+/* a panel that fills its column and lets ONE child absorb the slack */
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+/* The chart absorbs whatever height the column has spare. The cap is set just above what the
+   tallest supported viewport hands it, so it acts as a guard rather than a real limit — cap it
+   lower and the slack doesn't go away, it just reappears as a hole in the middle of the glass. */
+.panel__grow {
+  flex: 1;
+  min-height: 190px;
+  max-height: 560px;
+}
+/* right column: buy panel takes the slack, wallet sits under it at its natural size */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-height: 0;
 }
 .brand {
   display: flex;
@@ -225,15 +300,28 @@ body {
   background: var(--hairline);
 }
 
-/* ---- headline with handwritten emphasis ---- */
+/* ---- headline with handwritten emphasis ----
+   Sized to the RAIL, not the page. It reads as a masthead over the month rather than a banner
+   across the top, which is what buys back the vertical the one-screen layout needs. The price
+   is the biggest number on screen now, which is the right order for a thing you're buying. */
 .headline {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: clamp(38px, 5.4vw, 72px);
+  font-size: clamp(34px, 2.9vw, 44px);
   line-height: 0.98;
   letter-spacing: -0.02em;
   text-transform: uppercase;
-  margin: 18px 0 0;
+  margin: 14px 0 0;
+}
+/* the status line under it: what night, and how much of it is gone */
+.lede {
+  margin: 14px 0 0;
+  max-width: 320px;
+}
+@media (max-width: 1120px) {
+  .headline {
+    font-size: clamp(38px, 5.4vw, 64px);
+  }
 }
 .script {
   font-family: var(--font-script);
@@ -260,8 +348,9 @@ body {
   align-items: baseline;
   gap: 2px;
 }
+/* scaled off the buy column's width, not the page's — at 8.5vw this overflowed its own panel */
 .price--hero {
-  font-size: clamp(64px, 8.5vw, 104px);
+  font-size: clamp(54px, 5vw, 78px);
 }
 .price__cents {
   font-size: 0.44em;
@@ -641,30 +730,42 @@ body {
 
 /* ---- wallet ----
    The phone's Wallet tab, unfolded onto the page. A desktop has room to show your tables and the
-   thing you're booking at the same time, so this is a section you scroll to, not a view you
-   switch into: no tab, no route, nothing to come back from. */
+   thing you're booking at the same time, so this is neither a tab nor a route — it sits directly
+   under the button that fills it, in the same column, always on screen. Unglazed like the rail,
+   so the glass tickets inside it don't sit on more glass. */
 .wallet {
-  margin-top: 56px;
+  display: flex;
+  flex-direction: column;
+  /* natural height, but never taller than the slack the buy panel leaves it */
+  flex: 0 1 auto;
+  min-height: 0;
   scroll-margin-top: 24px;
 }
 .wallet__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(288px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  gap: 14px;
+  /* more tables than the column can show scroll HERE, so the page itself never does */
+  overflow-y: auto;
+  min-height: 0;
+  /* room for the tickets' shadows, which a flush overflow box would shear off */
+  margin: -6px;
+  padding: 6px;
 }
 .wallet__foot {
-  margin-top: 18px;
-  font-size: 13px;
+  margin-top: 14px;
+  font-size: 12.5px;
   color: var(--ink-45);
+  flex: 0 0 auto;
 }
 .wallet__empty {
-  padding: 34px 2px 8px;
+  padding: 4px 2px 0;
 }
 
 /* the ticket, same object as on the phone: perforated stub, price you can get back */
 .ticket {
   position: relative;
-  padding: 22px 20px;
+  padding: 18px 18px 20px;
   border-radius: var(--r-lg);
   overflow: hidden;
 }
@@ -692,7 +793,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 18px 0;
+  margin: 14px 0;
 }
 .ticket__perf i {
   flex: 1;

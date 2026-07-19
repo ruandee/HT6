@@ -26,15 +26,16 @@ export function Wallet({ holdings, pools, viewingPoolId, onSell }: Props) {
 
   return (
     <section id="wallet" className="wallet">
-      <div className="eyebrow" style={{ marginBottom: 20 }}>
+      <div className="eyebrow" style={{ marginBottom: 16, flex: '0 0 auto' }}>
         Your tables
       </div>
 
       {holdings.length === 0 ? (
         <div className="wallet__empty">
           <span className="empty__mark">nothing yet</span>
-          <p className="muted" style={{ marginTop: 12, maxWidth: 300 }}>
-            Claim a table and it shows up here — with what it's worth back, any time before service.
+          <p className="muted" style={{ marginTop: 6, fontSize: 13, maxWidth: 300 }}>
+            Claim a table and it shows up here — with what it&apos;s worth back, any time before
+            service.
           </p>
         </div>
       ) : (
@@ -78,14 +79,14 @@ export function Wallet({ holdings, pools, viewingPoolId, onSell }: Props) {
                   </div>
 
                   <div className="stat-label">Sell back for</div>
-                  <div className="price" style={{ fontSize: 34, marginTop: 6 }}>
+                  <div className="price" style={{ fontSize: 30, marginTop: 5 }}>
                     <span>${v.dollars}</span>
                     <span className="price__cents">.{v.cents}</span>
                   </div>
 
                   <button
                     className="btn btn--ghost"
-                    style={{ width: '100%', marginTop: 18 }}
+                    style={{ width: '100%', marginTop: 14 }}
                     onClick={() => onSell(h)}
                   >
                     Can&apos;t make it? Sell it back

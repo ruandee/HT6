@@ -1,25 +1,16 @@
-# hora — video demo script + production guide
+# hora — video script
 
-For the **online judges**, who watch without you in the room. Different job from `PITCH.md`:
-in person you're defending engineering decisions in real time, here you're making someone who
-has never heard of this care within fifteen seconds. Promotional first, credible second.
+For the **online judges**, watching without you in the room. Different job from `PITCH.md`: there
+you defend engineering decisions live, here you make a stranger care inside fifteen seconds.
+Promotional first, credible second — but credible, because the last beat is the one that wins the
+Unifold track.
 
-**Runtime: 2:25–2:55.** The VO is ~391 spoken words, which is 2:18 at a brisk 170wpm and 2:47 at a
-relaxed 140, plus about 8 seconds of deliberate silence. Devpost caps at 3:00, so at a relaxed pace
-you are close to the ceiling — time your own read before you build the edit around it, and take
-option 1 below if you land past 2:50.
-**Voice: first person, present tense, plain.** You built this, so say "I".
+**Runtime 2:20–2:50.** VO is 370 words: 2:11 at a brisk 170wpm, 2:39 at a relaxed 140, plus ~10
+seconds of deliberate silence. Devpost caps at 3:00, so at a slow read you are close to the ceiling
+— time your own before building the edit around it.
+**Voice: first person, present tense, plain.** You built this. Say "I".
 
-**If you need it shorter,** cut in this order and stop when you're happy:
-1. "Book early and you genuinely pay less" in beat 2, keeping the payment sentence after it, ~6s
-2. The `math.rs` line in beat 5, keeping the "always able to pay you" line, ~10s
-3. The first line of beat 6, going straight to the wordmark, ~7s
-
-Do not cut the cold open or the no-show beat. Those are the two that make someone care.
-
-Do not cut the payment sentences in beats 2 and 5 either. They are short, and they are the only
-places the video says out loud that a stablecoin rail is what makes the no-wallet experience
-possible — which is the entire Unifold-track argument.
+**Never cut:** the cold open, the no-show beat, or the mainnet proof. Those three are the film.
 
 ---
 
@@ -27,27 +18,23 @@ possible — which is the entire Unifold-track argument.
 
 | # | Beat | Time | Job |
 |---|---|---|---|
-| 0 | Cold open | 0:00–0:14 | Make them feel the problem before they know the product |
-| 1 | Reveal | 0:14–0:26 | Name it, show it, one sentence |
-| 2 | Buy | 0:26–0:52 | The price is alive |
-| 3 | Sell back | 0:52–1:16 | The thing nobody else does |
-| 4 | The no-show | 1:16–1:42 | The money shot, literally |
-| 5 | Real, not a mockup | 1:42–2:00 | Credibility, fast |
-| 6 | Close | 2:00–2:10 | Wordmark, one line, out |
+| 0 | The empty chair | 0:00–0:15 | Make them feel it before they know what this is |
+| 1 | Reveal | 0:15–0:25 | Name it. One line. |
+| 2 | A price that moves | 0:25–0:52 | The product, and why early is cheaper |
+| 3 | Hand it back | 0:52–1:18 | The thing nobody else does |
+| 4 | Nobody came | 1:18–1:42 | The money shot |
+| 5 | This is real money | 1:42–2:08 | Kill the "nice mockup" reflex |
+| 6 | Close | 2:08–2:20 | Wordmark, one line, out |
 
 ---
 
 ## Script
 
-Each beat: **ON SCREEN** is what you record. **VO** is what you say over it. The VO is written
-to be *spoken*, so read it out loud once and cut anything your mouth trips on.
-
 ---
 
-### 0 · Cold open (0:00–0:14)
+### 0 · The empty chair — 0:00–0:15
 
-**ON SCREEN**
-Title cards on the warm canvas, one line at a time, no product yet. Slow. Let each line sit.
+**ON SCREEN.** Title cards on the warm canvas. One line at a time. Slow. No product yet.
 
 > A restaurant holds a table for you.
 > You don't come.
@@ -56,201 +43,156 @@ Title cards on the warm canvas, one line at a time, no product yet. Slow. Let ea
 **VO**
 > "Every night, restaurants give away something scarce for free. A reservation costs nothing to make, nothing to break, and nothing to hoard. So the good tables get resold in group chats, the quiet ones get abandoned at 7:58, and the restaurant eats both."
 
-*Beat. Half a second of silence before the reveal. Don't rush this.*
+*Half a second of silence before the cut. Don't rush it.*
 
 ---
 
-### 1 · Reveal (0:14–0:26)
+### 1 · Reveal — 0:15–0:25
 
-**ON SCREEN**
-Cut to the landing page hero. The wordmark settles, the two dots land. Hold on it.
+**ON SCREEN.** The landing hero. Wordmark settles, the two dots land. Hold.
 
 **VO**
-> "So I priced it. This is hora. A restaurant table you can buy, and sell back, right up until the night it's for."
+> "So I gave it a price. This is hora — a restaurant table you can buy, and sell back, right up until the night it's for."
 
 ---
 
-### 2 · Buy (0:26–0:52)
+### 2 · A price that moves — 0:25–0:52
 
-**ON SCREEN**
-The website, full screen. The curve is already up. Cursor moves to Claim, the sheet opens with
-the price locked, confirm. The curve steps up and the number rolls.
+**ON SCREEN.** The website. Curve already up. Cursor to Claim, the sheet lifts with the price
+locked and the ring depleting, confirm. The curve steps and the number rolls.
 
 **VO**
-> "Here's a Monday. Fifty-eight dollars for a table for two. Forty of that is a credit off your bill, so most of what you're paying is just dinner, early. The rest is what the room thinks Monday is worth."
+> "Here's a Monday. Fifty-eight dollars for a table for two — and forty of that is credit against your bill, so most of what you're paying is just dinner, early."
 >
 > "Watch what happens when I take it."
 
-*Let the price tick 58 to 61 with no narration over it. The motion is the line.*
+*Let the price roll 58 → 61 with no narration. The motion is the line.*
 
-> "Every table sold moves the price for the next one. Book early and you genuinely pay less. And there's no wallet here, no seed phrase, no gas. You pay the way you already pay for things — card, exchange, whatever token you happen to hold — and Unifold turns it into stablecoin on the way in. You'd never know this settles on-chain, which is the point."
+> "Every table sold moves the price for the next one. Book early and you genuinely pay less. And there's no wallet here, no seed phrase, no gas — you pay however you already pay for things, and stablecoin comes out the other side."
 
 ---
 
-### 3 · Sell back (0:52–1:16)
+### 3 · Hand it back — 0:52–1:18
 
-**ON SCREEN**
-Same screen. Tap sell-back. Payout lands instantly. Price steps back down. Then cut to the
-Operator Console and let the royalty counter tick up.
+**ON SCREEN.** Same screen. Sell-back. Payout lands. Price steps down. Cut to the Operator
+Console; the royalty counter ticks.
 
 **VO**
-> "Now plans change, the way they always do."
+> "Plans change, the way they always do."
 >
-> "I hand the table back and the money comes back immediately. Not a refund request, not a waitlist, not begging the host. There's always a buyer, because the app itself is the buyer, and the maths guarantees it can always pay."
+> "I hand the table back, and the money is there immediately. Not a refund request. Not a waitlist. Not begging the host. There's always a buyer, because the app itself is the buyer — and the maths guarantees it can always pay."
 
-*Cut to dashboard.*
+*Cut to the dashboard.*
 
-> "And that resale just paid the restaurant a cut. Which means for the first time the restaurant wants people reselling tables, instead of fighting it."
+> "That resale just paid the restaurant a cut. Which means for the first time, the restaurant wants people trading tables instead of fighting it."
 
 ---
 
-### 4 · The no-show (1:16–1:42)
+### 4 · Nobody came — 1:18–1:42
 
-**ON SCREEN**
-Operator Console. Check a diner in. Advance to service time. Sweep. Land on the settled panel:
-the big number, **no-shows recovered**, and the breakdown tiles.
+**ON SCREEN.** Operator Console. Check a diner in. Advance to service. Sweep. Land on the settled
+panel: the big number, **no-shows recovered**, the breakdown tiles.
 
 **VO**
 > "Then service ends, and here's the part I actually built this for."
 >
-> "The people who came, ate. The people who didn't, already paid. That money goes to the restaurant tonight, automatically. No card holds, no penalty emails, no chasing anybody."
+> "The people who came, ate. The people who didn't — already paid. That money goes to the restaurant tonight, automatically. No card holds, no penalty emails, no chasing anyone."
 
-*Hold on the settled number. Silence for a beat.*
+*Hold on the number. Silence.*
 
 > "The empty chair stops being a loss."
 
 ---
 
-### 5 · Real, not a mockup (1:42–2:00)
+### 5 · This is real money — 1:42–2:08
 
-**ON SCREEN**
-Fast cuts, roughly 3 seconds each: the mobile app curve → the Operator Console floor view filling →
-`math.rs` in the editor on the rounding test → `unifold-gateway.ts` scrolled to the webhook event
-switch → the three surfaces side by side.
+**ON SCREEN.** Fast cuts, ~3s each: the mobile app curve → `math.rs` on the rounding test → then
+settle on **`/unifold/status`** in a browser, scrolled so the succeeded payment intent and the
+completed transfer are both visible. Let that page sit for a full four seconds.
 
 **VO**
-> "This is a running system, not a prototype. A Solana program holding the money, a stablecoin rail through Unifold moving it in and out, an indexer feeding the read model, and three real clients: a website, a mobile app, and an operator console for the restaurant floor."
+> "And this isn't a mockup. There's a Solana program holding the money, an indexer feeding the read model, and four real clients — a website, a phone, an operator console, and a lab for the pricing itself."
 >
-> "The contract only ever takes in what it needs to buy every table back later, so it can always pay you. That's arithmetic, not a promise, and there's a test that proves rounding can never drain it."
+> "The payments are real too. I ran a full round trip on mainnet through Unifold: bought a table, sold it back, real stablecoin both directions. It cost me nineteen cents — and the nineteen cents was the restaurant's royalty."
+
+*Beat.*
+
+> "That page is live. You can check the transactions yourself."
 
 ---
 
-### 6 · Close (2:00–2:10)
+### 6 · Close — 2:08–2:20
 
-**ON SCREEN**
-Back to the landing hero. Wordmark. Hold two seconds, then the two buttons resolve underneath.
+**ON SCREEN.** Back to the landing hero. Wordmark. Hold two seconds, buttons resolve underneath.
 
 **VO**
 > "Reservations have been free and worthless for fifty years. This one's worth something."
 >
 > "hora."
 
-*Cut to black on the wordmark. No outro music sting, no credits crawl.*
+*Cut to black on the wordmark. No outro sting, no credits crawl.*
 
 ---
 
-## Production guide
+## Why beat 5 is shaped that way
 
-### What you need
+Most hackathon videos claim "fully functional" over a screen recording that proves nothing. You can
+do better, because you have a receipt: a real mainnet payment intent, a real treasury transfer, and
+a status page that queries Unifold's live API on every load.
+
+So don't narrate the architecture — **show the evidence and get out of the way.** Four seconds on
+that page does more than twenty seconds of explaining. The nineteen cents is the strongest line in
+the film, because it's your whole economic thesis reduced to a number a stranger can verify.
+
+If you're overrunning, cut the `math.rs` shot before you cut the status page.
+
+---
+
+## Production
 
 | Thing | Use | Notes |
 |---|---|---|
-| OBS Studio | Screen capture | Free. Set canvas 1920×1080, 60fps, capture a **window**, not the display |
-| A quiet room | Voiceover | Phone earbuds beat a laptop mic. Record VO separately from video, always |
-| Any editor | Cutting | CapCut, Resolve, Premiere. You are only cutting and laying audio |
+| OBS Studio | Capture | Free. 1920×1080, 60fps, capture a **window**, not the display |
+| A quiet room | VO | Phone earbuds beat a laptop mic. Always record VO separately |
+| Any editor | Cutting | CapCut, Resolve, Premiere — you're only cutting and laying audio |
 
-### Before you record
+**Before you record**
 
-1. **Restart the backend** so the seed is clean:
-   `npm run dev --workspace @ttr/app-services`
+1. Restart the backend so the seed is clean: `npm run dev --workspace @ttr/app-services`.
    Demo pool should read Mon 7–9pm, n=6, $58. Verify before every take.
-2. **Hide the noise.** Browser fullscreen (F11), no bookmarks bar, no tabs, no notifications.
-   Windows: Focus Assist on. Close Slack and Discord entirely, don't just mute them.
-3. **Zoom the browser to 110–125%.** Text that's comfortable on your monitor is unreadable in a
-   compressed 1080p upload that a judge watches in a small window.
-4. **Cursor.** Move it slowly and deliberately, or hide it entirely on beats where it isn't clicking.
-   A darting cursor is the single biggest tell of an amateur screen recording.
+2. Confirm `PAYMENT_GATEWAY=stub`. The demo must be the free path — you already have the real
+   transaction on record, and you don't want a live payment modal in the footage.
+3. Hide the noise: fullscreen (F11), no bookmarks bar, no tabs, notifications off, Slack and
+   Discord closed rather than muted.
+4. Zoom the browser to 110–125%. Comfortable on your monitor is unreadable in a compressed upload.
+5. Move the cursor slowly and deliberately, or hide it on beats where it isn't clicking. A darting
+   cursor is the biggest tell of an amateur recording.
 
-### Record in this order
+**Record video first, silent, in pieces. Then write VO to the footage you actually got.** Trying to
+perform both at once is how takes reach number twenty.
 
-Record **video first, silent, in pieces.** Then write VO to the footage you actually got. Trying to
-perform both at once is how takes get to number twenty.
+1. Landing: hero load, then a slow scroll through the page. Two takes.
+2. Website buy: the full sequence, unbroken. Three times, keep the smoothest.
+3. Sell-back, plus the Operator Console royalty tick.
+4. Sweep: check in, advance, sweep, hold on the settled panel.
+5. B-roll: mobile app, `math.rs` on the rounding test, and `/unifold/status` with both transactions
+   visible.
 
-1. Landing page: hero load, and a slow scroll through the whole page. Two takes.
-2. Website buy: full sequence, unbroken. Do it three times, keep the smoothest.
-3. Sell back plus the Operator Console royalty tick.
-4. Operator Console sweep: check in, advance, sweep, hold on the settled panel.
-5. B-roll: mobile app, Operator Console floor view, `math.rs` scrolled to the rounding test.
+Start recording two seconds before you touch anything and stop two seconds after the motion
+settles. Those handles are what let you cut on the beat.
 
-Every clip: start recording **two seconds before** you touch anything and stop **two seconds after**
-the motion settles. Those handles are what let you cut on the beat instead of on the frame you
-happened to stop on.
+**Cutting**
 
-### Cutting
+- Cut on motion, not on silence — land each cut as the previous animation finishes settling.
+- Never cut mid-animation. Entrances are ~400ms. Let them finish or don't show them.
+- Silence is a tool. Three places to shut up entirely: the price rolling 58 → 61, the settled
+  no-show number, and the status page.
+- Music: one quiet bed around -22dB under the voice, or none. If you can't mix it, don't use it.
+- Burn in captions. A meaningful share of judges watch the first pass muted.
 
-- **Cut on motion, not on silence.** Land each cut as the previous animation finishes settling.
-- **Never cut mid-animation.** Your entrances are ~400ms. Let them finish or don't show them.
-- **Silence is a tool.** The two places to shut up entirely: the price ticking 58 to 61, and the
-  settled no-show number. Both are more persuasive without narration on top.
-- **Music:** one quiet bed at roughly -22dB under the voice, or none. If you can't mix it, don't use it.
-- **Captions:** burn them in. A meaningful share of judges watch muted on a first pass.
-
-### The one thing that will sink it
+**The one thing that will sink it**
 
 Recording at native resolution and letting the upload compress it. Your whole design language is
-thin hairlines, soft shadows, and subtle gradients, and those are exactly what compression destroys
-first. Record at 1080p or higher, export at a high bitrate, and check the *uploaded* version on a
-phone before you call it done.
-
----
-
-## Deterministic footage
-
-Beats 2 through 4 are driven by `scripts/demo-reel.mjs` instead of by hand. The cursor glides at a
-constant speed, every click lands on a scheduled millisecond, and the clock advances on cue. You
-hit record, run a beat, and it performs. A retake is free, and take 9 is the same as take 1.
-
-```
-node scripts/demo-reel.mjs --list       # the beats
-node scripts/demo-reel.mjs buy          # beat 2  — claim a table, $58 -> $61   (~12s)
-node scripts/demo-reel.mjs sellback     # beat 3a — hand it back, payout lands  (~10s)
-node scripts/demo-reel.mjs royalty      # beat 3b — the royalty counter ticks   (~10s)
-node scripts/demo-reel.mjs sweep        # beat 4  — check in, advance, sweep    (~17s)
-node scripts/demo-reel.mjs all          # all four, one browser
-```
-
-**Before you run it,** have app-services and whichever frontend the beat needs already running. The
-script checks and tells you which one is missing. Capture the browser **window** in OBS, not the
-display, and cut inside the 2s handle at each end.
-
-Each beat prints its schedule as it performs, so you can confirm a take was clean before you keep
-it. `on schedule` means every mark hit; anything else prints the drift.
-
-```
-  ROLLING  beat 2 · buy
-         0ms  lead-in (handle)
-      2000ms  glide to Claim
-      3462ms  click Claim
-      6313ms  click Confirm
-     12163ms  cut
-  DONE     beat 2 · buy in 12.16s  — on schedule
-```
-
-### What it does for you
-
-- **Resets state before rolling.** Buying moves the pool off n=6 / $58, so `buy` sells any held
-  table back first and `sellback` buys one in. Every beat is re-runnable in any order.
-- **Draws a cursor.** Playwright's mouse is invisible to a screen recorder, so an overlay is
-  injected and moved in lockstep with the real one. It hides itself for the two shots VIDEO.md
-  wants uncluttered: the price roll and the settled number.
-- **Refuses a dead take.** If the royalty counter did not actually move, or the sweep pool has too
-  few diners to fill the settled panel, the run fails rather than handing you footage of nothing.
-
-### Two things worth knowing
-
-**Beat 4 builds a throwaway pool every run.** Sweeping is one-way and it *freezes* the pool, so
-sweeping the headline Monday would silently take beats 2 and 3 out of service until a restart.
-The trade is some extra cards accumulating in the Floor grid; restart app-services to clear them.
-
-**A frozen headline pool needs a restart.** Nothing in the demo API can thaw it, because the freeze
-rewrites the service time into the past. The script detects this and says so.
+thin hairlines, soft shadows and subtle gradients — exactly what compression destroys first. Record
+at 1080p or higher, export at a high bitrate, and check the *uploaded* version on a phone before you
+call it done.
