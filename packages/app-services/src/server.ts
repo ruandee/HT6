@@ -22,6 +22,7 @@ import {
   normalizeUnifoldEvent,
   type UnifoldWebhookEvent,
 } from './unifold-gateway.js';
+import { fetchUnifoldStatus, renderStatusHtml } from './unifold-status.js';
 
 const cfg = loadConfig();
 const chain = new MockChainAdapter();
@@ -249,6 +250,8 @@ app.post(
       },
       rawBody,
       secret: cfg.unifold.webhookSecret,
+      // Demo affordance only. On the real gateway every event must carry a valid HMAC.
+      allowStub: cfg.gateway !== 'unifold',
     });
     if (!v.ok) return res.status(400).json({ error: v.error });
 
@@ -364,6 +367,43 @@ app.post('/pools/:id/sell', async (req, res) => {
 
 app.get('/me/holdings', async (req, res) => {
   res.json(await orchestrator.holdingsFor(userId(req)));
+});
+
+/**
+ * LIVE Unifold status — read-only evidence that the payment rail is real and configured.
+ *
+ * Independent of PAYMENT_GATEWAY on purpose: it only needs the secret key, so the demo can keep
+ * running on StubGateway (free, unfailable) while this proves the real integration is live.
+ * Only GETs are issued upstream; nothing here can create or move money.
+ */
+async function unifoldStatus() {
+  return fetchUnifoldStatus({
+    apiBase: cfg.unifold.apiBase,
+    secretKey: cfg.unifold.secretKey,
+    gateway: cfg.gateway,
+    treasuryId: cfg.unifold.treasuryId,
+    webhookSecretConfigured: Boolean(cfg.unifold.webhookSecret),
+  });
+}
+
+app.get('/unifold/status', async (_req, res) => {
+  try {
+    const s = await unifoldStatus();
+    // no-store: a cached page would defeat the entire point of it being live evidence.
+    res.setHeader('cache-control', 'no-store');
+    res.type('html').send(renderStatusHtml(s));
+  } catch (e) {
+    res.status(500).type('html').send(`<pre>status unavailable: ${msg(e)}</pre>`);
+  }
+});
+
+app.get('/unifold/status.json', async (_req, res) => {
+  try {
+    res.setHeader('cache-control', 'no-store');
+    res.json(await unifoldStatus());
+  } catch (e) {
+    res.status(500).json({ error: msg(e) });
+  }
 });
 
 app.get('/demo/pool-id', (_req, res) => res.json({ pool_id: DEMO_POOL_ID }));

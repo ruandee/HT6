@@ -5,6 +5,12 @@
  *
  * On the StubGateway path there is no real signature; requests carry `x-stub: 1` and skip the
  * HMAC (so the exact same route/handler runs in both modes — only verification differs).
+ *
+ * SECURITY: that bypass is a DEMO affordance and is refused whenever the real gateway is active
+ * (`allowStub: false`). Without that condition, anyone who can reach the deployed service could
+ * POST `x-stub: 1` and mint reservations for free — the endpoint is public by necessity, since
+ * Unifold has to be able to call it. The bypass must therefore be scoped to the mode that has no
+ * signing secret to check against, not merely to the presence of a header the caller controls.
  */
 import * as crypto from 'node:crypto';
 
@@ -19,6 +25,11 @@ export interface VerifyInput {
   };
   rawBody: string;
   secret: string;
+  /**
+   * Whether the `x-stub` bypass is permitted at all. Callers pass `cfg.gateway !== 'unifold'`.
+   * Defaults to false so a caller that forgets it fails CLOSED rather than open.
+   */
+  allowStub?: boolean;
 }
 
 export type VerifyResult =
@@ -26,10 +37,18 @@ export type VerifyResult =
   | { ok: false; error: string };
 
 export function verifyWebhook(input: VerifyInput): VerifyResult {
-  const { headers, rawBody, secret } = input;
+  const { headers, rawBody, secret, allowStub = false } = input;
 
-  // Stub bypass: local mock deposit page has no signing secret.
+  // Stub bypass: local mock deposit page has no signing secret. Refused on the real gateway —
+  // there, an unsigned event is exactly what an attacker would send to mint a free reservation.
   if (headers['x-stub'] === '1') {
+    if (!allowStub) {
+      return {
+        ok: false,
+        error:
+          'x-stub is not accepted while PAYMENT_GATEWAY=unifold — real webhooks must be signed',
+      };
+    }
     return { ok: true, eventId: `stub_${crypto.randomUUID()}`, stub: true };
   }
 
