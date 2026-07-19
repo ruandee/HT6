@@ -165,12 +165,24 @@ body {
   margin-top: 26px;
   align-items: stretch;
 }
-@media (max-width: 1120px) {
+/* Tablet: too narrow for three columns, too wide to stack. The rail keeps its own column and
+   runs the full height beside the two panels, which stack in the second column — same reading
+   order as the desktop layout (night first, then price, then pay), just folded. */
+@media (min-width: 821px) and (max-width: 1120px) {
   .grid {
-    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    grid-template-columns: 320px minmax(0, 1fr);
   }
-  .grid > :first-child {
-    grid-column: 1 / -1;
+  .rail {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+  .panel--curve {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .stack {
+    grid-column: 2;
+    grid-row: 2;
   }
 }
 @media (max-width: 820px) {
@@ -182,7 +194,7 @@ body {
 /* The one-screen lock. Gated on BOTH axes: a short window (or a phone) gets the ordinary
    scrolling document back, because clipping the claim button to save a scrollbar would be a
    straight downgrade. Only where the layout genuinely fits do we hold it to the viewport. */
-@media (min-width: 1121px) and (min-height: 660px) {
+@media (min-width: 1121px) and (min-height: 740px) {
   html,
   body,
   #root {
@@ -192,15 +204,21 @@ body {
     height: 100dvh;
     display: flex;
     flex-direction: column;
+    /* the minimum gap under the topbar; the auto margins below add to it, never eat into it */
+    row-gap: 26px;
   }
   .grid {
     flex: 1;
     /* without this the grid refuses to shrink below its content and the lock leaks */
     min-height: 0;
     /* A ceiling, because "fill the viewport" stops being a good instruction on a tall monitor:
-       past this the panels are just stretched, and stretched is not the same as designed. The
-       slack below is canvas, and the canvas here is two gradient orbs — it can carry it. */
-    max-height: 720px;
+       past this the panels are just stretched, and stretched is not the same as designed. */
+    /* Sized to the buy panel + a full-height ticket beneath it. Lower than this and the wallet
+       comes up ~30px short, which costs a scrollbar to hide a sliver of one card. */
+    max-height: 760px;
+    /* Whatever the ceiling leaves over is split above and below rather than dumped at the
+       bottom, so on a tall display the composition sits centred instead of top-heavy. */
+    margin: auto 0;
   }
 }
 
@@ -230,6 +248,10 @@ body {
   .rail__cal {
     margin-top: 26px;
     padding-top: 0;
+    /* Stacked, the rail spans the full width — and .day is aspect-ratio:1, so an unconstrained
+       month grew square cells ~130px tall and pushed a thousand pixels of empty calendar down
+       the page. A month only needs so much room. */
+    max-width: 380px;
   }
 }
 
@@ -245,14 +267,156 @@ body {
 .panel__grow {
   flex: 1;
   min-height: 190px;
-  max-height: 560px;
+  max-height: 620px;
 }
+/* pinned to the panel's floor so the pip row and the claim button share a line */
+.panel__foot {
+  margin-top: auto;
+  padding-top: 18px;
+}
+.panel--curve {
+  padding: 26px;
+}
+.panel--curve .eyebrow {
+  margin-bottom: 16px;
+}
+/* Natural height, and explicitly NOT allowed to stretch or squash. Slack inside a glass panel
+   reads as a hole — with an empty wallet the stretched version opened a 200px gap between the
+   price and the button — and shrinking it is what pushed the claim button out through the
+   panel's own floor. The wallet below absorbs the column's slack instead: it's unglazed, so
+   spare room there is just canvas. */
+.panel--buy {
+  padding: 28px;
+  flex: 0 0 auto;
+  min-height: auto;
+}
+.panel--buy .eyebrow {
+  margin-bottom: 16px;
+}
+.rule {
+  height: 1px;
+  background: var(--hairline);
+  margin: 24px 0 22px;
+}
+.buy__note {
+  margin-top: 14px;
+  font-size: 13.5px;
+}
+.buy__cta {
+  margin-top: auto;
+  padding-top: 26px;
+}
+
 /* right column: buy panel takes the slack, wallet sits under it at its natural size */
 .stack {
   display: flex;
   flex-direction: column;
   gap: 24px;
   min-height: 0;
+}
+
+/* ---- short-viewport tier ----
+   A laptop is not a monitor. Rather than let the one-screen rule squeeze the buy panel until the
+   claim button pushes out through its own glass, spend the height back here: the same layout,
+   trimmed. Every value below is padding or type size — nothing is removed from the page. */
+@media (min-width: 1121px) and (max-height: 900px) {
+  .shell {
+    padding: 18px 30px 22px;
+    /* wins over the lock rule's 26px above — this block is later in the sheet */
+    row-gap: 20px;
+  }
+  .grid {
+    gap: 24px;
+    margin-top: 20px;
+  }
+  .headline {
+    font-size: clamp(31px, 2.5vw, 38px);
+  }
+  .lede {
+    margin-top: 10px;
+    font-size: 13px;
+  }
+  .rail__cal {
+    padding-top: 20px;
+  }
+  .cal__body {
+    min-height: 222px;
+  }
+  .cal__slots {
+    margin-top: 15px;
+    padding-top: 14px;
+  }
+  .panel--curve,
+  .panel--buy {
+    padding: 22px;
+  }
+  .panel--curve .eyebrow,
+  .panel--buy .eyebrow {
+    margin-bottom: 12px;
+  }
+  .rule {
+    margin: 17px 0 15px;
+  }
+  .price--hero {
+    font-size: clamp(46px, 4vw, 62px);
+  }
+  .buy__note {
+    margin-top: 10px;
+  }
+  .buy__cta {
+    padding-top: 15px;
+  }
+  .psize__routed {
+    margin-top: 9px;
+  }
+  .btn {
+    padding: 14px 26px;
+  }
+  .psize__select {
+    padding: 12px 46px 12px 18px;
+  }
+  .stack {
+    gap: 15px;
+  }
+  .ticket {
+    padding: 15px 16px 16px;
+  }
+  .ticket__perf {
+    margin: 9px 0;
+  }
+  .ticket__when {
+    font-size: 18px;
+  }
+  .ticket__meta {
+    margin-top: 3px;
+  }
+  .ticket__price {
+    font-size: 25px;
+  }
+  .ticket__sell {
+    margin-top: 10px;
+  }
+  .ticket .btn {
+    padding: 12px 20px;
+  }
+  .wallet__foot {
+    margin-top: 10px;
+  }
+}
+
+/* One more step down, for the shortest windows the one-screen lock still covers (740–810px).
+   Past this the lock switches off entirely and the page scrolls, which is the right answer:
+   there is a floor below which "fits on one screen" and "is readable" stop being compatible. */
+@media (min-width: 1121px) and (max-height: 810px) {
+  .price--hero {
+    font-size: clamp(42px, 3.5vw, 54px);
+  }
+  .rule {
+    margin: 13px 0 12px;
+  }
+  .cal__body {
+    min-height: 208px;
+  }
 }
 .brand {
   display: flex;
@@ -736,8 +900,8 @@ body {
 .wallet {
   display: flex;
   flex-direction: column;
-  /* natural height, but never taller than the slack the buy panel leaves it */
-  flex: 0 1 auto;
+  /* takes whatever the buy panel above it doesn't want, and scrolls inside if that isn't enough */
+  flex: 1 1 auto;
   min-height: 0;
   scroll-margin-top: 24px;
 }
@@ -748,6 +912,12 @@ body {
   /* more tables than the column can show scroll HERE, so the page itself never does */
   overflow-y: auto;
   min-height: 0;
+  /* A grid with a definite height sizes auto rows to fit it, and at three holdings that crushed
+     each ticket from 234px to 73px — the perforation, the sell-back price and the button were
+     all clipped away by .ticket's own overflow:hidden, silently. Rows take their content's
+     height and the overflow above does the scrolling instead. */
+  align-content: start;
+  grid-auto-rows: max-content;
   /* room for the tickets' shadows, which a flush overflow box would shear off */
   margin: -6px;
   padding: 6px;
@@ -787,6 +957,15 @@ body {
   font-size: 12.5px;
   color: var(--ink-45);
   margin-top: 5px;
+}
+/* in CSS rather than inline, so the short-viewport tiers can actually reach them */
+.ticket__price {
+  font-size: 30px;
+  margin-top: 5px;
+}
+.ticket__sell {
+  width: 100%;
+  margin-top: 14px;
 }
 /* the tear line. The notches are punched in --canvas so they read as holes, not dots. */
 .ticket__perf {

@@ -224,10 +224,8 @@ export default function App() {
 
           {/* curve panel. The chart is the one thing here worth extra room, so it's the child that
               absorbs whatever height the column has left over. */}
-          <motion.section className="glass panel" variants={fadeUp} style={{ padding: 26 }}>
-            <div className="eyebrow" style={{ marginBottom: 16 }}>
-              Tonight&apos;s pricing
-            </div>
+          <motion.section className="glass panel panel--curve" variants={fadeUp}>
+            <div className="eyebrow">Tonight&apos;s pricing</div>
             <div className="panel__grow">
               {q && currentPool && (
                 <CurveChart
@@ -241,7 +239,7 @@ export default function App() {
               )}
             </div>
             {/* pinned to the panel's floor, so it lines up with the buy button beside it */}
-            <div style={{ marginTop: 'auto', paddingTop: 18 }}>
+            <div className="panel__foot">
               <div className="stat-label" style={{ marginBottom: 9 }}>
                 {q ? `${q.n_sold} of ${q.n_max} taken` : ' '}
               </div>
@@ -257,26 +255,19 @@ export default function App() {
           {/* buy panel over wallet: the thing you press, and directly beneath it the thing pressing
               it gives you. Both stay on screen, so booking never scrolls anything out of view. */}
           <motion.div className="stack" variants={fadeUp}>
-          <section
-            className="glass glass--strong panel"
-            style={{ padding: 28, flex: '1 1 auto' }}
-          >
+          <section className="glass glass--strong panel panel--buy">
             <PartySize bands={bandsTonight} guests={guests} onGuests={selectGuests} />
 
-            <div
-              style={{ height: 1, background: 'var(--hairline)', margin: '24px 0 22px' }}
-            />
+            <div className="rule" />
 
-            <div className="eyebrow" style={{ marginBottom: 16 }}>
-              Right now
-            </div>
+            <div className="eyebrow">Right now</div>
             <div className="price price--hero">
               <span style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
                 <span>${price.dollars}</span>
                 <span className="price__cents">.{price.cents}</span>
               </span>
             </div>
-            <div className="muted" style={{ marginTop: 14, fontSize: 13.5 }}>
+            <div className="muted buy__note">
               {usdc(floorP0)} comes off your bill.
               {left > 0 && left <= 5 && (
                 <>
@@ -290,7 +281,7 @@ export default function App() {
 
             {/* auto margin, so the panel's spare height collects ABOVE the button instead of
                 trailing under it. The action always sits on the panel's floor. */}
-            <div style={{ marginTop: 'auto', paddingTop: 26 }}>
+            <div className="buy__cta">
               <button
                 className="btn btn--primary"
                 style={{ width: '100%' }}

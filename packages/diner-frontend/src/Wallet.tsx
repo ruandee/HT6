@@ -79,16 +79,12 @@ export function Wallet({ holdings, pools, viewingPoolId, onSell }: Props) {
                   </div>
 
                   <div className="stat-label">Sell back for</div>
-                  <div className="price" style={{ fontSize: 30, marginTop: 5 }}>
+                  <div className="price ticket__price">
                     <span>${v.dollars}</span>
                     <span className="price__cents">.{v.cents}</span>
                   </div>
 
-                  <button
-                    className="btn btn--ghost"
-                    style={{ width: '100%', marginTop: 14 }}
-                    onClick={() => onSell(h)}
-                  >
+                  <button className="btn btn--ghost ticket__sell" onClick={() => onSell(h)}>
                     Can&apos;t make it? Sell it back
                   </button>
                 </motion.article>
