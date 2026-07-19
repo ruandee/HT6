@@ -61,8 +61,46 @@ const headers = { 'content-type': 'application/json', 'x-user-id': USER };
 const API = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '');
 const u = (path: string) => `${API}${path}`;
 
+/**
+ * Coerce anything throwable into readable text.
+ *
+ * Exists because `String(someObject)` yields "[object Object]", and that is precisely what a user
+ * sees at the worst possible moment: the payment failed and the interface reports nothing. A real
+ * failure (a wallet with no gas) was once hidden behind exactly that string, so this deliberately
+ * digs through the shapes an SDK or API error actually arrives in before giving up.
+ */
+export function errText(e: unknown, fallback = 'Something went wrong.'): string {
+  if (e == null) return fallback;
+  if (typeof e === 'string') return e.trim() || fallback;
+  if (e instanceof Error && e.message) return e.message.replace(/^Error:\s*/, '');
+  if (typeof e === 'object') {
+    const o = e as Record<string, unknown>;
+    // Common carriers, in order of how specific they usually are.
+    for (const k of ['message', 'error', 'detail', 'description', 'reason', 'code']) {
+      const v = o[k];
+      if (typeof v === 'string' && v.trim()) return v.trim();
+      // `{ error: { message } }` nests one level in several APIs, including ours.
+      if (v && typeof v === 'object') {
+        const inner = (v as Record<string, unknown>).message;
+        if (typeof inner === 'string' && inner.trim()) return inner.trim();
+      }
+    }
+    // Last resort: show SOMETHING structural rather than "[object Object]".
+    try {
+      const s = JSON.stringify(e);
+      if (s && s !== '{}') return s.slice(0, 200);
+    } catch {
+      /* circular — fall through */
+    }
+  }
+  return fallback;
+}
+
 async function j<T>(r: Response): Promise<T> {
-  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? r.statusText);
+  if (!r.ok) {
+    const body = await r.json().catch(() => ({}));
+    throw new Error(errText(body, `${r.status} ${r.statusText}`));
+  }
   return r.json() as Promise<T>;
 }
 

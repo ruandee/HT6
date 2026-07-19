@@ -9,6 +9,7 @@ import { AnimatePresence, motion, MotionConfig } from 'framer-motion';
 import {
   api,
   bandParams,
+  errText,
   splitUsdc,
   usdc,
   type Holding,
@@ -64,7 +65,7 @@ export default function App() {
       setPools(ps);
       setPoolId(pool_id);
       await refresh(pool_id);
-    })().catch((e) => flash(String(e instanceof Error ? e.message : e)));
+    })().catch((e) => flash(errText(e)));
   }, [refresh, flash]);
 
   // poll so the curve moves when the other session buys (the §11 "ticks up" moment)
@@ -139,7 +140,7 @@ export default function App() {
       const r = await api.buy(poolId);
       setSheet({ intentId: r.deposit_intent_id, price: r.max_price, expires: r.expires_at });
     } catch (e) {
-      flash(String(e instanceof Error ? e.message : e).replace(/^Error:\s*/, ''));
+      flash(errText(e).replace(/^Error:\s*/, ''));
     }
   }
 
@@ -152,7 +153,7 @@ export default function App() {
       setTab('wallet');
     } catch (e) {
       setSheet(null);
-      flash(String(e instanceof Error ? e.message : e).replace(/^Error:\s*/, ''));
+      flash(errText(e).replace(/^Error:\s*/, ''));
     }
   }
 
@@ -163,7 +164,7 @@ export default function App() {
       await refresh(poolId);
       flash(`Sold back. ${usdc(r.payout_amount)} returned to you.`);
     } catch (e) {
-      flash(String(e instanceof Error ? e.message : e).replace(/^Error:\s*/, ''));
+      flash(errText(e).replace(/^Error:\s*/, ''));
     }
   }
 

@@ -61,7 +61,10 @@ export function UnifoldCheckout({ clientSecret, onSubmitted, onFailed, onDismiss
         if (live) cbs.current.onDismissed();
       },
     }).catch((e: unknown) => {
-      if (live) cbs.current.onFailed(e instanceof Error ? e.message : String(e));
+      // beginCheckout's promise rejects with the SAME non-Error shapes onError receives, so it
+      // needs the same treatment. Missing this one is why "[object Object]" survived the first fix:
+      // the rejection path, not the callback, is what fires when the wallet cannot pay.
+      if (live) cbs.current.onFailed(errText(e, 'Checkout failed.'));
     });
 
     return () => {
