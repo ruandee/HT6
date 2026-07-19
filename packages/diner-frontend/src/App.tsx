@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, MotionConfig } from 'framer-motion';
-import { api, splitUsdc, usdc, type Holding, type PoolSummary, type Quote } from './api';
+import { api, errText, splitUsdc, usdc, type Holding, type PoolSummary, type Quote } from './api';
 import { CurveChart } from './CurveChart';
 import { BuySheet } from './BuySheet';
 import { DatePicker } from './DatePicker';
@@ -100,7 +100,7 @@ export default function App() {
         clientSecret: r.checkout?.client_secret,
       });
     } catch (e) {
-      setFlash(String(e instanceof Error ? e.message : e).replace(/^Error:\s*/, ''));
+      setFlash(errText(e));
       setTimeout(() => setFlash(null), 4200);
     }
   }
@@ -119,18 +119,29 @@ export default function App() {
       setCheckout({ intentId, clientSecret });
       return;
     }
-    await api.stubSettle(intentId, 'succeeded');
-    setSheet(null);
-    const label = currentPool?.label;
-    await refresh(poolId);
-    setFlash(label ? `You're in. See you ${label}.` : "You're in.");
+    // Without this catch a rejected settle became an unhandled promise rejection: the button reset
+    // and NOTHING appeared on screen. A payment step that fails silently is worse than one that
+    // fails loudly, so every branch that can throw now surfaces its reason.
+    try {
+      await api.stubSettle(intentId, 'succeeded');
+      setSheet(null);
+      const label = currentPool?.label;
+      await refresh(poolId);
+      setFlash(label ? `You're in. See you ${label}.` : "You're in.");
+    } catch (e) {
+      setFlash(errText(e, "That didn't go through. Try again."));
+    }
     setTimeout(() => setFlash(null), 4200);
   }
 
   async function sellBack() {
-    const r = await api.sell(poolId);
-    await refresh(poolId);
-    setFlash(`${usdc(r.payout_amount)} back in your account.`);
+    try {
+      const r = await api.sell(poolId);
+      await refresh(poolId);
+      setFlash(`${usdc(r.payout_amount)} back in your account.`);
+    } catch (e) {
+      setFlash(errText(e, "Couldn't sell that back. Try again."));
+    }
     setTimeout(() => setFlash(null), 4200);
   }
 

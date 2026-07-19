@@ -16,6 +16,7 @@
  */
 import { useEffect, useRef } from 'react';
 import { useUnifold } from '@unifold/connect-react';
+import { errText } from './api';
 
 interface Props {
   /** client_secret from POST /pools/:id/buy → `checkout.client_secret`. */
@@ -52,7 +53,9 @@ export function UnifoldCheckout({ clientSecret, onSubmitted, onFailed, onDismiss
         if (live) cbs.current.onSubmitted();
       },
       onError: (e) => {
-        if (live) cbs.current.onFailed(e?.message || 'Checkout failed.');
+        // The SDK's CheckoutError is not an Error instance, and its useful text is not always on
+        // `.message` — a wallet with no gas for the transaction surfaces nested. errText digs.
+        if (live) cbs.current.onFailed(errText(e, 'Checkout failed.'));
       },
       onClose: () => {
         if (live) cbs.current.onDismissed();
