@@ -160,9 +160,33 @@ body {
 .shell {
   position: relative;
   z-index: 1;
-  max-width: 1180px;
+  max-width: 1320px;
   margin: 0 auto;
   padding: 28px 32px 72px;
+}
+
+/* Calendar · curve · buy. The calendar column is narrow on purpose: it's a month, and a month
+   is only ever seven columns wide. Below 1120px the calendar takes the full width and the two
+   panels sit under it, which is the same reading order, just stacked. */
+.grid {
+  display: grid;
+  grid-template-columns: 296px minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 30px;
+  margin-top: 46px;
+  align-items: start;
+}
+@media (max-width: 1120px) {
+  .grid {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  }
+  .grid > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 820px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .topbar {
   display: flex;
@@ -429,6 +453,157 @@ body {
   font-weight: 600;
 }
 
+/* ---- inline calendar ----
+   Deliberately unglazed. It carries no background, no border and no shadow, so it reads as part
+   of the canvas rather than a card sitting on it — the orbs show through it exactly as they show
+   through the page. The only filled surface in here is the day you chose. */
+.cal {
+  position: relative;
+}
+.cal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.cal__month {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  /* fixed so the arrows never shuffle sideways as month names change length */
+  flex: 1;
+  text-align: center;
+}
+/* the arrows are the whole navigation, so they're generous targets and quiet until hovered */
+.cal__nav {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-45);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--t-leave) var(--ease), background var(--t-leave) var(--ease),
+    border-color var(--t-leave) var(--ease), opacity var(--t-leave) var(--ease);
+}
+.cal__nav:hover:not(:disabled) {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.6);
+  border-color: var(--glass-border);
+  transition-duration: var(--t-enter);
+}
+.cal__nav:active:not(:disabled) {
+  transform: scale(0.92);
+  transition-duration: var(--t-press);
+}
+.cal__nav:disabled {
+  opacity: 0.22;
+  cursor: not-allowed;
+}
+.cal__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+.cal__grid--head {
+  margin-bottom: 4px;
+}
+.cal__wd {
+  font-family: var(--font-display);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-45);
+  opacity: 0.6;
+  text-align: center;
+  padding-bottom: 6px;
+}
+/* the month pages in and out horizontally; without a fixed floor the page would jump between a
+   5-row month and a 6-row one */
+.cal__body {
+  position: relative;
+  min-height: 246px;
+}
+.cal__slots {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--hairline);
+}
+
+/* ---- service windows for the chosen night ----
+   One row per distinct service time, derived from /pools. If the night only serves once, there
+   is only one row: the demo never offers a window the seed doesn't actually seat. */
+.slot {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 6px 18px -12px rgba(80, 45, 25, 0.28);
+  transition: transform var(--t-leave) var(--ease), background var(--t-leave) var(--ease),
+    box-shadow var(--t-leave) var(--ease), border-color var(--t-leave) var(--ease);
+}
+.slot:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.78);
+  transition-duration: var(--t-enter);
+}
+.slot:active:not(:disabled) {
+  transform: translateY(0) scale(0.985);
+  transition-duration: var(--t-press);
+}
+.slot:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.slot--on {
+  border-color: transparent;
+  color: #fff;
+  background: linear-gradient(168deg, var(--coral) 0%, var(--coral-deep) 100%);
+  box-shadow: 0 10px 26px -12px rgba(242, 84, 45, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+.slot--on:hover:not(:disabled) {
+  background: linear-gradient(168deg, var(--coral) 0%, var(--coral-deep) 100%);
+}
+.slot__time {
+  font-family: var(--font-display);
+  font-size: 14.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.slot__left {
+  font-size: 11.5px;
+  color: var(--ink-45);
+}
+.slot--on .slot__left {
+  color: rgba(255, 255, 255, 0.82);
+}
+.slot__price {
+  font-family: var(--font-display);
+  font-size: 14.5px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---- calendar day cells ---- */
 .day {
   position: relative;
@@ -470,6 +645,139 @@ body {
 }
 .day--sel .day__dot {
   background: rgba(255, 255, 255, 0.9);
+}
+
+/* ---- wallet ----
+   The phone's Wallet tab, unfolded onto the page. A desktop has room to show your tables and the
+   thing you're booking at the same time, so this is a section you scroll to, not a view you
+   switch into: no tab, no route, nothing to come back from. */
+.wallet {
+  margin-top: 56px;
+  scroll-margin-top: 24px;
+}
+.wallet__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(288px, 1fr));
+  gap: 18px;
+}
+.wallet__foot {
+  margin-top: 18px;
+  font-size: 13px;
+  color: var(--ink-45);
+}
+.wallet__empty {
+  padding: 34px 2px 8px;
+}
+
+/* the ticket, same object as on the phone: perforated stub, price you can get back */
+.ticket {
+  position: relative;
+  padding: 22px 20px;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.ticket__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.ticket__when {
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  line-height: 1.05;
+}
+.ticket__meta {
+  font-size: 12.5px;
+  color: var(--ink-45);
+  margin-top: 5px;
+}
+/* the tear line. The notches are punched in --canvas so they read as holes, not dots. */
+.ticket__perf {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0;
+}
+.ticket__perf i {
+  flex: 1;
+  height: 1px;
+  border-top: 2px dashed var(--ink-25);
+}
+.ticket__perf span {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--canvas);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.badge {
+  padding: 6px 11px;
+  border-radius: var(--r-pill);
+  font-family: var(--font-display);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--ink-70);
+  border: 1px solid var(--glass-border);
+  white-space: nowrap;
+}
+.badge--live {
+  background: linear-gradient(168deg, var(--coral) 0%, var(--coral-deep) 100%);
+  color: #fff;
+  border-color: transparent;
+}
+.empty__mark {
+  font-family: var(--font-script);
+  font-size: 42px;
+  color: var(--coral-deep);
+  transform: rotate(-2.5deg);
+  display: inline-block;
+  line-height: 1;
+}
+
+/* top-bar wallet summary. A button that scrolls, not a menu that opens. */
+.wpill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 18px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 6px 18px -8px rgba(80, 45, 25, 0.25);
+  transition: background var(--t-leave) var(--ease);
+}
+.wpill:hover {
+  background: rgba(255, 255, 255, 0.78);
+  transition-duration: var(--t-enter);
+}
+.wpill__n {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.wpill__v {
+  font-family: var(--font-display);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  padding-left: 10px;
+  border-left: 1px solid var(--hairline);
+  color: var(--coral-deep);
 }
 
 /* quote-lock ring */

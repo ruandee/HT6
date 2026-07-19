@@ -3,7 +3,8 @@ import { AnimatePresence, motion, MotionConfig } from 'framer-motion';
 import { api, errText, splitUsdc, usdc, type Holding, type PoolSummary, type Quote } from './api';
 import { CurveChart } from './CurveChart';
 import { BuySheet } from './BuySheet';
-import { DatePicker } from './DatePicker';
+import { Calendar } from './Calendar';
+import { SellSheet, Wallet, WalletPill } from './Wallet';
 import { PartySize, bandFor } from './PartySize';
 import { ease, fadeUp, group, hoverLift, tapPress } from './motion';
 import { venueState } from './venue';
@@ -37,6 +38,8 @@ export default function App() {
    * holding actually appear — so we never claim a table the chain hasn't granted yet.
    */
   const [settling, setSettling] = useState(false);
+  /** the holding the diner is about to sell back, held while the confirm sheet is up */
+  const [sellFor, setSellFor] = useState<Holding | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const prevN = useRef(0);
 
@@ -65,9 +68,6 @@ export default function App() {
   // all bands offered on the selected night, and the dates available in the chosen band
   const bandsTonight = currentPool
     ? pools.filter((p) => p.date_iso === currentPool.date_iso)
-    : [];
-  const datesInBand = currentPool
-    ? pools.filter((p) => p.party_size === currentPool.party_size)
     : [];
 
   /** Changing party size keeps the date and swaps to the band that fits. */
@@ -134,9 +134,11 @@ export default function App() {
     setTimeout(() => setFlash(null), 4200);
   }
 
-  async function sellBack() {
+  /** Sells the holding the wallet card names, NOT the pool on screen — they're often different. */
+  async function sellBack(h: Holding) {
+    setSellFor(null);
     try {
-      const r = await api.sell(poolId);
+      const r = await api.sell(h.pool_id);
       await refresh(poolId);
       setFlash(`${usdc(r.payout_amount)} back in your account.`);
     } catch (e) {
@@ -145,17 +147,14 @@ export default function App() {
     setTimeout(() => setFlash(null), 4200);
   }
 
-  // scope to the night being viewed, since sell-back acts on this pool's token.
-  const held = holdings.filter((h) => h.status === 'held' && h.pool_id === poolId);
   // §7c-C is per SERVICE WINDOW, so holding any band tonight blocks buying another.
   const windowPoolIds = new Set(bandsTonight.map((b) => b.pool_id));
   const heldThisWindow = holdings.filter(
     (h) => h.status === 'held' && windowPoolIds.has(h.pool_id),
   );
   const heldOtherBand = heldThisWindow.filter((h) => h.pool_id !== poolId);
-  const heldElsewhere = holdings.filter(
-    (h) => h.status === 'held' && !windowPoolIds.has(h.pool_id),
-  );
+  /** everything the diner holds, any night — what the wallet section below is made of */
+  const allHeld = holdings.filter((h) => h.status === 'held');
   /**
    * Settlement lands out-of-band: Unifold posts `payment_intent.succeeded` to app-services, which
    * mints the token. The 2.5s poll above is what surfaces it, so we watch for the holding to appear
@@ -193,7 +192,7 @@ export default function App() {
             </span>
             hora
           </div>
-          <DatePicker pools={datesInBand} selected={poolId} onSelect={selectPool} />
+          <WalletPill holdings={allHeld} />
         </motion.header>
 
         {/* Names the room and reports what it's doing, in the same shape the phone uses. The
@@ -212,17 +211,14 @@ export default function App() {
             : 'Loading tonight'}
         </motion.p>
 
-        {/* ---- main grid ---- */}
-        <motion.div
-          variants={group(0.08)}
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0,1.35fr) minmax(0,1fr)',
-            gap: 22,
-            marginTop: 46,
-            alignItems: 'start',
-          }}
-        >
+        {/* ---- main grid ----
+            Calendar first and unglazed, so the night you're pricing is settled before anything
+            asks you to pay for it. The two glass panels to its right are the consequence. */}
+        <motion.div className="grid" variants={group(0.08)}>
+          <motion.div variants={fadeUp}>
+            <Calendar pools={pools} selected={poolId} guests={guests} onSelect={selectPool} />
+          </motion.div>
+
           {/* curve panel */}
           <motion.section className="glass" variants={fadeUp} style={{ padding: 26 }}>
             <div
@@ -334,61 +330,22 @@ export default function App() {
                 You have the table for{' '}
                 {bandsTonight.find((b) => b.pool_id === heldOtherBand[0]!.pool_id)?.party_size ??
                   ''}{' '}
-                this night.
-              </div>
-            )}
-
-            {/* the sell-back offer unfolds when you're holding, instead of appearing abruptly
-                and shoving the panel down */}
-            <AnimatePresence initial={false}>
-              {held.length > 0 && (
-                <motion.div
-                  key="sell-back"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={ease(0.3)}
-                  style={{ overflow: 'hidden' }}
-                >
-                  <div
-                    style={{
-                      height: 1,
-                      background: 'var(--hairline)',
-                      margin: '26px 0 22px',
-                    }}
-                  />
-                  <div className="muted" style={{ fontSize: 13.5, marginBottom: 14 }}>
-                    Worth{' '}
-                    <strong style={{ color: 'var(--ink)' }}>
-                      {usdc(held[0]!.recover_value)}
-                    </strong>{' '}
-                    back right now.
-                  </div>
-                  <motion.button
-                    className="btn btn--ghost"
-                    whileHover={hoverLift}
-          whileTap={tapPress}
-                    style={{ width: '100%' }}
-                    onClick={sellBack}
-                  >
-                    Can&apos;t make it? Sell it back
-                  </motion.button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {heldElsewhere.length > 0 && (
-              <div
-                className="muted"
-                style={{ fontSize: 12.5, marginTop: 18, color: 'var(--ink-45)' }}
-              >
-                Also booked:{' '}
-                {heldElsewhere
-                  .map((h) => pools.find((p) => p.pool_id === h.pool_id)?.label ?? 'another night')
-                  .join(', ')}
+                this night. Sell it back below to switch sizes.
               </div>
             )}
           </motion.section>
+        </motion.div>
+
+        {/* Selling used to live in the buy panel, which meant the panel changed shape depending
+            on what you held and could only ever offer back the night you happened to be looking
+            at. It's the wallet's job, and the wallet holds every night at once. */}
+        <motion.div variants={fadeUp}>
+          <Wallet
+            holdings={allHeld}
+            pools={pools}
+            viewingPoolId={poolId}
+            onSell={setSellFor}
+          />
         </motion.div>
       </motion.div>
 
@@ -415,6 +372,16 @@ export default function App() {
               setTimeout(() => setFlash(null), 4200);
             }}
             onClose={() => setSheet(null)}
+          />
+        )}
+
+        {sellFor && (
+          <SellSheet
+            key="sell"
+            holding={sellFor}
+            label={pools.find((p) => p.pool_id === sellFor.pool_id)?.label ?? 'your'}
+            onConfirm={() => sellBack(sellFor)}
+            onClose={() => setSellFor(null)}
           />
         )}
       </AnimatePresence>
