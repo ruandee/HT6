@@ -177,7 +177,7 @@ const card = (x, y, w, h, o = {}) => {
 const LAYERS = [
   {
     eyebrow: 'Clients · React',
-    note: 'Every screen speaks to one REST API over HTTPS. None of them hold keys or reach the chain.',
+    note: 'The three trading screens speak to one REST API over HTTPS. None of them hold keys or reach the chain.',
     accent: T.amber,
     boxes: [
       {
@@ -221,7 +221,7 @@ const LAYERS = [
         title: 'Identity',
         sub: 'Swappable seam',
         external: true,
-        body: 'One middleware resolves the app user id on every call. Stubbed today, a JWT provider later; an issuer role gates the venue routes.',
+        body: 'Every call resolves to an app user id. A header stub today, a JWT provider later, when an issuer role will gate the venue routes.',
       },
       {
         title: 'Payments',
@@ -233,13 +233,13 @@ const LAYERS = [
   },
   {
     eyebrow: 'chain-services · TypeScript',
-    note: 'The only module that imports a chain client. The mock shipped first, so no other stream waited on devnet.',
+    note: 'The only module allowed to reach the chain. The mock shipped first, so no other stream waited on the program.',
     accent: T.coral,
     boxes: [
       {
         title: 'Chain adapter',
         sub: 'One interface',
-        body: 'A single interface covering create_pool, quote, buy, sell, redeem, check_in and sweep. Both implementations satisfy it exactly.',
+        body: 'A single interface covering create_pool, quote, buy, sell, redeem, check_in and sweep. The mock satisfies it today; the Solana client swaps in behind it.',
       },
       {
         title: 'Mock adapter',
@@ -248,13 +248,14 @@ const LAYERS = [
       },
       {
         title: 'Solana client',
-        sub: 'web3.js + Anchor IDL',
-        body: 'Signs and sends program instructions, reads the pool and reserve accounts, and subscribes to program events on devnet.',
+        sub: 'Planned swap · web3.js',
+        external: true,
+        body: 'Signs program instructions and subscribes to program events. Not yet wired: the interface and the program are both in place, the client is not.',
       },
       {
         title: 'Indexer → Postgres',
-        sub: 'Read model',
-        body: 'Writes program events into Postgres so the UI reads prices, history and holdings from a database rather than an RPC node.',
+        sub: 'Optional read cache',
+        body: 'Subscribes to the adapter event stream and projects it into Postgres. Off unless a database URL is set, and no demo path depends on it.',
       },
     ],
   },
@@ -276,7 +277,7 @@ const LAYERS = [
       {
         title: 'Instructions',
         sub: 'On-chain',
-        body: 'Opening a pool, buying, selling back, redeeming at the door, check-in, and the sweep. A buy mints one fungible token.',
+        body: 'Five: opening a pool, buying, selling back, check-in, and the sweep. A buy mints one fungible token; check-in burns it at the door.',
       },
       {
         title: 'Time decay',

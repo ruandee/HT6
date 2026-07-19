@@ -12,9 +12,9 @@
  *     time-based and triggered by the viewport, so nothing feels welded to the scrollbar.
  *   - Reduced motion keeps the fades but removes spatial transforms.
  */
-import { lazy, Suspense, useMemo } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion';
-import { fadeUp, group, reveal, inView, hoverLift, tapPress, ease } from './motion';
+import { group, reveal, inView, hoverLift, tapPress, ease, EASE } from './motion';
 
 /**
  * The decay demo pulls in recharts, which is heavier than the entire rest of this page. It also
@@ -27,6 +27,41 @@ const DecayDemo = lazy(() => import('./DecayDemo'));
 /** Devpost lives outside this repo, so it's env-driven like the three app URLs. */
 const DEVPOST_URL =
   import.meta.env.VITE_DEVPOST_URL ?? 'https://devpost.com/software/hora';
+
+/* ---- the opening ----
+   The two dots arrive alone and oversized in the middle of the screen — ink first, then coral —
+   then retreat into their resting place at the top of the wordmark, and the rest of the hero
+   rises behind them.
+
+   The retreat distance is measured rather than written down. The wordmark is clamp()-sized, so
+   where the dots come to rest moves with the viewport, and the only number that is right at every
+   width is the one read off the layout. That read needs one frame with no transform applied, which
+   is free here: both dots are still transparent at that point, so the frame is never seen. */
+
+/** Resting diameter of a dot, matching `.wordmark__dots i`. The scale-up is derived from it. */
+const DOT_REST = 15;
+/** How big a dot gets mid-screen: a share of the viewport, fenced in on phones and ultrawides. */
+const DOT_BIG = { share: 0.07, min: 40, max: 84 } as const;
+/** How long the pair holds at full size before retreating. */
+const HOLD_MS = 1250;
+
+interface Lift {
+  y: number;
+  scale: number;
+}
+
+/**
+ * The opening is a first impression, so it gets one showing per page load.
+ *
+ * `/demo` unmounts this component, and coming back remounts it — without this flag the intro would
+ * replay every time someone returned from the role picker, which is the exact "re-animates on
+ * every approach" failure the motion rules at the top of this file rule out for the sections.
+ *
+ * It lives outside the component, not in a ref, because it has to survive that unmount. It is set
+ * when the intro finishes rather than when it starts, so StrictMode's double-invoked effects in
+ * development still see `false` on the second pass and the intro is not swallowed in dev.
+ */
+let introPlayed = false;
 
 /** A section that rises into place the first time it's approached, releasing its children in turn. */
 function Section({
@@ -138,9 +173,45 @@ const SIDES: Side[] = [
 
 export default function Home({ onEnter }: { onEnter: (e: React.MouseEvent) => void }) {
   const reduceMotion = Boolean(useReducedMotion());
-  const enter = useMemo(() => fadeUp(reduceMotion), [reduceMotion]);
   const disclose = useMemo(() => reveal(reduceMotion), [reduceMotion]);
   const { scrollYProgress } = useScroll();
+
+  /** null until measured; once set, the dots jump to centre and the sequence starts. */
+  const [lift, setLift] = useState<Lift | null>(null);
+  /** true once the dots have been told to go home and the hero has been released. */
+  const [settled, setSettled] = useState(false);
+  const dotsRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    // Reduced motion gets the finished page, not a shortened version of the intro: there is no
+    // information in the opening that the settled hero doesn't already show. A second visit to
+    // this route skips it for the same reason — it has already been made.
+    if (reduceMotion || introPlayed) {
+      setLift({ y: 0, scale: 1 });
+      setSettled(true);
+      return;
+    }
+    const el = dotsRef.current;
+    if (!el) return;
+    // Belt to main.tsx's braces: the centre offset is measured against the viewport, so the page
+    // has to actually be at the top rather than merely expected to be.
+    window.scrollTo(0, 0);
+    const rect = el.getBoundingClientRect();
+    const big = Math.min(Math.max(window.innerWidth * DOT_BIG.share, DOT_BIG.min), DOT_BIG.max);
+    setLift({
+      y: window.innerHeight / 2 - (rect.top + rect.height / 2),
+      scale: big / DOT_REST,
+    });
+  }, [reduceMotion]);
+
+  useEffect(() => {
+    if (!lift || settled) return;
+    const t = setTimeout(() => {
+      introPlayed = true;
+      setSettled(true);
+    }, HOLD_MS);
+    return () => clearTimeout(t);
+  }, [lift, settled]);
 
   /**
    * The hero doesn't scroll away flat — it settles back and dims over the first screenful, so the
@@ -160,33 +231,62 @@ export default function Home({ onEnter }: { onEnter: (e: React.MouseEvent) => vo
 
       {/* ============ hero ============ */}
       <div className="hero">
+        {/* `disclose` rather than the shorter `fadeUp`: after the dots have cleared the middle of
+            the screen the hero is arriving from nothing, not adjusting in place, and 8px of travel
+            reads as a flicker against a mark that just crossed half the viewport. */}
         <motion.div
           className="hero__inner"
           style={{ y: reduceMotion ? 0 : heroY, opacity: heroOpacity }}
           variants={group(0.09, 0.1)}
           initial="hidden"
-          animate="show"
+          animate={settled ? 'show' : 'hidden'}
         >
-          <motion.div className="hero__eyebrow" variants={enter}>
+          <motion.div className="hero__eyebrow" variants={disclose}>
             Tokenized reservations
           </motion.div>
 
+          {/* The mark runs the opening, so it stays out of the variant tree above — an explicit
+              `animate` object stops it inheriting the hero's hidden/show state. */}
+          <motion.div
+            className="wordmark__dots"
+            ref={dotsRef}
+            initial={false}
+            animate={{
+              y: settled ? 0 : (lift?.y ?? 0),
+              scale: settled ? 1 : (lift?.scale ?? 1),
+            }}
+            /* Going out to centre is a cut, not a move: it happens on the frame the measurement
+               lands, while both dots are still invisible. Only the way home is animated. */
+            transition={settled ? { duration: 0.95, ease: EASE } : { duration: 0 }}
+          >
+            {[0, 0.3].map((delay, i) => (
+              <motion.i
+                key={i}
+                initial={reduceMotion ? false : { opacity: 0, scale: 0.2 }}
+                animate={lift ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.2 }}
+                transition={{
+                  delay: settled ? 0 : 0.15 + delay,
+                  type: 'spring',
+                  stiffness: 300,
+                  damping: 20,
+                  mass: 0.8,
+                }}
+              />
+            ))}
+          </motion.div>
+
           {/* the wordmark IS the hero. Everything else on this screen is a caption to it. */}
-          <motion.h1 className="wordmark" variants={enter}>
-            <span className="wordmark__dots">
-              <i />
-              <i />
-            </span>
+          <motion.h1 className="wordmark" variants={disclose}>
             hora
           </motion.h1>
 
-          <motion.p className="hero__sub" variants={enter}>
+          <motion.p className="hero__sub" variants={disclose}>
             A restaurant table you can buy, price, and <span className="script">sell back</span>
             <br />
             right up until the night it's for.
           </motion.p>
 
-          <motion.div className="ctas" variants={enter}>
+          <motion.div className="ctas" variants={disclose}>
             <motion.a
               className="cta cta--ink"
               href={DEVPOST_URL}
@@ -211,25 +311,30 @@ export default function Home({ onEnter }: { onEnter: (e: React.MouseEvent) => vo
           </motion.div>
         </motion.div>
 
-        {/* scroll cue: it breathes on its own and disappears the instant you take the hint */}
-        <motion.div
-          className="cue"
-          style={{ opacity: cueOpacity }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ ...ease(0.5), delay: 1.1 }}
-        >
-          <motion.span
-            animate={{
-              transform: reduceMotion
-                ? 'translateY(0)'
-                : ['translateY(0)', 'translateY(6px)', 'translateY(0)'],
-            }}
-            transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+        {/* Scroll cue: it breathes on its own and disappears the instant you take the hint.
+            Mounted only once the hero has landed — during the opening there is nothing above it to
+            scroll past, and an arrow nodding at the bottom of an otherwise empty screen invites
+            the reader to leave before the page has said anything. */}
+        {settled && (
+          <motion.div
+            className="cue"
+            style={{ opacity: cueOpacity }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ ...ease(0.5), delay: 0.7 }}
           >
-            &#8595;
-          </motion.span>
-        </motion.div>
+            <motion.span
+              animate={{
+                transform: reduceMotion
+                  ? 'translateY(0)'
+                  : ['translateY(0)', 'translateY(6px)', 'translateY(0)'],
+              }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              &#8595;
+            </motion.span>
+          </motion.div>
+        )}
       </div>
 
       {/* ============ the problem ============ */}

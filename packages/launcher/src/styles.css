@@ -466,10 +466,15 @@ html {
   line-height: 0.82;
   letter-spacing: -0.045em;
 }
-/* the logo's two dots, promoted to a mark above the name */
+/* The logo's two dots, promoted to a mark above the name.
+   They sit outside the <h1> rather than in it: the opening animation holds them mid-screen while
+   the rest of the hero is still hidden, and a child cannot stay visible inside a hidden parent. */
 .wordmark__dots {
   display: flex;
+  justify-content: center;
   gap: 12px;
+  margin-bottom: 22px;
+  will-change: transform;
 }
 .wordmark__dots i {
   width: 15px;
