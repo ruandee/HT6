@@ -204,9 +204,53 @@ phone before you call it done.
 
 ---
 
-## Deterministic footage (optional, ask me to build it)
+## Deterministic footage
 
-Every click in beats 2 through 4 can be driven by a Playwright script on a fixed timeline instead
-of by hand: cursor glides at a constant speed, clicks land on the exact beat, the clock advances on
-cue, and it's identical on every take. You hit record, run it, and it performs. That removes the
-fumbling that costs most hackathon videos their polish, and it means a retake is free.
+Beats 2 through 4 are driven by `scripts/demo-reel.mjs` instead of by hand. The cursor glides at a
+constant speed, every click lands on a scheduled millisecond, and the clock advances on cue. You
+hit record, run a beat, and it performs. A retake is free, and take 9 is the same as take 1.
+
+```
+node scripts/demo-reel.mjs --list       # the beats
+node scripts/demo-reel.mjs buy          # beat 2  — claim a table, $58 -> $61   (~12s)
+node scripts/demo-reel.mjs sellback     # beat 3a — hand it back, payout lands  (~10s)
+node scripts/demo-reel.mjs royalty      # beat 3b — the royalty counter ticks   (~10s)
+node scripts/demo-reel.mjs sweep        # beat 4  — check in, advance, sweep    (~17s)
+node scripts/demo-reel.mjs all          # all four, one browser
+```
+
+**Before you run it,** have app-services and whichever frontend the beat needs already running. The
+script checks and tells you which one is missing. Capture the browser **window** in OBS, not the
+display, and cut inside the 2s handle at each end.
+
+Each beat prints its schedule as it performs, so you can confirm a take was clean before you keep
+it. `on schedule` means every mark hit; anything else prints the drift.
+
+```
+  ROLLING  beat 2 · buy
+         0ms  lead-in (handle)
+      2000ms  glide to Claim
+      3462ms  click Claim
+      6313ms  click Confirm
+     12163ms  cut
+  DONE     beat 2 · buy in 12.16s  — on schedule
+```
+
+### What it does for you
+
+- **Resets state before rolling.** Buying moves the pool off n=6 / $58, so `buy` sells any held
+  table back first and `sellback` buys one in. Every beat is re-runnable in any order.
+- **Draws a cursor.** Playwright's mouse is invisible to a screen recorder, so an overlay is
+  injected and moved in lockstep with the real one. It hides itself for the two shots VIDEO.md
+  wants uncluttered: the price roll and the settled number.
+- **Refuses a dead take.** If the royalty counter did not actually move, or the sweep pool has too
+  few diners to fill the settled panel, the run fails rather than handing you footage of nothing.
+
+### Two things worth knowing
+
+**Beat 4 builds a throwaway pool every run.** Sweeping is one-way and it *freezes* the pool, so
+sweeping the headline Monday would silently take beats 2 and 3 out of service until a restart.
+The trade is some extra cards accumulating in the Floor grid; restart app-services to clear them.
+
+**A frozen headline pool needs a restart.** Nothing in the demo API can thaw it, because the freeze
+rewrites the service time into the past. The script detects this and says so.
