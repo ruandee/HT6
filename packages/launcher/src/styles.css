@@ -281,17 +281,16 @@ body {
   text-decoration: none;
   color: inherit;
   cursor: pointer;
-  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s,
+  transition: transform 0.22s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.22s,
     background 0.22s;
 }
 .role:hover {
-  transform: translateY(-3px);
   background: var(--glass-bg-strong);
   box-shadow: 0 26px 60px -14px rgba(80, 45, 25, 0.24),
     0 6px 18px -6px rgba(80, 45, 25, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 .role:active {
-  transform: translateY(-1px) scale(0.995);
+  transform: scale(0.97);
 }
 .role:focus-visible {
   outline: 2px solid var(--coral-deep);
@@ -335,10 +334,9 @@ body {
 .role__arrow {
   font-size: 16px;
   color: var(--ink-25);
-  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), color 0.22s;
+  transition: transform 0.22s cubic-bezier(0.23, 1, 0.32, 1), color 0.22s;
 }
 .role:hover .role__arrow {
-  transform: translateY(-50%) translateX(3px);
   color: var(--coral-deep);
 }
 
@@ -387,8 +385,15 @@ body {
   .orb {
     animation: none !important;
   }
-  * {
-    transition-duration: 0.01ms !important;
+  .role:hover,
+  .role:active {
+    transform: none;
+  }
+  .role:hover .role__arrow {
+    transform: translateY(-50%);
+  }
+  .cta:hover .cta__arrow {
+    transform: none;
   }
 }
 
@@ -511,14 +516,11 @@ html {
   border: 1px solid transparent;
   /* Framer owns transform (hover lift / tap press); CSS owns only the paint properties, so the
      two never fight over the same channel. */
-  transition: box-shadow 0.24s cubic-bezier(0.16, 1, 0.3, 1), filter 0.24s;
+  transition: box-shadow 0.24s cubic-bezier(0.23, 1, 0.32, 1), filter 0.24s;
 }
 .cta__arrow {
   font-size: 15px;
-  transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.cta:hover .cta__arrow {
-  transform: translateX(3px);
+  transition: transform 0.24s cubic-bezier(0.23, 1, 0.32, 1);
 }
 .cta:focus-visible {
   outline: 2px solid var(--coral-deep);
@@ -682,7 +684,7 @@ html {
   /* fixed width so the label swapping between Play/Pause/Again doesn't shove the slider around */
   min-width: 148px;
   justify-content: center;
-  transition: box-shadow 0.24s cubic-bezier(0.16, 1, 0.3, 1), filter 0.24s;
+  transition: box-shadow 0.24s cubic-bezier(0.23, 1, 0.32, 1), filter 0.24s;
 }
 .decay__play:hover {
   filter: brightness(1.04);
@@ -920,6 +922,21 @@ html {
   }
   .decay__value {
     font-size: 21px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .role:hover {
+    transform: translateY(-3px);
+  }
+  .role:active {
+    transform: scale(0.97);
+  }
+  .role:hover .role__arrow {
+    transform: translateY(-50%) translateX(3px);
+  }
+  .cta:hover .cta__arrow {
+    transform: translateX(3px);
   }
 }
 

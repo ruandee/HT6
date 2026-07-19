@@ -6,7 +6,7 @@ import { BuySheet } from './BuySheet';
 import { Calendar } from './Calendar';
 import { SellSheet, Wallet, WalletPill } from './Wallet';
 import { PartySize, bandFor } from './PartySize';
-import { ease, fadeUp, group, hoverLift, tapPress } from './motion';
+import { ease, fadeUp, group } from './motion';
 import { venueState } from './venue';
 import { UnifoldCheckout } from './UnifoldCheckout';
 import { assertKeyMatch, unifoldEnabled } from './unifold';
@@ -274,22 +274,11 @@ export default function App() {
             <div className="eyebrow" style={{ marginBottom: 16 }}>
               Right now
             </div>
-            {/* the §11 "curve ticks up" moment: when another session buys, the poll brings a new
-                price and it rolls over instead of snapping */}
             <div className="price price--hero">
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.span
-                  key={q?.buy_price ?? 'pending'}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={ease(0.26)}
-                  style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}
-                >
-                  <span>${price.dollars}</span>
-                  <span className="price__cents">.{price.cents}</span>
-                </motion.span>
-              </AnimatePresence>
+              <span style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+                <span>${price.dollars}</span>
+                <span className="price__cents">.{price.cents}</span>
+              </span>
             </div>
             <div className="muted" style={{ marginTop: 14, fontSize: 13.5 }}>
               {usdc(floorP0)} comes off your bill.
@@ -303,10 +292,8 @@ export default function App() {
               )}
             </div>
 
-            <motion.button
+            <button
               className="btn btn--primary"
-              whileHover={hoverLift}
-          whileTap={tapPress}
               style={{ width: '100%', marginTop: 26 }}
               onClick={startBuy}
               disabled={!q || q.frozen || left === 0 || heldThisWindow.length > 0}
@@ -316,7 +303,7 @@ export default function App() {
                 : left === 0
                   ? 'Sold out'
                   : 'Claim this table'}
-            </motion.button>
+            </button>
             {heldOtherBand.length > 0 && (
               <div
                 style={{

@@ -55,7 +55,7 @@ export function BuySheet({
   const pct = Math.max(0, Math.min(1, left / total.current));
 
   return (
-    <Sheet onClose={onClose}>
+    <Sheet onClose={onClose} label="Confirm table purchase">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <div className="eyebrow" style={{ width: 132 }}>

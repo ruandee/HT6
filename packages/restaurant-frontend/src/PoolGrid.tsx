@@ -74,7 +74,7 @@ function PoolCard({
          would smear the glass blur while it reflows */
       layout="position"
       whileHover={{ y: -2, transition: { duration: 0.18, ease: EASE } }}
-      whileTap={{ scale: 0.995, transition: { duration: 0.1 } }}
+      whileTap={{ scale: 0.97, transition: { duration: 0.1 } }}
       className={`glass pool-card ${selected ? 'pool-card--sel' : ''}`}
       onClick={() => onSelect(pool.pool_id)}
       aria-pressed={selected}
@@ -91,7 +91,7 @@ function PoolCard({
       </div>
 
       <div className="meter" aria-hidden>
-        <div className="meter__fill" style={{ width: `${pct}%` }} />
+        <div className="meter__fill" style={{ transform: `scaleX(${pct / 100})` }} />
       </div>
 
       <div

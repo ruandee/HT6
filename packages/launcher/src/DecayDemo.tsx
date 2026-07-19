@@ -10,8 +10,8 @@
  * It demonstrates itself once, on approach, then hands over the scrubber. A visitor who never
  * touches it still sees the argument; a visitor who does can park it anywhere on the night.
  */
-import { useEffect, useRef, useState } from 'react';
-import { motion, useInView } from 'framer-motion';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { motion, useInView, useReducedMotion } from 'framer-motion';
 import {
   Area,
   AreaChart,
@@ -154,6 +154,8 @@ export default function DecayDemo() {
   const [tau, setTau] = useState(START_HOURS);
   const [playing, setPlaying] = useState(false);
   const [hasPlayed, setHasPlayed] = useState(false);
+  const reduceMotion = Boolean(useReducedMotion());
+  const disclose = useMemo(() => reveal(reduceMotion), [reduceMotion]);
 
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, amount: 0.45 });
@@ -166,17 +168,21 @@ export default function DecayDemo() {
    */
   useEffect(() => {
     if (!inView || hasPlayed) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (reduceMotion) return;
     const t = setTimeout(() => {
       setPlaying(true);
       setHasPlayed(true);
     }, 550);
     return () => clearTimeout(t);
-  }, [inView, hasPlayed]);
+  }, [inView, hasPlayed, reduceMotion]);
 
   /** The sweep. Time-based rather than per-frame so it runs the same on a 60Hz and a 120Hz screen. */
   useEffect(() => {
     if (!playing) return;
+    if (reduceMotion) {
+      setPlaying(false);
+      return;
+    }
     let raf = 0;
     let last = performance.now();
     const tick = (now: number) => {
@@ -187,7 +193,7 @@ export default function DecayDemo() {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [playing]);
+  }, [playing, reduceMotion]);
 
   // stop at the door rather than looping. The end state is the thing being demonstrated, and a
   // loop would snatch it away the moment it lands.
@@ -208,6 +214,10 @@ export default function DecayDemo() {
       setPlaying(false);
       return;
     }
+    if (reduceMotion) {
+      setTau((old) => (old <= 0.01 ? START_HOURS : 0));
+      return;
+    }
     if (tau <= 0.01) setTau(START_HOURS);
     setPlaying(true);
   }
@@ -219,7 +229,7 @@ export default function DecayDemo() {
   }
 
   return (
-    <motion.div className="glass decay" ref={ref} variants={reveal}>
+    <motion.div className="glass decay" ref={ref} variants={disclose}>
       <div className="decay__head">
         <div>
           <div className="stat-label">One table, one night</div>
@@ -238,8 +248,8 @@ export default function DecayDemo() {
           type="button"
           className="decay__play"
           onClick={toggle}
-          whileHover={hoverLift}
-          whileTap={tapPress}
+          whileHover={reduceMotion ? undefined : hoverLift}
+          whileTap={reduceMotion ? undefined : tapPress}
           aria-label={playing ? 'Pause' : 'Play the night'}
         >
           <span aria-hidden>{playing ? '‖' : atDoor ? '↻' : '▶'}</span>

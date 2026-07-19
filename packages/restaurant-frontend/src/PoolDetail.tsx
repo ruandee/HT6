@@ -107,7 +107,7 @@ export function PoolDetail({ pool, onCheckin, busy }: Props) {
           </div>
         </div>
         <div className="meter" style={{ height: 10, marginTop: 14 }} aria-hidden>
-          <div className="meter__fill" style={{ width: `${pct}%` }} />
+          <div className="meter__fill" style={{ transform: `scaleX(${pct / 100})` }} />
         </div>
         <div className="pips" style={{ marginTop: 16 }}>
           {Array.from({ length: pool.n_max }, (_, i) => (

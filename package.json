@@ -7,8 +7,11 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "build": "npm run build --workspace @ttr/shared-types && npm run build --workspace @ttr/chain-services && npm run build --workspace @ttr/app-services && npm run build --workspace @ttr/decay-lab --workspace @ttr/diner-frontend --workspace @ttr/launcher --workspace @ttr/mobile-diner --workspace @ttr/restaurant-frontend",
+    "typecheck": "npm run build --workspace @ttr/shared-types && npm run build --workspace @ttr/chain-services && npm run typecheck --workspaces --if-present",
+    "test": "npm run build && npm test --workspace @ttr/app-services",
+    "contract:build": "npm run build --workspace @ttr/contract",
+    "contract:test": "npm test --workspace @ttr/contract"
   },
   "devDependencies": {
     "@fontsource/archivo": "^5.2.8",

@@ -86,7 +86,7 @@ nothing.
 Mapping is 1:1 except where the chain needs accounts the TS interface hides:
 | ChainAdapter (§10.2) | program instruction |
 |---|---|
-| `create_pool` | `create_pool(pool_seed, p0, k, n_max, phi_bps, service_time, tc_seconds, party_size)` |
+| `create_pool` | `create_pool(pool_seed, p0, k, n_max, phi_bps, service_time, tc_seconds, party_size, grace_seconds)` |
 | `quote` | read the `Pool` account + compute `math.rs` client-side (no tx) |
 | `buy(pool, user, max_price)` | `buy(max_price)` |
 | `sell(pool, user)` | `sell()` |

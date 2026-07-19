@@ -11,7 +11,7 @@
  */
 import { motion } from 'framer-motion';
 import { splitUsdc, usdc, type Holding, type PoolSummary } from './api';
-import { EASE, ease, fadeUp, group, hoverLift, tapPress } from './motion';
+import { EASE, ease, fadeUp, group } from './motion';
 
 interface Props {
   holdings: Holding[];
@@ -50,7 +50,7 @@ export function Wallet({ holdings, pools, viewingPoolId, onSell }: Props) {
                   className="glass glass--strong ticket"
                   variants={fadeUp}
                   layout
-                  transition={{ duration: 0.36, ease: EASE }}
+                  transition={{ duration: 0.24, ease: EASE }}
                 >
                   <div className="ticket__top">
                     <div>
@@ -83,15 +83,13 @@ export function Wallet({ holdings, pools, viewingPoolId, onSell }: Props) {
                     <span className="price__cents">.{v.cents}</span>
                   </div>
 
-                  <motion.button
+                  <button
                     className="btn btn--ghost"
-                    whileHover={hoverLift}
-                    whileTap={tapPress}
                     style={{ width: '100%', marginTop: 18 }}
                     onClick={() => onSell(h)}
                   >
                     Can&apos;t make it? Sell it back
-                  </motion.button>
+                  </button>
                 </motion.article>
               );
             })}
@@ -113,12 +111,10 @@ export function Wallet({ holdings, pools, viewingPoolId, onSell }: Props) {
 export function WalletPill({ holdings }: { holdings: Holding[] }) {
   const total = holdings.reduce((n, h) => n + BigInt(h.recover_value), 0n).toString();
   return (
-    <motion.button
+    <button
       className="wpill"
-      whileHover={hoverLift}
-      whileTap={tapPress}
       onClick={() =>
-        document.getElementById('wallet')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        document.getElementById('wallet')?.scrollIntoView({ block: 'start' })
       }
     >
       <TicketIcon />
@@ -126,7 +122,7 @@ export function WalletPill({ holdings }: { holdings: Holding[] }) {
         {holdings.length} {holdings.length === 1 ? 'table' : 'tables'}
       </span>
       {holdings.length > 0 && <span className="wpill__v">{usdc(total)}</span>}
-    </motion.button>
+    </button>
   );
 }
 
@@ -157,7 +153,7 @@ export function SellSheet({
         initial={{ opacity: 0, y: 22, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 14, scale: 0.98, transition: { duration: 0.18, ease: EASE } }}
-        transition={{ duration: 0.42, ease: EASE }}
+        transition={{ duration: 0.28, ease: EASE }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="eyebrow" style={{ width: 150 }}>
@@ -171,24 +167,20 @@ export function SellSheet({
           We&apos;ll take back your {label} table right now, with no waiting for someone else to
           want it. The money is on its way as soon as you confirm.
         </p>
-        <motion.button
+        <button
           className="btn btn--primary"
-          whileHover={hoverLift}
-          whileTap={tapPress}
           style={{ width: '100%', marginTop: 26 }}
           onClick={onConfirm}
         >
           Sell it back
-        </motion.button>
-        <motion.button
+        </button>
+        <button
           className="btn btn--ghost"
-          whileHover={hoverLift}
-          whileTap={tapPress}
           style={{ width: '100%', marginTop: 10 }}
           onClick={onClose}
         >
           Keep it
-        </motion.button>
+        </button>
       </motion.div>
     </motion.div>
   );

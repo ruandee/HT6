@@ -10,11 +10,10 @@
  *     up turns reading into a slideshow.
  *   - The only scroll-*linked* motion is the hero's exit and the progress rail. Everything else is
  *     time-based and triggered by the viewport, so nothing feels welded to the scrollbar.
- *   - Reduced motion is handled once by <MotionConfig reducedMotion="user"> in App: Framer drops
- *     the transforms and keeps the opacity, so none of this needs to branch.
+ *   - Reduced motion keeps the fades but removes spatial transforms.
  */
-import { lazy, Suspense } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { lazy, Suspense, useMemo } from 'react';
+import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion';
 import { fadeUp, group, reveal, inView, hoverLift, tapPress, ease } from './motion';
 
 /**
@@ -138,6 +137,9 @@ const SIDES: Side[] = [
 ];
 
 export default function Home({ onEnter }: { onEnter: (e: React.MouseEvent) => void }) {
+  const reduceMotion = Boolean(useReducedMotion());
+  const enter = useMemo(() => fadeUp(reduceMotion), [reduceMotion]);
+  const disclose = useMemo(() => reveal(reduceMotion), [reduceMotion]);
   const { scrollYProgress } = useScroll();
 
   /**
@@ -160,17 +162,17 @@ export default function Home({ onEnter }: { onEnter: (e: React.MouseEvent) => vo
       <div className="hero">
         <motion.div
           className="hero__inner"
-          style={{ y: heroY, opacity: heroOpacity }}
+          style={{ y: reduceMotion ? 0 : heroY, opacity: heroOpacity }}
           variants={group(0.09, 0.1)}
           initial="hidden"
           animate="show"
         >
-          <motion.div className="hero__eyebrow" variants={fadeUp}>
+          <motion.div className="hero__eyebrow" variants={enter}>
             Tokenized reservations
           </motion.div>
 
           {/* the wordmark IS the hero. Everything else on this screen is a caption to it. */}
-          <motion.h1 className="wordmark" variants={fadeUp}>
+          <motion.h1 className="wordmark" variants={enter}>
             <span className="wordmark__dots">
               <i />
               <i />
@@ -178,20 +180,20 @@ export default function Home({ onEnter }: { onEnter: (e: React.MouseEvent) => vo
             hora
           </motion.h1>
 
-          <motion.p className="hero__sub" variants={fadeUp}>
+          <motion.p className="hero__sub" variants={enter}>
             A restaurant table you can buy, price, and <span className="script">sell back</span>
             <br />
             right up until the night it's for.
           </motion.p>
 
-          <motion.div className="ctas" variants={fadeUp}>
+          <motion.div className="ctas" variants={enter}>
             <motion.a
               className="cta cta--ink"
               href={DEVPOST_URL}
               target="_blank"
               rel="noreferrer"
-              whileHover={hoverLift}
-              whileTap={tapPress}
+              whileHover={reduceMotion ? undefined : hoverLift}
+              whileTap={reduceMotion ? undefined : tapPress}
             >
               Read the Devpost
               <span className="cta__arrow">&#8599;</span>
@@ -200,8 +202,8 @@ export default function Home({ onEnter }: { onEnter: (e: React.MouseEvent) => vo
               className="cta cta--coral"
               href="/demo"
               onClick={onEnter}
-              whileHover={hoverLift}
-              whileTap={tapPress}
+              whileHover={reduceMotion ? undefined : hoverLift}
+              whileTap={reduceMotion ? undefined : tapPress}
             >
               See the demo
               <span className="cta__arrow">&#8594;</span>
@@ -218,7 +220,11 @@ export default function Home({ onEnter }: { onEnter: (e: React.MouseEvent) => vo
           transition={{ ...ease(0.5), delay: 1.1 }}
         >
           <motion.span
-            animate={{ y: [0, 6, 0] }}
+            animate={{
+              transform: reduceMotion
+                ? 'translateY(0)'
+                : ['translateY(0)', 'translateY(6px)', 'translateY(0)'],
+            }}
             transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
           >
             &#8595;
@@ -228,15 +234,15 @@ export default function Home({ onEnter }: { onEnter: (e: React.MouseEvent) => vo
 
       {/* ============ the problem ============ */}
       <Section>
-        <motion.div className="eyebrow" variants={reveal}>
+        <motion.div className="eyebrow" variants={disclose}>
           The problem
         </motion.div>
-        <motion.h2 className="sec__title" variants={reveal}>
+        <motion.h2 className="sec__title" variants={disclose}>
           A booking is a promise
           <br />
           with <span className="script">nothing</span> behind it.
         </motion.h2>
-        <motion.p className="sec__lede" variants={reveal}>
+        <motion.p className="sec__lede" variants={disclose}>
           The hardest table in town costs the same as an empty Tuesday: nothing. So the good one
           gets hoarded and quietly resold in a group chat, the easy one gets abandoned at 7:58, and
           the restaurant pays for both. A reservation is one of the last genuinely scarce things
@@ -246,16 +252,16 @@ export default function Home({ onEnter }: { onEnter: (e: React.MouseEvent) => vo
 
       {/* ============ how it works ============ */}
       <Section stagger={0.1}>
-        <motion.div className="eyebrow" variants={reveal}>
+        <motion.div className="eyebrow" variants={disclose}>
           How it works
         </motion.div>
-        <motion.h2 className="sec__title" variants={reveal}>
+        <motion.h2 className="sec__title" variants={disclose}>
           Give the table a <span className="script">price</span>.
         </motion.h2>
 
         <div className="steps">
           {STEPS.map((s) => (
-            <motion.article className="glass step" key={s.n} variants={reveal}>
+            <motion.article className="glass step" key={s.n} variants={disclose}>
               <div className="step__n">{s.n}</div>
               <h3 className="step__title">{s.title}</h3>
               <p className="muted">{s.body}</p>
@@ -269,13 +275,13 @@ export default function Home({ onEnter }: { onEnter: (e: React.MouseEvent) => vo
           reader gets to check that claim against the same math the chain runs, rather than taking
           a marketing page's word for it. */}
       <Section stagger={0.1}>
-        <motion.div className="eyebrow" variants={reveal}>
+        <motion.div className="eyebrow" variants={disclose}>
           See for yourself
         </motion.div>
-        <motion.h2 className="sec__title" variants={reveal}>
+        <motion.h2 className="sec__title" variants={disclose}>
           Watch the premium <span className="script">fade</span>.
         </motion.h2>
-        <motion.p className="sec__lede" variants={reveal}>
+        <motion.p className="sec__lede" variants={disclose}>
           Nothing below is an illustration. Every number is computed live from the same pricing
           code the contract runs, so you can drag the night right up to the door and see exactly
           what a table is worth when there is no time left in it.
@@ -288,20 +294,20 @@ export default function Home({ onEnter }: { onEnter: (e: React.MouseEvent) => vo
 
       {/* ============ under the hood ============ */}
       <Section stagger={0.09}>
-        <motion.div className="eyebrow" variants={reveal}>
+        <motion.div className="eyebrow" variants={disclose}>
           Under the hood
         </motion.div>
-        <motion.h2 className="sec__title" variants={reveal}>
+        <motion.h2 className="sec__title" variants={disclose}>
           The guarantees are <span className="script">real</span>.
         </motion.h2>
-        <motion.p className="sec__lede" variants={reveal}>
+        <motion.p className="sec__lede" variants={disclose}>
           Prices like these only work if the refund is certain, so the rules live somewhere nobody
           can quietly change them later — including us.
         </motion.p>
 
         <div className="tech">
           {TECH.map((t) => (
-            <motion.article className="glass tech__card" key={t.label} variants={reveal}>
+            <motion.article className="glass tech__card" key={t.label} variants={disclose}>
               <h3 className="tech__label">{t.label}</h3>
               <p className="muted tech__body">{t.body}</p>
             </motion.article>
@@ -311,16 +317,16 @@ export default function Home({ onEnter }: { onEnter: (e: React.MouseEvent) => vo
 
       {/* ============ both sides ============ */}
       <Section stagger={0.1}>
-        <motion.div className="eyebrow" variants={reveal}>
+        <motion.div className="eyebrow" variants={disclose}>
           Who it's for
         </motion.div>
-        <motion.h2 className="sec__title" variants={reveal}>
+        <motion.h2 className="sec__title" variants={disclose}>
           Both sides of the <span className="script">table</span>.
         </motion.h2>
 
         <div className="sides">
           {SIDES.map((s) => (
-            <motion.article className="glass side" key={s.who} variants={reveal}>
+            <motion.article className="glass side" key={s.who} variants={disclose}>
               <h3 className="side__who">{s.who}</h3>
               <ul className="side__list">
                 {s.lines.map((l) => (
@@ -331,7 +337,7 @@ export default function Home({ onEnter }: { onEnter: (e: React.MouseEvent) => vo
           ))}
         </div>
 
-        <motion.footer className="footnote home__footer" variants={reveal}>
+        <motion.footer className="footnote home__footer" variants={disclose}>
           hora · tokenized restaurant reservations on an automated market maker.
         </motion.footer>
       </Section>

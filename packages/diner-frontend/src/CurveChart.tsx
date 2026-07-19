@@ -181,9 +181,7 @@ export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500 }: Props
             stroke="url(#curveStroke)"
             strokeWidth={3}
             fill="url(#curveFill)"
-            isAnimationActive
-            animationDuration={650}
-            animationEasing="ease-out"
+            isAnimationActive={false}
             dot={false}
           />
 

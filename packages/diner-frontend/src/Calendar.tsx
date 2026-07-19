@@ -13,12 +13,29 @@
  * seed really seats.
  */
 import { useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, type Variants } from 'framer-motion';
 import { usdc, type PoolSummary } from './api';
 import { ease } from './motion';
 import { bandFor } from './PartySize';
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+interface PageMotion {
+  direction: -1 | 1;
+  instant: boolean;
+}
+
+const PAGE: Variants = {
+  enter: ({ direction }: PageMotion) => ({
+    opacity: 0,
+    transform: `translateX(${direction * 10}px)`,
+  }),
+  center: { opacity: 1, transform: 'translateX(0px)' },
+  exit: ({ direction }: PageMotion) => ({
+    opacity: 0,
+    transform: `translateX(${direction * -8}px)`,
+  }),
+};
 
 interface Props {
   /** every pool, all dates and all bands. Slots are derived from it, not passed in. */
@@ -33,6 +50,7 @@ interface Props {
 export function Calendar({ pools, selected, guests, onSelect }: Props) {
   /** null = follow the selection; a number = the diner paged somewhere themselves. */
   const [cursor, setCursor] = useState<number | null>(null);
+  const [pageMotion, setPageMotion] = useState<PageMotion>({ direction: 1, instant: false });
 
   const current = pools.find((p) => p.pool_id === selected);
   const selectedDate = current?.date_iso ?? '';
@@ -90,31 +108,24 @@ export function Calendar({ pools, selected, guests, onSelect }: Props) {
     if (target) onSelect(target.pool_id);
   }
 
+  function pageMonth(delta: -1 | 1, event: React.MouseEvent<HTMLButtonElement>) {
+    setPageMotion({ direction: delta, instant: event.detail === 0 });
+    setCursor(month + delta);
+  }
+
   return (
     <div className="cal">
       <div className="cal__head">
-        <MonthBtn label="Previous month" onClick={() => setCursor(month - 1)} disabled={!canPrev}>
+        <MonthBtn label="Previous month" onClick={(event) => pageMonth(-1, event)} disabled={!canPrev}>
           ‹
         </MonthBtn>
-        {/* the month name crossfades rather than swapping, so paging reads as one surface
-            sliding under the arrows instead of the label blinking */}
         <div className="cal__month">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.span
-              key={month}
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -5 }}
-              transition={ease(0.2)}
-            >
-              {new Date(year, mon, 1).toLocaleDateString('en-US', {
-                month: 'long',
-                year: 'numeric',
-              })}
-            </motion.span>
-          </AnimatePresence>
+          {new Date(year, mon, 1).toLocaleDateString('en-US', {
+            month: 'long',
+            year: 'numeric',
+          })}
         </div>
-        <MonthBtn label="Next month" onClick={() => setCursor(month + 1)} disabled={!canNext}>
+        <MonthBtn label="Next month" onClick={(event) => pageMonth(1, event)} disabled={!canNext}>
           ›
         </MonthBtn>
       </div>
@@ -129,14 +140,16 @@ export function Calendar({ pools, selected, guests, onSelect }: Props) {
 
       {/* the grid itself travels with the paging, in the direction you pressed */}
       <div className="cal__body">
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence mode="popLayout" initial={false} custom={pageMotion}>
           <motion.div
             key={month}
             className="cal__grid"
-            initial={{ opacity: 0, x: 10 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -8 }}
-            transition={ease(0.24)}
+            custom={pageMotion}
+            variants={PAGE}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={pageMotion.instant ? { duration: 0 } : ease(0.16)}
           >
             {cells.map((c, i) => {
               if (!c) return <div key={i} />;
@@ -173,37 +186,26 @@ export function Calendar({ pools, selected, guests, onSelect }: Props) {
         <div className="stat-label" style={{ marginBottom: 10 }}>
           {slots.length > 0 ? 'Available' : ' '}
         </div>
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={selectedDate || 'none'}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={ease(0.24)}
-            style={{ display: 'grid', gap: 8 }}
-          >
-            {slots.map(({ service_time, bands }) => {
-              const band = bandFor(bands, guests) ?? bands[0]!;
-              const left = bands.reduce((n, p) => n + (p.n_max - p.n_sold), 0);
-              const on = band.pool_id === selected;
-              return (
-                <button
-                  key={service_time}
-                  className={`slot ${on ? 'slot--on' : ''}`}
-                  onClick={() => onSelect(band.pool_id)}
-                  aria-pressed={on}
-                  disabled={left === 0}
-                >
-                  <span className="slot__time">{timeOf(service_time)}</span>
-                  <span className="slot__left">
-                    {left === 0 ? 'Full' : `${left} left`}
-                  </span>
-                  <span className="slot__price">{usdc(band.buy_price)}</span>
-                </button>
-              );
-            })}
-          </motion.div>
-        </AnimatePresence>
+        <div style={{ display: 'grid', gap: 8 }}>
+          {slots.map(({ service_time, bands }) => {
+            const band = bandFor(bands, guests) ?? bands[0]!;
+            const left = bands.reduce((n, p) => n + (p.n_max - p.n_sold), 0);
+            const on = band.pool_id === selected;
+            return (
+              <button
+                key={service_time}
+                className={`slot ${on ? 'slot--on' : ''}`}
+                onClick={() => onSelect(band.pool_id)}
+                aria-pressed={on}
+                disabled={left === 0}
+              >
+                <span className="slot__time">{timeOf(service_time)}</span>
+                <span className="slot__left">{left === 0 ? 'Full' : `${left} left`}</span>
+                <span className="slot__price">{usdc(band.buy_price)}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -217,7 +219,7 @@ function MonthBtn({
 }: {
   children: React.ReactNode;
   label: string;
-  onClick: () => void;
+  onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
   disabled?: boolean;
 }) {
   return (

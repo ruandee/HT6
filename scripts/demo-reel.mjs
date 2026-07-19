@@ -629,7 +629,7 @@ async function main() {
   await preflight([...new Set(wanted.flatMap((w) => BEATS[w].needs))]);
 
   const browser = await chromium.launch({
-    headless: false,
+    headless: process.env.CI === '1',
     args: [`--window-size=${VIEWPORT.width},${VIEWPORT.height}`, '--hide-scrollbars'],
   });
 

@@ -105,8 +105,8 @@ One thing that does *not* carry over automatically: the clients proxy REST calls
 hosting app-services somewhere and replacing those dev proxies with a real API base URL — the
 launcher is standalone and has no such dependency, so it can go up first on its own.
 
-Open **http://localhost:5173**. On boot the backend seeds 5 nights × 3 party-size bands (§4a) =
-15 pools, each with its own curve. The nearest night sits inside the 24h decay cliff so θ decay is
+Open **http://localhost:5173**. On boot the backend seeds 5 nights × 2 party-size bands (§4a) =
+10 pools, each with its own curve. The nearest night sits inside the 24h decay cliff so θ decay is
 visible (a fuller night priced LOWER than an emptier one further out — that's §7b working).
 
 Buy flow on the stub: click Claim → the sheet opens with the price locked → Confirm posts a

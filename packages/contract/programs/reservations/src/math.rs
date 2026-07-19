@@ -75,14 +75,18 @@ pub fn sell_payout(sell_price: u64, phi_bps: u16) -> Result<u64> {
 /// The instant the check-in door closes = `service_time + grace_seconds`.
 ///
 /// This is the ONLY thing grace moves. θ and the freeze still key off `service_time`, so pricing
-/// and the solvency invariant are untouched (§7b/§4). `check_in` is valid up to and including this
-/// instant; `sweep` is legal from this instant on. Sharing one boundary is deliberate — it makes
-/// "still checkable in" and "already swept" mutually exclusive by construction.
+/// and the solvency invariant are untouched (§7b/§4). `check_in` is valid before this instant;
+/// `sweep` is legal from this instant on, so the two actions never overlap.
 pub fn door_closes_at(service_time: i64, grace_seconds: i64) -> Result<i64> {
     require!(grace_seconds >= 0, ReservationError::InvalidParams);
     service_time
         .checked_add(grace_seconds)
         .ok_or(ReservationError::MathOverflow.into())
+}
+
+/// The shared deadline predicate keeps check-in and sweep mutually exclusive.
+pub fn check_in_open(now: i64, door_closes: i64) -> bool {
+    now < door_closes
 }
 
 #[cfg(test)]
@@ -172,7 +176,10 @@ mod tests {
         const GRACE: i64 = 15 * 60; // 15 minutes
 
         // the door closes after service, by exactly the grace
-        assert_eq!(door_closes_at(SERVICE, GRACE).unwrap(), SERVICE + 900);
+        let closes = door_closes_at(SERVICE, GRACE).unwrap();
+        assert_eq!(closes, SERVICE + 900);
+        assert!(check_in_open(closes - 1, closes));
+        assert!(!check_in_open(closes, closes));
         // zero grace = door closes at service (the old behaviour)
         assert_eq!(door_closes_at(SERVICE, 0).unwrap(), SERVICE);
         // negative grace would let sweep run before service; refuse it
@@ -184,6 +191,6 @@ mod tests {
         let inside = SERVICE + 60;
         assert_eq!(theta_bps(SERVICE, inside, 86_400).unwrap(), 0);
         assert_eq!(buy_price(P0, K, 6, 0).unwrap(), P0); // price sits on the floor, not the curve
-        assert!(inside <= door_closes_at(SERVICE, GRACE).unwrap()); // ...and check-in is still open
+        assert!(check_in_open(inside, closes)); // ...and check-in is still open
     }
 }
