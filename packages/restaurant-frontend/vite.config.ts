@@ -6,6 +6,9 @@ export default defineConfig({
   server: {
     // 5174, because the diner app owns 5173 and the demo runs both side by side.
     port: 5174,
+    // The launcher proxies /up/restaurant straight at 5174, so drifting would leave it
+    // reporting this app as down.
+    strictPort: true,
     // app-services REST (§10.4). The issuer dashboard talks ONLY to this (§8 boundary rule):
     // frontends NEVER touch the chain.
     proxy: {

@@ -5,6 +5,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    // The launcher proxies /up/diner straight at 5173, so drifting to another port would
+    // leave it reporting this app as down.
+    strictPort: true,
     // app-services REST (§10.4). The frontend talks ONLY to this (§8 boundary rule).
     proxy: {
       '/pools': 'http://localhost:8080',

@@ -5,5 +5,5 @@ import react from '@vitejs/plugin-react';
 // open alongside them on a second monitor while the demo runs.
 export default defineConfig({
   plugins: [react()],
-  server: { port: 5176 },
+  server: { port: 5176, strictPort: true },
 });
