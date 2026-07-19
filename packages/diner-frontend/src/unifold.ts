@@ -11,9 +11,26 @@
  * against a different Unifold project fails loudly instead of opening a modal that can never settle.
  */
 
-/** Set = real Unifold checkout. Unset = StubGateway mock flow, and the whole demo still runs. */
+/**
+ * Publishable key for this project, as a source-level default.
+ *
+ * Checked in deliberately. A `pk_` key is PUBLIC by design — Unifold's docs state publishable keys
+ * are safe in client code, and this value is inlined into the JS bundle and served to every visitor
+ * regardless of where it comes from. It can only open checkout modals; it cannot create payment
+ * intents, move treasury funds, or read anything. The secret `sk_` key is what must never appear
+ * here, and never does — see the guard below.
+ *
+ * The reason it is hardcoded rather than left to configuration: a missing env var does not fail the
+ * build, it silently ships a bundle that falls back to the stub path, which then fails at the point
+ * of payment. That failure mode cost real debugging time and would be far worse mid-demo. A default
+ * in source cannot be forgotten, and `VITE_UNIFOLD_PUBLISHABLE_KEY` still overrides it for anyone
+ * pointing this build at a different Unifold project.
+ */
+const DEFAULT_PUBLISHABLE_KEY = 'pk_live_3GewIDMf0y7HYa4AWU76WIuPlmS';
+
+/** Env var wins; the baked-in default is the safety net. */
 export const UNIFOLD_PUBLISHABLE_KEY = (
-  import.meta.env.VITE_UNIFOLD_PUBLISHABLE_KEY ?? ''
+  import.meta.env.VITE_UNIFOLD_PUBLISHABLE_KEY || DEFAULT_PUBLISHABLE_KEY
 ).trim();
 
 /** Whether to mount UnifoldProvider / launch real checkout modals at all. */
