@@ -13,7 +13,8 @@
     "contract:build": "npm run build --workspace @ttr/contract",
     "contract:test": "npm test --workspace @ttr/contract",
     "lint:tokens": "node scripts/lint-tokens.mjs",
-    "build:web": "node scripts/build-web.mjs"
+    "build:web": "node scripts/build-web.mjs",
+    "preview:web": "node scripts/preview-web.mjs"
   },
   "devDependencies": {
     "@fontsource/archivo": "^5.2.8",
