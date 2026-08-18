@@ -16,21 +16,21 @@ import {
 } from 'recharts';
 import type { CurvePoint, DecayPoint, Params } from './model';
 import { tauLabel } from './model';
+import { AXIS, CHART, CHART_FILL, CHART_STROKE } from '@ttr/design/chart';
 
-const AXIS = { fontSize: 10, fill: 'rgba(22,19,15,0.4)', fontFamily: 'Inter' } as const;
 
 /** Shared gradient + glow defs. Duplicated ids across two charts would collide, hence the prefix. */
 function Defs({ id }: { id: string }) {
   return (
     <defs>
       <linearGradient id={`${id}Stroke`} x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%" stopColor="#FFC861" />
-        <stop offset="55%" stopColor="#FF7A59" />
-        <stop offset="100%" stopColor="#F2542D" />
+        <stop offset={CHART_STROKE[0].offset} stopColor={CHART_STROKE[0].color} />
+        <stop offset={CHART_STROKE[1].offset} stopColor={CHART_STROKE[1].color} />
+        <stop offset={CHART_STROKE[2].offset} stopColor={CHART_STROKE[2].color} />
       </linearGradient>
       <linearGradient id={`${id}Fill`} x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#FF7A59" stopOpacity={0.28} />
-        <stop offset="100%" stopColor="#FFE8A3" stopOpacity={0} />
+        <stop offset="0%" stopColor={CHART_FILL.top} stopOpacity={CHART_FILL.topOpacity} />
+        <stop offset="100%" stopColor={CHART_FILL.bottom} stopOpacity={CHART_FILL.bottomOpacity} />
       </linearGradient>
       <filter id={`${id}Glow`} x="-120%" y="-120%" width="340%" height="340%">
         <feGaussianBlur stdDeviation="5" result="b" />
@@ -111,7 +111,7 @@ export function CurveChart({
               position: 'insideBottom',
               offset: -2,
               fontSize: 9,
-              fill: 'rgba(22,19,15,0.35)',
+              fill: CHART.label,
               fontFamily: 'Archivo',
               letterSpacing: '0.14em',
             }}
@@ -127,20 +127,20 @@ export function CurveChart({
 
           <ReferenceLine
             y={p.p0}
-            stroke="rgba(22,19,15,0.28)"
+            stroke={CHART.floor}
             strokeDasharray="3 4"
             label={{
               value: 'MEAL CREDIT',
               position: 'insideBottomRight',
               fontSize: 9,
-              fill: 'rgba(22,19,15,0.45)',
+              fill: CHART.label,
               fontFamily: 'Archivo',
               letterSpacing: '0.14em',
             }}
           />
 
           <Tooltip
-            cursor={{ stroke: 'rgba(22,19,15,0.28)', strokeWidth: 1, strokeDasharray: '3 3' }}
+            cursor={{ stroke: CHART.cursorLine, strokeWidth: 1, strokeDasharray: '3 3' }}
             animationDuration={140}
             content={({ active, payload }) => {
               const d = (payload?.[0]?.payload ?? null) as CurvePoint | null;
@@ -168,7 +168,7 @@ export function CurveChart({
             <Line
               type="monotone"
               dataKey="atFull"
-              stroke="rgba(22,19,15,0.22)"
+              stroke={CHART.ghost}
               strokeWidth={1.5}
               strokeDasharray="4 5"
               dot={false}
@@ -191,7 +191,7 @@ export function CurveChart({
               x={here.n}
               y={here.price}
               r={6.5}
-              fill="#F2542D"
+              fill={CHART.cursor}
               stroke="#fff"
               strokeWidth={2.5}
               filter="url(#curveGlow)"
@@ -242,7 +242,7 @@ export function DecayChart({
               position: 'insideBottom',
               offset: -2,
               fontSize: 9,
-              fill: 'rgba(22,19,15,0.35)',
+              fill: CHART.label,
               fontFamily: 'Archivo',
               letterSpacing: '0.14em',
             }}
@@ -258,13 +258,13 @@ export function DecayChart({
 
           <ReferenceLine
             y={p.p0}
-            stroke="rgba(22,19,15,0.28)"
+            stroke={CHART.floor}
             strokeDasharray="3 4"
             label={{
               value: 'MEAL CREDIT',
               position: 'insideBottomRight',
               fontSize: 9,
-              fill: 'rgba(22,19,15,0.45)',
+              fill: CHART.label,
               fontFamily: 'Archivo',
               letterSpacing: '0.14em',
             }}
@@ -273,13 +273,13 @@ export function DecayChart({
           {p.tcHours < data[0]!.tau && (
             <ReferenceLine
               x={p.tcHours}
-              stroke="rgba(242,84,45,0.4)"
+              stroke={CHART.onset}
               strokeDasharray="2 4"
               label={{
                 value: 'DECAY BEGINS',
                 position: 'insideTopLeft',
                 fontSize: 9,
-                fill: 'rgba(242,84,45,0.75)',
+                fill: CHART.onsetLabel,
                 fontFamily: 'Archivo',
                 letterSpacing: '0.14em',
               }}
@@ -287,7 +287,7 @@ export function DecayChart({
           )}
 
           <Tooltip
-            cursor={{ stroke: 'rgba(22,19,15,0.28)', strokeWidth: 1, strokeDasharray: '3 3' }}
+            cursor={{ stroke: CHART.cursorLine, strokeWidth: 1, strokeDasharray: '3 3' }}
             animationDuration={140}
             content={({ active, payload }) => {
               const d = (payload?.[0]?.payload ?? null) as DecayPoint | null;
@@ -325,7 +325,7 @@ export function DecayChart({
           <Line
             type="monotone"
             dataKey="payout"
-            stroke="rgba(22,19,15,0.3)"
+            stroke={CHART.payout}
             strokeWidth={1.5}
             strokeDasharray="4 5"
             dot={false}
@@ -336,7 +336,7 @@ export function DecayChart({
             x={at.tau}
             y={at.buy}
             r={6.5}
-            fill="#F2542D"
+            fill={CHART.cursor}
             stroke="#fff"
             strokeWidth={2.5}
             filter="url(#decayGlow)"

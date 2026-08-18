@@ -17,6 +17,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { CHART, CHART_FILL, CHART_STROKE } from '@ttr/design/chart';
 
 interface Props {
   p0: string; // base units
@@ -122,13 +123,13 @@ export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500, height 
         <AreaChart data={data} margin={{ top: 16, right: 10, bottom: 0, left: 0 }}>
           <defs>
             <linearGradient id="mCurveStroke" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#FFC861" />
-              <stop offset="55%" stopColor="#FF7A59" />
-              <stop offset="100%" stopColor="#F2542D" />
+              <stop offset={CHART_STROKE[0].offset} stopColor={CHART_STROKE[0].color} />
+              <stop offset={CHART_STROKE[1].offset} stopColor={CHART_STROKE[1].color} />
+              <stop offset={CHART_STROKE[2].offset} stopColor={CHART_STROKE[2].color} />
             </linearGradient>
             <linearGradient id="mCurveFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#FF7A59" stopOpacity={0.3} />
-              <stop offset="100%" stopColor="#FFE8A3" stopOpacity={0} />
+              <stop offset="0%" stopColor={CHART_FILL.top} stopOpacity={CHART_FILL.topOpacity} />
+              <stop offset="100%" stopColor={CHART_FILL.bottom} stopOpacity={CHART_FILL.bottomOpacity} />
             </linearGradient>
             <filter id="mDotGlow" x="-120%" y="-120%" width="340%" height="340%">
               <feGaussianBlur stdDeviation="5" result="b" />
@@ -141,7 +142,7 @@ export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500, height 
 
           <XAxis
             dataKey="n"
-            tick={{ fontSize: 9.5, fill: 'rgba(22,19,15,0.4)', fontFamily: 'Inter' }}
+            tick={{ fontSize: 9.5, fill: CHART.label, fontFamily: 'Inter' }}
             axisLine={false}
             tickLine={false}
             interval={Math.max(1, Math.floor(nMax / 4))}
@@ -149,7 +150,7 @@ export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500, height 
           />
           <YAxis
             domain={['dataMin - 4', 'dataMax + 4']}
-            tick={{ fontSize: 9.5, fill: 'rgba(22,19,15,0.4)', fontFamily: 'Inter' }}
+            tick={{ fontSize: 9.5, fill: CHART.label, fontFamily: 'Inter' }}
             axisLine={false}
             tickLine={false}
             width={30}
@@ -160,7 +161,7 @@ export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500, height 
           {/* meal-credit floor, the value that never decays (§7b) */}
           <ReferenceLine
             y={p0n}
-            stroke="rgba(22,19,15,0.28)"
+            stroke={CHART.floor}
             strokeDasharray="3 4"
             label={{
               value: 'MEAL CREDIT',
@@ -170,7 +171,7 @@ export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500, height 
                  floor is empty. */
               position: 'insideBottomRight',
               fontSize: 8.5,
-              fill: 'rgba(22,19,15,0.45)',
+              fill: CHART.label,
               fontFamily: 'Archivo',
               letterSpacing: '0.14em',
             }}
@@ -178,7 +179,7 @@ export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500, height 
 
           <Tooltip
             content={<CurveTip phiBps={phiBps} />}
-            cursor={{ stroke: 'rgba(22,19,15,0.28)', strokeWidth: 1, strokeDasharray: '3 3' }}
+            cursor={{ stroke: CHART.cursorLine, strokeWidth: 1, strokeDasharray: '3 3' }}
             animationDuration={120}
             wrapperStyle={{ zIndex: 5 }}
           />
@@ -191,7 +192,7 @@ export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500, height 
             fill="url(#mCurveFill)"
             isAnimationActive={false}
             dot={false}
-            activeDot={{ r: 4.5, fill: '#F2542D', stroke: '#fff', strokeWidth: 2 }}
+            activeDot={{ r: 4.5, fill: CHART.cursor, stroke: '#fff', strokeWidth: 2 }}
           />
 
           {current && (
@@ -199,7 +200,7 @@ export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500, height 
               x={current.n}
               y={current.price}
               r={6}
-              fill="#F2542D"
+              fill={CHART.cursor}
               stroke="#fff"
               strokeWidth={2.5}
               filter="url(#mDotGlow)"

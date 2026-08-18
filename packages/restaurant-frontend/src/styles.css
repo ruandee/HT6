@@ -1,151 +1,15 @@
 /* ============================================================
-   hora design system
-   Warm near-white canvas + hazy peach/coral/yellow orbs behind
-   prominent Apple-style glass. Type: Archivo (display, condensed
-   caps), Inter (UI), Reenie Beanie (handwritten emphasis).
+   hora operator console — the restaurant floor.
+
+   Tokens, the reset, the ambient wash, the glass primitive and the
+   type ramp all come from @ttr/design — imported in main.tsx, ahead
+   of this file. Nothing below redefines a colour, a radius, a shadow
+   or a face; if you need one that does not exist, add it to
+   packages/design/src/tokens.css so all five clients get it.
+
+   Everything here is this app's own furniture.
    ============================================================ */
 
-:root {
-  /* canvas, never pure white */
-  --canvas: #f7f6f3;
-  --canvas-deep: #efece7;
-
-  /* warm accent ramp (from the reference orb) */
-  --peach: #ffb38a;
-  --coral: #ff7a59;
-  --coral-deep: #f2542d;
-  --amber: #ffc861;
-  --yellow: #ffe8a3;
-
-  /* ink */
-  --ink: #16130f;
-  --ink-70: rgba(22, 19, 15, 0.7);
-  --ink-45: rgba(22, 19, 15, 0.45);
-  --ink-25: rgba(22, 19, 15, 0.25);
-  --hairline: rgba(22, 19, 15, 0.12);
-
-  /* glass */
-  --glass-bg: rgba(255, 255, 255, 0.55);
-  --glass-bg-strong: rgba(255, 255, 255, 0.72);
-  --glass-border: rgba(255, 255, 255, 0.75);
-  --glass-shadow: 0 18px 50px -12px rgba(80, 45, 25, 0.18),
-    0 4px 14px -4px rgba(80, 45, 25, 0.1);
-
-  --r-lg: 28px;
-  --r-md: 20px;
-  --r-pill: 999px;
-
-  --font-display: 'Archivo', system-ui, sans-serif;
-  --font-ui: 'Inter', system-ui, sans-serif;
-  --font-script: 'Reenie Beanie', cursive;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html,
-body,
-#root {
-  height: 100%;
-}
-
-body {
-  margin: 0;
-  background: var(--canvas);
-  color: var(--ink);
-  font-family: var(--font-ui);
-  -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
-}
-
-/* ---- hazy gradient orbs (sit BEHIND the glass so it picks up color) ---- */
-.orbs {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
-.orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(90px);
-  opacity: 0.85;
-}
-.orb--1 {
-  width: 46vw;
-  height: 46vw;
-  right: -6vw;
-  top: -8vw;
-  background: radial-gradient(
-    circle at 35% 35%,
-    var(--coral) 0%,
-    var(--peach) 42%,
-    var(--yellow) 68%,
-    transparent 76%
-  );
-  animation: drift1 22s ease-in-out infinite alternate;
-}
-.orb--2 {
-  width: 34vw;
-  height: 34vw;
-  left: -8vw;
-  bottom: -10vw;
-  background: radial-gradient(
-    circle at 50% 50%,
-    var(--amber) 0%,
-    var(--peach) 45%,
-    transparent 72%
-  );
-  opacity: 0.6;
-  animation: drift2 28s ease-in-out infinite alternate;
-}
-@keyframes drift1 {
-  to {
-    transform: translate3d(-4vw, 3vw, 0) scale(1.08);
-  }
-}
-@keyframes drift2 {
-  to {
-    transform: translate3d(3vw, -2vw, 0) scale(1.12);
-  }
-}
-
-/* ---- glass bevel (the Apple-ish treatment) ---- */
-.glass {
-  position: relative;
-  background: var(--glass-bg);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--r-lg);
-  box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.25);
-}
-/* bright top-edge highlight, which is what sells the bevel */
-.glass::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(
-    160deg,
-    rgba(255, 255, 255, 0.95) 0%,
-    rgba(255, 255, 255, 0.25) 28%,
-    rgba(255, 255, 255, 0) 55%
-  );
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-}
-.glass--strong {
-  background: var(--glass-bg-strong);
-}
-
-/* ---- layout ---- */
 .shell {
   position: relative;
   z-index: 1;
@@ -153,80 +17,10 @@ body {
   margin: 0 auto;
   padding: 28px 32px 72px;
 }
+
+/* scrolling page: the topbar needs air under it */
 .topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   margin-bottom: 40px;
-}
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-family: var(--font-display);
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  /* the wordmark is lowercase by design, and this keeps it that way no matter how the
-     string is cased in source */
-  text-transform: lowercase;
-  font-size: 13px;
-}
-.brand-dots {
-  display: flex;
-  gap: 5px;
-}
-.brand-dots i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--ink);
-  display: block;
-}
-.brand-dots i:last-child {
-  background: var(--coral);
-}
-
-/* small-caps label + hairline rule (reference's section marker) */
-.eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  font-family: var(--font-display);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--ink-45);
-}
-.eyebrow::after {
-  content: '';
-  height: 1px;
-  flex: 1;
-  background: var(--hairline);
-}
-
-/* ---- headline with handwritten emphasis ---- */
-.headline {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: clamp(38px, 5.4vw, 72px);
-  line-height: 0.98;
-  letter-spacing: -0.02em;
-  text-transform: uppercase;
-  margin: 18px 0 0;
-}
-.script {
-  font-family: var(--font-script);
-  font-weight: 400;
-  text-transform: none;
-  letter-spacing: 0;
-  color: var(--coral-deep);
-  /* Reenie Beanie runs small, so bump it to match cap height */
-  font-size: 1.55em;
-  line-height: 0.7;
-  padding: 0 0.06em;
-  display: inline-block;
-  transform: rotate(-2.5deg);
 }
 
 /* ---- price ---- */
@@ -252,7 +46,7 @@ body {
   font-family: var(--font-ui);
   font-size: 14px;
   font-weight: 600;
-  color: var(--coral-deep);
+  color: var(--accent-deep);
   margin-left: 12px;
   align-self: center;
 }
@@ -280,15 +74,13 @@ body {
 }
 .btn--primary {
   color: #fff;
-  background: linear-gradient(168deg, var(--coral) 0%, var(--coral-deep) 100%);
-  box-shadow: 0 10px 26px -8px rgba(242, 84, 45, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    inset 0 -2px 6px rgba(140, 40, 10, 0.25);
+  background: linear-gradient(180deg, var(--accent-mid) 0%, var(--accent-deep) 100%);
+  box-shadow: var(--lift-accent), inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    inset 0 -2px 6px rgb(var(--shadow-contact-rgb) / 0.18);
 }
 .btn--primary:hover:not(:disabled) {
   filter: brightness(1.04);
-  box-shadow: 0 14px 32px -8px rgba(242, 84, 45, 0.7),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  box-shadow: var(--lift-accent-hover), inset 0 1px 0 rgba(255, 255, 255, 0.34);
 }
 .btn--ghost {
   color: var(--ink);
@@ -296,8 +88,7 @@ body {
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   border-color: var(--glass-border);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 6px 18px -8px rgba(80, 45, 25, 0.25);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 4px 14px rgb(var(--shadow-rgb) / 0.1);
 }
 .btn--ghost:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.72);
@@ -317,25 +108,10 @@ body {
   transition: background 0.2s ease, transform 0.2s cubic-bezier(0.23, 1, 0.32, 1);
 }
 .pip--sold {
-  background: linear-gradient(90deg, var(--coral), var(--coral-deep));
+  background: linear-gradient(90deg, var(--accent-mid), var(--accent-deep));
 }
 .pip--just-sold {
   transform: scaleY(1.9);
-}
-
-/* ---- misc ---- */
-.stat-label {
-  font-family: var(--font-display);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--ink-45);
-}
-.muted {
-  color: var(--ink-70);
-  font-size: 14px;
-  line-height: 1.55;
 }
 
 /* ---- party-size selector ---- */
@@ -360,10 +136,10 @@ body {
   cursor: not-allowed;
 }
 .guest--sel {
-  background: linear-gradient(168deg, var(--coral) 0%, var(--coral-deep) 100%);
+  background: linear-gradient(180deg, var(--accent-mid) 0%, var(--accent-deep) 100%);
   color: #fff;
   border-color: transparent;
-  box-shadow: 0 6px 16px -6px rgba(242, 84, 45, 0.5),
+  box-shadow: var(--lift-accent-sm),
     inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
@@ -396,13 +172,13 @@ body {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: var(--coral-deep);
+  background: var(--accent-deep);
   display: block;
 }
 .day--sel {
-  background: linear-gradient(168deg, var(--coral) 0%, var(--coral-deep) 100%);
+  background: linear-gradient(180deg, var(--accent-mid) 0%, var(--accent-deep) 100%);
   color: #fff;
-  box-shadow: 0 6px 16px -6px rgba(242, 84, 45, 0.5),
+  box-shadow: var(--lift-accent-sm),
     inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 .day--sel .day__dot {
@@ -417,7 +193,7 @@ body {
   stroke: var(--hairline);
 }
 .ring__fill {
-  stroke: var(--coral);
+  stroke: var(--accent-mid);
   stroke-linecap: round;
   transition: stroke-dashoffset 1s linear;
 }
@@ -427,7 +203,7 @@ body {
   position: fixed;
   inset: 0;
   z-index: 20;
-  background: rgba(30, 20, 12, 0.18);
+  background: rgb(var(--shadow-rgb) / 0.18);
   backdrop-filter: blur(3px);
   display: grid;
   place-items: center;
@@ -502,7 +278,7 @@ body {
 }
 /* the cooperative-issuer number: royalties. Warm, unmissable. */
 .kpi--accent .kpi__value {
-  color: var(--coral-deep);
+  color: var(--accent-deep);
 }
 
 /* ---- pool grid (every night x band) ---- */
@@ -527,11 +303,11 @@ body {
 /* the lift moved to Framer's whileHover, because motion writes `transform` inline, which
    would win over anything declared here */
 .pool-card:hover {
-  box-shadow: 0 24px 56px -14px rgba(80, 45, 25, 0.24),
+  box-shadow: 0 22px 52px rgb(var(--shadow-rgb) / 0.15), 0 5px 14px rgb(var(--shadow-rgb) / 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 .pool-card--sel {
-  outline-color: var(--coral);
+  outline-color: var(--accent-mid);
 }
 .pool-card__top {
   display: flex;
@@ -571,12 +347,12 @@ body {
   white-space: nowrap;
 }
 .band--live {
-  background: linear-gradient(168deg, var(--coral) 0%, var(--coral-deep) 100%);
+  background: linear-gradient(180deg, var(--accent-mid) 0%, var(--accent-deep) 100%);
   border-color: transparent;
   color: #fff;
 }
 .band--frozen {
-  background: rgba(22, 19, 15, 0.06);
+  background: rgb(var(--ink-rgb) / 0.06);
   color: var(--ink-45);
 }
 
@@ -592,7 +368,7 @@ body {
   width: 100%;
   height: 100%;
   border-radius: 4px;
-  background: linear-gradient(90deg, var(--amber), var(--coral), var(--coral-deep));
+  background: linear-gradient(90deg, var(--accent-warm), var(--accent-mid), var(--accent-deep));
   transform-origin: left center;
   transition: transform 0.24s cubic-bezier(0.23, 1, 0.32, 1);
 }
@@ -632,16 +408,20 @@ body {
   border-radius: var(--r-pill);
   white-space: nowrap;
 }
+/* Three states, and they have to be told apart at a glance across a long list. Now that the
+   brand itself is green, the accent belongs to the state it earned — redeemed, the good
+   outcome — and "held" has to move somewhere else or the two read as the same tag. Sand: a
+   different hue, still inside the earthy family, and unmistakably not the brand. */
 .tag--held {
-  background: rgba(255, 200, 97, 0.3);
-  color: #8a5a10;
+  background: var(--status-held-bg);
+  color: var(--status-held-ink);
 }
 .tag--redeemed {
-  background: rgba(255, 122, 89, 0.18);
-  color: var(--coral-deep);
+  background: rgb(var(--accent-veil-rgb) / 0.24);
+  color: var(--accent-deep);
 }
 .tag--noshow {
-  background: rgba(22, 19, 15, 0.07);
+  background: rgb(var(--ink-rgb) / 0.07);
   color: var(--ink-45);
 }
 
@@ -660,7 +440,7 @@ body {
   font-size: clamp(74px, 11vw, 148px);
   line-height: 0.86;
   font-variant-numeric: tabular-nums;
-  color: var(--coral-deep);
+  color: var(--accent-deep);
   display: flex;
   align-items: baseline;
   /* em, not px: the gap has to grow with a number that scales from 74px to 148px */
@@ -668,7 +448,7 @@ body {
 }
 .hero-number__cents {
   font-size: 0.36em;
-  color: rgba(242, 84, 45, 0.5);
+  color: rgb(var(--accent-deep-rgb) / 0.55);
   letter-spacing: -0.01em;
 }
 .sweep-split {
@@ -717,9 +497,9 @@ body {
   width: 100%;
 }
 .input:focus {
-  border-color: var(--coral);
+  border-color: var(--accent-mid);
   background: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 0 0 3px rgba(255, 122, 89, 0.16);
+  box-shadow: 0 0 0 3px rgb(var(--accent-veil-rgb) / 0.22);
 }
 .form-grid {
   display: grid;
@@ -754,10 +534,10 @@ body {
   background: rgba(255, 255, 255, 0.85);
 }
 .seg .seg__on {
-  background: linear-gradient(168deg, var(--coral) 0%, var(--coral-deep) 100%);
+  background: linear-gradient(180deg, var(--accent-mid) 0%, var(--accent-deep) 100%);
   color: #fff;
   border-color: transparent;
-  box-shadow: 0 6px 16px -6px rgba(242, 84, 45, 0.5),
+  box-shadow: var(--lift-accent-sm),
     inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
@@ -821,7 +601,7 @@ body {
   inset: 0;
   border-radius: var(--r-pill);
   background: #fff;
-  box-shadow: 0 2px 8px -3px rgba(80, 45, 25, 0.28);
+  box-shadow: 0 1px 2px rgb(var(--shadow-rgb) / 0.1), 0 3px 8px rgb(var(--shadow-rgb) / 0.1);
   z-index: -1;
 }
 .tab__label {
@@ -895,7 +675,7 @@ body {
   letter-spacing: -0.02em;
   margin-top: 7px;
   font-variant-numeric: tabular-nums;
-  color: var(--coral-deep);
+  color: var(--accent-deep);
 }
 /* θ rides under the price so the decay reads as one story, not two numbers */
 .demo-clock__theta {

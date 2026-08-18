@@ -37,14 +37,14 @@
   font-size: clamp(56px, 7vw, 84px);
   line-height: 0.9;
   font-variant-numeric: tabular-nums;
-  color: var(--coral-deep);
+  color: var(--accent-deep);
 }
 .lab__price-dollars {
   letter-spacing: -0.045em;
 }
 .lab__price-cents {
   font-size: 0.4em;
-  color: rgba(242, 84, 45, 0.5);
+  color: rgb(var(--accent-deep-rgb) / 0.55);
   letter-spacing: -0.01em;
 }
 
@@ -54,12 +54,12 @@
   height: 10px;
   border-radius: 6px;
   overflow: hidden;
-  background: linear-gradient(90deg, var(--coral), var(--coral-deep));
+  background: linear-gradient(90deg, var(--accent-mid), var(--accent-deep));
 }
 .lab__split-credit {
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, var(--amber), var(--peach));
+  background: linear-gradient(90deg, var(--accent-warm), var(--accent-soft));
   transform-origin: left center;
 }
 .lab__legend {
@@ -78,10 +78,10 @@
   margin-right: 7px;
 }
 .dot--credit {
-  background: var(--amber);
+  background: var(--accent-warm);
 }
 .dot--premium {
-  background: var(--coral-deep);
+  background: var(--accent-deep);
 }
 
 .lab__stats {
@@ -155,12 +155,12 @@
 .slider::-webkit-slider-runnable-track {
   height: 6px;
   border-radius: 3px;
-  background: rgba(22, 19, 15, 0.14);
+  background: rgb(var(--ink-rgb) / 0.14);
 }
 .slider::-moz-range-track {
   height: 6px;
   border-radius: 3px;
-  background: rgba(22, 19, 15, 0.14);
+  background: rgb(var(--ink-rgb) / 0.14);
 }
 .slider::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -169,29 +169,29 @@
   height: 20px;
   margin-top: -7px;
   border-radius: 50%;
-  background: linear-gradient(168deg, var(--coral) 0%, var(--coral-deep) 100%);
+  background: linear-gradient(180deg, var(--accent-mid) 0%, var(--accent-deep) 100%);
   border: 2px solid #fff;
-  box-shadow: 0 4px 12px -3px rgba(242, 84, 45, 0.6);
+  box-shadow: 0 1px 2px rgb(var(--shadow-contact-rgb) / 0.2), 0 4px 10px rgb(var(--accent-deep-rgb) / 0.28);
   transition: transform var(--t-leave) var(--ease), box-shadow var(--t-leave) var(--ease);
 }
 .slider::-moz-range-thumb {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: linear-gradient(168deg, var(--coral) 0%, var(--coral-deep) 100%);
+  background: linear-gradient(180deg, var(--accent-mid) 0%, var(--accent-deep) 100%);
   border: 2px solid #fff;
-  box-shadow: 0 4px 12px -3px rgba(242, 84, 45, 0.6);
+  box-shadow: 0 1px 2px rgb(var(--shadow-contact-rgb) / 0.2), 0 4px 10px rgb(var(--accent-deep-rgb) / 0.28);
   transition: transform var(--t-leave) var(--ease), box-shadow var(--t-leave) var(--ease);
 }
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
   .slider:hover::-webkit-slider-thumb {
     transform: scale(1.12);
-    box-shadow: 0 8px 20px -4px rgba(242, 84, 45, 0.7);
+    box-shadow: 0 1px 2px rgb(var(--shadow-contact-rgb) / 0.22), 0 7px 16px rgb(var(--accent-deep-rgb) / 0.34);
     transition-duration: var(--t-enter);
   }
   .slider:hover::-moz-range-thumb {
     transform: scale(1.12);
-    box-shadow: 0 8px 20px -4px rgba(242, 84, 45, 0.7);
+    box-shadow: 0 1px 2px rgb(var(--shadow-contact-rgb) / 0.22), 0 7px 16px rgb(var(--accent-deep-rgb) / 0.34);
   }
 }
 
@@ -202,7 +202,7 @@
   }
 }
 .slider:focus-visible {
-  outline: 2px solid var(--coral);
+  outline: 2px solid var(--accent-mid);
   outline-offset: 4px;
   border-radius: 4px;
 }
@@ -247,7 +247,7 @@
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: var(--coral-deep);
+  color: var(--accent-deep);
   font-variant-numeric: tabular-nums;
 }
 .lab__caption {
@@ -275,7 +275,7 @@
   font-size: 15px;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  color: var(--coral-deep);
+  color: var(--accent-deep);
 }
 .lab__control .hint {
   display: block;
@@ -307,8 +307,19 @@
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 15.5px;
+  line-height: 1.25;
   letter-spacing: -0.01em;
   margin-bottom: 8px;
+}
+/* Three of these titles fit on one line and the fourth doesn't, which left one column's body
+   text starting a line lower than its neighbours' — the kind of ragged baseline that reads as
+   nobody having looked. Two lines are reserved for every title so all four bodies start
+   together. Only while the notes are actually side by side: stacked, there is nothing to align
+   to and the reserved line would just be a hole. */
+@media (min-width: 700px) {
+  .lab__note-title {
+    min-height: 2.5em;
+  }
 }
 .lab__note-body {
   margin: 0;

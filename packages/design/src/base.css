@@ -1,0 +1,300 @@
+/* ============================================================
+   hora — base layer
+
+   Everything the five clients share verbatim: the reset, the ambient
+   wash, the glass primitive, the wordmark, and the type ramp. Import
+   this once per app, before the app's own sheet:
+
+       import '@ttr/design/base.css';
+       import './styles.css';
+
+   An app sheet may override anything here, but should not restate it.
+
+   ---- why this is a cascade layer ----
+
+   Everything below sits in `@layer base`, which loses to any unlayered rule regardless of
+   specificity or source order. That is not decoration; it is the whole reason the extraction is
+   safe.
+
+   Before the layer, these rules simply lived at the bottom of each app's stylesheet — so a plain
+   `.muted` beat a plain `.lede` on source order alone. Hoisting them into a file that loads FIRST
+   silently reversed every tie of that shape. The diner's `<p class="muted lede">` was the one
+   that showed up: its short-viewport tier sets `.lede { font-size: 13px }`, and for as long as
+   `.muted` came later in the file, that 13px never actually applied.
+
+   Ties between a design-system rule and an app rule should not be settled by which file the
+   bundler happened to concatenate first. With the layer, the answer is always the same and always
+   the obvious one: the app wins.
+   ============================================================ */
+
+@import './tokens.css';
+
+@layer base {
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ============================================================
+   the ambient wash
+
+   Two blurred orbs behind everything, whose only job is to give the
+   glass something to pick up. They sit UNDER the content and must
+   never compete with it.
+
+   Volume is a per-surface decision, expressed here as four custom
+   properties rather than as five diverging copies of `.orb`. The
+   default is app strength. A marketing page opts into `--poster`.
+
+   Why the split is real and not fussiness: an app is rows of parallel
+   cards edge to edge, and at poster strength the top-right orb sits on
+   the last card of every row — so four cards that mean the same kind
+   of thing arrive in two different colours, which reads as a rendering
+   bug rather than as atmosphere. A landing page has no such rows and
+   the wash is most of what it has.
+   ============================================================ */
+/* The default is app strength. Declared on :root rather than on `.orbs` so that a surface which
+   builds its own orb container — the mobile app projects one inside the phone and another behind
+   it — still inherits sane values and can override them the same way. */
+:root {
+  --orb-blur: 96px;
+  --orb-1-opacity: 0.58;
+  --orb-2-opacity: 0.4;
+  --orb-1-inset-x: -14vw;
+  --orb-1-inset-y: -15vw;
+}
+
+.orbs {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* the landing surfaces: the wash is the composition, so it is allowed to be seen */
+.orbs--poster {
+  --orb-1-opacity: 0.82;
+  --orb-2-opacity: 0.6;
+  --orb-1-inset-x: -9vw;
+  --orb-1-inset-y: -11vw;
+}
+
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(var(--orb-blur));
+}
+.orb--1 {
+  width: 46vw;
+  height: 46vw;
+  right: var(--orb-1-inset-x);
+  top: var(--orb-1-inset-y);
+  opacity: var(--orb-1-opacity);
+  background: radial-gradient(
+    circle at 35% 35%,
+    var(--accent) 0%,
+    var(--accent-soft) 42%,
+    var(--accent-pale) 68%,
+    transparent 76%
+  );
+}
+.orb--2 {
+  width: 34vw;
+  height: 34vw;
+  left: -11vw;
+  bottom: -12vw;
+  opacity: var(--orb-2-opacity);
+  background: radial-gradient(
+    circle at 50% 50%,
+    var(--accent-warm) 0%,
+    var(--accent-soft) 45%,
+    transparent 72%
+  );
+}
+
+/* Slow drift, opt-in. The two surfaces that hold their layout to the viewport (the diner's
+   one-screen lock, the phone) leave it off: there, the wash is behind a fixed composition and
+   a moving background under a still foreground reads as a rendering artefact. */
+.orbs--drift .orb--1 {
+  animation: drift1 22s ease-in-out infinite alternate;
+}
+.orbs--drift .orb--2 {
+  animation: drift2 28s ease-in-out infinite alternate;
+}
+@keyframes drift1 {
+  to {
+    transform: translate3d(-4vw, 3vw, 0) scale(1.08);
+  }
+}
+@keyframes drift2 {
+  to {
+    transform: translate3d(3vw, -2vw, 0) scale(1.12);
+  }
+}
+/* Framer handles its own animations via <MotionConfig reducedMotion="user">; this covers what
+   Framer never sees. */
+@media (prefers-reduced-motion: reduce) {
+  .orb {
+    animation: none !important;
+  }
+}
+
+/* ============================================================
+   the glass primitive
+   ============================================================ */
+.glass {
+  position: relative;
+  background: var(--glass-bg);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.25);
+}
+/* bright top-edge highlight, which is what sells the bevel */
+.glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(255, 255, 255, 0.25) 28%,
+    rgba(255, 255, 255, 0) 55%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.glass--strong {
+  background: var(--glass-bg-strong);
+}
+
+/* ============================================================
+   the wordmark
+   ============================================================ */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  /* the wordmark is lowercase by design, and this keeps it that way no matter how the string is
+     cased in source */
+  text-transform: lowercase;
+  font-size: 13px;
+}
+.brand-dots {
+  display: flex;
+  gap: 5px;
+}
+.brand-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink);
+  display: block;
+}
+.brand-dots i:last-child {
+  background: var(--accent-mid);
+}
+
+/* ============================================================
+   the type ramp
+
+   Shared shapes only. Where a surface needs a different size — the
+   diner's headline is a column head rather than a page head — it
+   overrides the one or two properties that differ, not the block.
+   ============================================================ */
+
+/* small-caps label + hairline rule */
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-45);
+}
+.eyebrow::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: var(--hairline);
+}
+
+.headline {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(38px, 5.4vw, 72px);
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  margin: 18px 0 0;
+}
+
+/* handwritten emphasis. One per screen — it is the only thing on the page allowed to be
+   charming, and a second one spends the first one's effect. */
+.script {
+  font-family: var(--font-script);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--accent-deep);
+  /* Reenie Beanie's cap height runs far below its nominal size, so at 1em it sits visibly small
+     against Archivo on the same line. This restores a shared cap height. */
+  font-size: 1.55em;
+  line-height: 0.7;
+  padding: 0 0.06em;
+  display: inline-block;
+  transform: rotate(-2.5deg);
+}
+
+.stat-label {
+  font-family: var(--font-display);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-45);
+}
+
+.muted {
+  color: var(--ink-70);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+/* the header row every surface opens with. Spacing is the app's call — a scrolling page wants a
+   margin under it, a viewport-locked layout wants to be a non-growing flex item. */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+} /* @layer base */

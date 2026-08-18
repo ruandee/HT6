@@ -57,9 +57,11 @@ body {
   height: min(852px, calc(100dvh - 52px));
   border-radius: 56px;
   padding: 11px;
-  background: linear-gradient(157deg, #3a332e 0%, #12100e 42%, #2c2622 100%);
-  box-shadow: 0 60px 120px -30px rgba(60, 32, 16, 0.55),
-    0 24px 50px -20px rgba(60, 32, 16, 0.4), inset 0 0 0 1.5px rgba(255, 255, 255, 0.22),
+  background: linear-gradient(157deg, var(--device-shell-hi) 0%, var(--device-shell-lo) 42%, var(--device-shell-mid) 100%);
+  /* spread 0 throughout, so the shadow keeps the 56px corner of the device it belongs to
+     rather than collapsing to a boxier radius under it */
+  box-shadow: 0 40px 90px rgb(var(--shadow-rgb) / 0.26), 0 16px 36px rgb(var(--shadow-rgb) / 0.18),
+    0 4px 10px rgb(var(--shadow-rgb) / 0.12), inset 0 0 0 1.5px rgba(255, 255, 255, 0.22),
     inset 0 2px 3px rgba(255, 255, 255, 0.3);
 }
 /* side buttons */
@@ -69,7 +71,7 @@ body {
   position: absolute;
   width: 3px;
   border-radius: 3px;
-  background: linear-gradient(180deg, #2a2420, #4a423b);
+  background: linear-gradient(180deg, var(--device-button-lo), var(--device-button-hi));
 }
 .phone::before {
   left: -3px;
@@ -129,7 +131,7 @@ body {
   width: 118px;
   height: 34px;
   border-radius: 20px;
-  background: #0d0b09;
+  background: var(--device-island);
   pointer-events: none;
 }
 .homebar {
@@ -141,7 +143,7 @@ body {
   width: 138px;
   height: 5px;
   border-radius: 3px;
-  background: rgba(22, 19, 15, 0.32);
+  background: rgb(var(--ink-rgb) / 0.32);
   pointer-events: none;
 }
 
@@ -203,6 +205,15 @@ body {
   pointer-events: none;
   overflow: hidden;
 }
+/* The orbs are re-sized in px here because the screen is 371px wide, not a viewport. That also
+   means the phone only ever shows the dense middle of the gradient, never the edge that fades
+   out — so the same opacity that reads as a wash on a desktop page reads as a coloured header
+   here, with the room's name sitting on top of it. Quieter again than the app default, via the
+   same two variables every other surface uses. */
+.app__orbs {
+  --orb-1-opacity: 0.42;
+  --orb-2-opacity: 0.34;
+}
 .app__orbs .orb--1 {
   width: 400px;
   height: 400px;
@@ -253,7 +264,7 @@ body {
   height: 22px;
   border-radius: 50%;
   border: 2.5px solid var(--ink-25);
-  border-top-color: var(--coral-deep);
+  border-top-color: var(--accent-deep);
   transition: opacity 0.16s var(--ease), border-color 0.16s var(--ease);
 }
 .ptr--spinning .ptr__spinner {
@@ -305,9 +316,8 @@ body {
   font-weight: 700;
   letter-spacing: 0.06em;
   color: #fff;
-  background: linear-gradient(168deg, var(--coral) 0%, var(--coral-deep) 100%);
-  box-shadow: 0 6px 16px -6px rgba(242, 84, 45, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  background: linear-gradient(180deg, var(--accent-mid) 0%, var(--accent-deep) 100%);
+  box-shadow: var(--lift-accent-sm), inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 /* ---------- horizontal night chips ---------- */
@@ -339,7 +349,7 @@ body {
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 6px 16px -10px rgba(80, 45, 25, 0.3);
+    0 6px 16px -10px rgb(var(--shadow-rgb) / 0.3);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -373,15 +383,14 @@ body {
   font-variant-numeric: tabular-nums;
   color: var(--ink-70);
 }
-/* A CSS gradient cannot be transitioned, and swapping it snaps. So the coral state is its own
+/* A CSS gradient cannot be transitioned, and swapping it snaps. So the filled state is its own
    layer that crossfades underneath the label (see NightRail.tsx). */
 .chip__fill {
   position: absolute;
   inset: 0;
   border-radius: 20px;
-  background: linear-gradient(168deg, var(--coral) 0%, var(--coral-deep) 100%);
-  box-shadow: 0 10px 24px -10px rgba(242, 84, 45, 0.65),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  background: linear-gradient(180deg, var(--accent-mid) 0%, var(--accent-deep) 100%);
+  box-shadow: var(--lift-accent-sm), inset 0 1px 0 rgba(255, 255, 255, 0.3);
   z-index: -1;
 }
 .chip--sel {
@@ -447,7 +456,7 @@ body {
   background: var(--ink-25);
 }
 .split__credit {
-  background: linear-gradient(90deg, var(--amber), var(--coral));
+  background: linear-gradient(90deg, var(--accent-warm), var(--accent-mid));
   /* the credit share is re-derived on every re-quote; without this it snaps to its new width in
      one frame while the price beside it counts, and the two read as different events */
   transition: width 320ms cubic-bezier(0.23, 1, 0.32, 1);
@@ -478,9 +487,9 @@ body {
   padding: 12px 18px 14px;
   background: linear-gradient(
     180deg,
-    rgba(247, 246, 243, 0) 0%,
-    rgba(247, 246, 243, 0.82) 34%,
-    rgba(247, 246, 243, 0.96) 100%
+    rgb(var(--canvas-rgb) / 0) 0%,
+    rgb(var(--canvas-rgb) / 0.82) 34%,
+    rgb(var(--canvas-rgb) / 0.96) 100%
   );
   pointer-events: none;
 }
@@ -517,7 +526,7 @@ body {
   backdrop-filter: blur(28px) saturate(180%);
   -webkit-backdrop-filter: blur(28px) saturate(180%);
   border-top: 1px solid var(--glass-border);
-  box-shadow: 0 -8px 30px -14px rgba(80, 45, 25, 0.25),
+  box-shadow: 0 -8px 30px -14px rgb(var(--shadow-rgb) / 0.25),
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 .tab {
@@ -538,7 +547,7 @@ body {
   transform: scale(0.97);
 }
 .tab--on {
-  color: var(--coral-deep);
+  color: var(--accent-deep);
 }
 .tab__label {
   font-family: var(--font-display);
@@ -554,7 +563,7 @@ body {
   height: 16px;
   padding: 0 4px;
   border-radius: 8px;
-  background: var(--coral-deep);
+  background: var(--accent-deep);
   color: #fff;
   font-size: 10px;
   font-weight: 700;
@@ -567,7 +576,7 @@ body {
   position: absolute;
   inset: 0;
   z-index: 20;
-  background: rgba(30, 20, 12, 0.28);
+  background: rgb(var(--shadow-rgb) / 0.28);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   display: flex;
@@ -666,7 +675,7 @@ body {
   white-space: nowrap;
 }
 .badge--live {
-  background: linear-gradient(168deg, var(--coral) 0%, var(--coral-deep) 100%);
+  background: linear-gradient(180deg, var(--accent-mid) 0%, var(--accent-deep) 100%);
   color: #fff;
   border-color: transparent;
 }
@@ -679,7 +688,7 @@ body {
 .empty__mark {
   font-family: var(--font-script);
   font-size: 42px;
-  color: var(--coral-deep);
+  color: var(--accent-deep);
   transform: rotate(-2.5deg);
   display: inline-block;
   line-height: 1;
@@ -759,7 +768,7 @@ button {
   }
 
   .msheet-backdrop {
-    background: rgba(30, 20, 12, 0.42);
+    background: rgb(var(--shadow-rgb) / 0.42);
   }
 }
 

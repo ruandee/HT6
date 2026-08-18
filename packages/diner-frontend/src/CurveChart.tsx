@@ -13,6 +13,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { CHART, CHART_FILL, CHART_STROKE } from '@ttr/design/chart';
 
 interface Props {
   p0: string; // base units
@@ -119,13 +120,13 @@ export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500 }: Props
         <AreaChart data={data} margin={{ top: 18, right: 14, bottom: 4, left: 4 }}>
           <defs>
             <linearGradient id="curveStroke" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#FFC861" />
-              <stop offset="55%" stopColor="#FF7A59" />
-              <stop offset="100%" stopColor="#F2542D" />
+              <stop offset={CHART_STROKE[0].offset} stopColor={CHART_STROKE[0].color} />
+              <stop offset={CHART_STROKE[1].offset} stopColor={CHART_STROKE[1].color} />
+              <stop offset={CHART_STROKE[2].offset} stopColor={CHART_STROKE[2].color} />
             </linearGradient>
             <linearGradient id="curveFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#FF7A59" stopOpacity={0.28} />
-              <stop offset="100%" stopColor="#FFE8A3" stopOpacity={0} />
+              <stop offset="0%" stopColor={CHART_FILL.top} stopOpacity={CHART_FILL.topOpacity} />
+              <stop offset="100%" stopColor={CHART_FILL.bottom} stopOpacity={CHART_FILL.bottomOpacity} />
             </linearGradient>
             <filter id="dotGlow" x="-120%" y="-120%" width="340%" height="340%">
               <feGaussianBlur stdDeviation="5" result="b" />
@@ -138,14 +139,14 @@ export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500 }: Props
 
           <XAxis
             dataKey="n"
-            tick={{ fontSize: 10, fill: 'rgba(22,19,15,0.4)', fontFamily: 'Inter' }}
+            tick={{ fontSize: 10, fill: CHART.label, fontFamily: 'Inter' }}
             axisLine={false}
             tickLine={false}
             interval={Math.max(1, Math.floor(nMax / 5))}
           />
           <YAxis
             domain={['dataMin - 4', 'dataMax + 4']}
-            tick={{ fontSize: 10, fill: 'rgba(22,19,15,0.4)', fontFamily: 'Inter' }}
+            tick={{ fontSize: 10, fill: CHART.label, fontFamily: 'Inter' }}
             axisLine={false}
             tickLine={false}
             width={34}
@@ -155,7 +156,7 @@ export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500 }: Props
           {/* meal-credit floor, the value that never decays (§7b) */}
           <ReferenceLine
             y={p0n}
-            stroke="rgba(22,19,15,0.28)"
+            stroke={CHART.floor}
             strokeDasharray="3 4"
             label={{
               value: 'DINNER CREDIT',
@@ -165,7 +166,7 @@ export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500 }: Props
                  floor is empty. */
               position: 'insideBottomRight',
               fontSize: 9,
-              fill: 'rgba(22,19,15,0.45)',
+              fill: CHART.label,
               fontFamily: 'Archivo',
               letterSpacing: '0.14em',
             }}
@@ -173,7 +174,7 @@ export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500 }: Props
 
           <Tooltip
             content={<CurveTip phiBps={phiBps} />}
-            cursor={{ stroke: 'rgba(22,19,15,0.28)', strokeWidth: 1, strokeDasharray: '3 3' }}
+            cursor={{ stroke: CHART.cursorLine, strokeWidth: 1, strokeDasharray: '3 3' }}
             animationDuration={140}
           />
 
@@ -192,7 +193,7 @@ export function CurveChart({ p0, k, nMax, nSold, thetaBps, phiBps = 500 }: Props
               x={current.n}
               y={current.price}
               r={6.5}
-              fill="#F2542D"
+              fill={CHART.cursor}
               stroke="#fff"
               strokeWidth={2.5}
               filter="url(#dotGlow)"

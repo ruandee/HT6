@@ -93,7 +93,11 @@ stack instead:
 | `VITE_MOBILE_URL` | the mobile app | `https://ht-6-mobile-diner.vercel.app/` | `http://localhost:5175` |
 | `VITE_RESTAURANT_URL` | the Operator Console | `https://ht-6-restaurant-frontend-three.vercel.app/` | `http://localhost:5174` |
 | `VITE_LAB_URL` | the interactive time-decay lab, linked from the landing page's decay demo | `https://ttr-decay-lab.vercel.app/` | `http://localhost:5176` |
-| `VITE_DEVPOST_URL` | the Devpost writeup, linked from both landing CTAs | `https://devpost.com` | — |
+
+The write-up the landing page's "Read the Devpost" button opens is a first-party route (`/writeup`),
+not an outbound link, so there is no URL to configure — it recreates the Devpost text in the
+product's own type, with the equations typeset to SVG at build time (`npm run` the generator in
+`scripts/render-writeup-math.mjs` if you change them).
 
 Set them in Project → Settings → Environment Variables. **Vite inlines `VITE_*` at build time**, so
 changing one requires a redeploy, not just an env edit. The liveness probes are dev-only and are

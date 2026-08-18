@@ -63,5 +63,15 @@ export const reveal = (reduced = false): Variants => ({
   },
 });
 
-/** viewport config for scroll reveals: fire once, a little before the section is fully on screen */
-export const inView = { once: true, amount: 0.25 } as const;
+/**
+ * Viewport config for scroll reveals: fire once, a little before the section's top edge reaches
+ * the bottom of the screen.
+ *
+ * Expressed as a root margin rather than an `amount` fraction, and that is not a preference. A
+ * fraction is a threshold on the *element*, so a section taller than about 4 viewports can never
+ * satisfy it — the observer never fires and the section stays at opacity 0 forever. The write-up's
+ * "How I built it" runs 5000px and was doing exactly that: the longest, most load-bearing section
+ * on the page was invisible at every scroll position. A margin is measured against the viewport,
+ * so it behaves the same for a 140px eyebrow and a 5000px chapter.
+ */
+export const inView = { once: true, margin: '0px 0px -12% 0px' } as const;

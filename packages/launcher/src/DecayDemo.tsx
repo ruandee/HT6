@@ -24,8 +24,8 @@ import {
 } from 'recharts';
 import { DECAY_PATH, POOL, START_HOURS, pricesAt, tauLabel, type DecayPoint } from './decay';
 import { reveal, hoverLift, tapPress } from './motion';
+import { AXIS, CHART, CHART_FILL, CHART_STROKE } from '@ttr/design/chart';
 
-const AXIS = { fontSize: 10, fill: 'rgba(22,19,15,0.4)', fontFamily: 'Archivo' } as const;
 const LAB_URL = import.meta.env.VITE_LAB_URL ?? 'https://ttr-decay-lab.vercel.app/';
 
 /** One sweep from the shoulder to the door, in seconds. Slow enough to read the numbers move. */
@@ -43,16 +43,16 @@ function Chart({ at }: { at: DecayPoint }) {
   return (
     <div className="decay__chart">
       <ResponsiveContainer>
-        <AreaChart data={DECAY_PATH} margin={{ top: 16, right: 14, bottom: 4, left: 2 }}>
+        <AreaChart data={DECAY_PATH} margin={{ top: 16, right: 16, bottom: 6, left: 2 }}>
           <defs>
             <linearGradient id="decayStroke" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#FFC861" />
-              <stop offset="55%" stopColor="#FF7A59" />
-              <stop offset="100%" stopColor="#F2542D" />
+              <stop offset={CHART_STROKE[0].offset} stopColor={CHART_STROKE[0].color} />
+              <stop offset={CHART_STROKE[1].offset} stopColor={CHART_STROKE[1].color} />
+              <stop offset={CHART_STROKE[2].offset} stopColor={CHART_STROKE[2].color} />
             </linearGradient>
             <linearGradient id="decayFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#FF7A59" stopOpacity={0.28} />
-              <stop offset="100%" stopColor="#FFE8A3" stopOpacity={0} />
+              <stop offset="0%" stopColor={CHART_FILL.top} stopOpacity={CHART_FILL.topOpacity} />
+              <stop offset="100%" stopColor={CHART_FILL.bottom} stopOpacity={CHART_FILL.bottomOpacity} />
             </linearGradient>
             <filter id="decayGlow" x="-120%" y="-120%" width="340%" height="340%">
               <feGaussianBlur stdDeviation="5" result="b" />
@@ -65,50 +65,59 @@ function Chart({ at }: { at: DecayPoint }) {
 
           {/* τ counts DOWN left to right: the left edge is far out, the right edge is the door.
               Plotting it ascending would be technically fine and read backwards to everyone. */}
+          {/* tickMargin on both axes: without it the first hour tick sits directly beneath the
+              lowest dollar tick and the two labels touch in the corner */}
           <XAxis
             dataKey="tau"
             type="number"
             reversed
             domain={['dataMin', 'dataMax']}
             tick={AXIS}
+            tickMargin={10}
             axisLine={false}
             tickLine={false}
             tickFormatter={(v: number) =>
               v <= 0 ? 'service' : v < 36 ? `${Math.round(v)}h` : `${Math.round(v / 24)}d`
             }
           />
+          {/* The floor is the bottom of the story, so the scale stops just under it. At p0 - 6 a
+              fifth of the plot was empty canvas below a line nothing ever crosses, which flattened
+              the very fall the section exists to show. */}
           <YAxis
-            domain={[POOL.p0 - 6, 'dataMax + 6']}
+            domain={[POOL.p0 - 3, 'dataMax + 4']}
             tick={AXIS}
+            tickMargin={8}
             axisLine={false}
             tickLine={false}
-            width={38}
+            width={46}
             tickFormatter={(v: number) => `$${Math.round(v)}`}
           />
 
-          {/* the floor the whole thing collapses onto */}
+          {/* The floor the whole thing collapses onto. Labelled on the left, where the curve is
+              still up at its opening price: at the right the price has arrived on this very line,
+              so the caption was sitting on top of the moment it describes. */}
           <ReferenceLine
             y={POOL.p0}
-            stroke="rgba(22,19,15,0.28)"
+            stroke={CHART.floor}
             strokeDasharray="3 4"
             label={{
               value: 'DINNER CREDIT',
-              position: 'insideBottomRight',
+              position: 'insideBottomLeft',
               fontSize: 9,
-              fill: 'rgba(22,19,15,0.45)',
+              fill: CHART.label,
               fontFamily: 'Archivo',
               letterSpacing: '0.14em',
             }}
           />
           <ReferenceLine
             x={POOL.tcHours}
-            stroke="rgba(242,84,45,0.4)"
+            stroke={CHART.onset}
             strokeDasharray="2 4"
             label={{
               value: 'PREMIUM STARTS FADING',
               position: 'insideTopLeft',
               fontSize: 9,
-              fill: 'rgba(242,84,45,0.75)',
+              fill: CHART.onsetLabel,
               fontFamily: 'Archivo',
               letterSpacing: '0.14em',
             }}
@@ -127,7 +136,7 @@ function Chart({ at }: { at: DecayPoint }) {
           <Line
             type="monotone"
             dataKey="payout"
-            stroke="rgba(22,19,15,0.3)"
+            stroke={CHART.payout}
             strokeWidth={1.5}
             strokeDasharray="4 5"
             dot={false}
@@ -138,7 +147,7 @@ function Chart({ at }: { at: DecayPoint }) {
             x={at.tau}
             y={at.buy}
             r={6.5}
-            fill="#F2542D"
+            fill={CHART.cursor}
             stroke="#fff"
             strokeWidth={2.5}
             filter="url(#decayGlow)"

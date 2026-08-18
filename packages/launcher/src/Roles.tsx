@@ -105,15 +105,21 @@ export default function Roles({ onHome }: { onHome: (e: React.MouseEvent) => voi
             // Middle-click still opens a new one when you're setting the profiles up.
           >
             <span className="role__glyph">{r.glyph}</span>
-            <span className="role__title">{r.title}</span>
 
-            {ready[r.key] ? (
-              <span className="role__ready" title="dev server is up">
-                <i />
-              </span>
-            ) : (
-              <span className="role__arrow">&#8594;</span>
-            )}
+            {/* Title and status share the card's last row, so the arrow reads as belonging to the
+                name it acts on. Bottom-aligned rather than centred: the three cards stretch to a
+                common height, so a bottom edge is the one line all three agree on whether or not
+                a title wrapped. */}
+            <span className="role__foot">
+              <span className="role__title">{r.title}</span>
+              {ready[r.key] ? (
+                <span className="role__ready" title="dev server is up">
+                  <i />
+                </span>
+              ) : (
+                <span className="role__arrow">&#8594;</span>
+              )}
+            </span>
           </motion.a>
         ))}
       </motion.div>

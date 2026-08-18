@@ -1,0 +1,24 @@
+{
+  "name": "@ttr/design",
+  "version": "0.0.0",
+  "description": "The hora design system: tokens, the ambient wash, the glass primitive and the type ramp, shared verbatim by all five clients.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tokens.css": "./src/tokens.css",
+    "./base.css": "./src/base.css",
+    "./chart": {
+      "types": "./dist/chart.d.ts",
+      "import": "./dist/chart.js"
+    },
+    "./ease": {
+      "types": "./dist/ease.d.ts",
+      "import": "./dist/ease.js"
+    }
+  },
+  "files": ["dist", "src"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}

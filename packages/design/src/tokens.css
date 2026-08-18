@@ -1,0 +1,139 @@
+/* ============================================================
+   hora — design tokens
+
+   The single source of truth for every colour, radius, shadow and
+   face in the product. All five clients import this; none of them
+   redefines anything in it.
+
+   If you need a value that is not here, the answer is almost always
+   to add it here rather than to write a literal in an app sheet.
+   That is not style policing: this file is the only reason a palette
+   change is one edit instead of eight, and the last palette drifted
+   precisely because a dozen `rgba(242, 84, 45, …)` literals had been
+   pasted into places this file could not reach.
+   ============================================================ */
+
+:root {
+  /* Canvas, never pure white. Eggshell with a green cast rather than a cream one, so the
+     ambient wash sits on it instead of over it. */
+  --canvas: #f5f6f1;
+  --canvas-deep: #e8ece1;
+
+  /* ---- accent ramp: sage, olive, pine ----
+     Six stops, and the split down the middle is the whole design.
+
+     The first three are ATMOSPHERE — the orbs, tinted fills, soft bars. The last two are INK —
+     brand marks, control fills, prose accent, chart strokes. The orange ramp this replaced got
+     away with one mid value doing both jobs, but only because it was saturated enough to read as
+     a mark AND bright enough to glow. Take the saturation out of an orange to calm it and it goes
+     to mud, because a desaturated orange IS mud; that is the whole failure. A green has the
+     opposite problem and the opposite fix: a pastel sage can be atmosphere or it can be a mark,
+     never both, so here it is never asked to be. The wash stays genuinely pale and the marks take
+     their weight from depth, where green reads as pine rather than as sludge.
+
+     Two hues, not one. The wash runs sage (cool) against olive (warm) so it has somewhere to
+     travel — a single green at two lightnesses is a flat mint field, which is the other way this
+     goes wrong. */
+  --accent-pale: #e9eed6; /* palest — the outer stop of the orbs */
+  --accent-soft: #c6d6ae; /* celadon — the middle stop */
+  --accent-warm: #ccd68f; /* soft olive — the warm orb's core, and what keeps it off mint */
+  --accent: #a3c489; /* sage — the cool orb's core and light fills */
+  --accent-mid: #56794b; /* every control gradient's light end; 4.97:1 under white */
+  --accent-deep: #3a5734; /* pine — prose accent and the dark end; 7.6:1 on the canvas */
+
+  /* ink, carrying the same green cast so nothing on the page reads as two temperatures */
+  --ink: #12150f;
+  --ink-70: rgb(var(--ink-rgb) / 0.7);
+  /* 0.52, not 0.45: this is the eyebrow/label tint, and those are set at 10–11px uppercase.
+     0.45 put them under 3.2:1 — small caps are the last place to be saving contrast. */
+  --ink-45: rgb(var(--ink-rgb) / 0.52);
+  --ink-25: rgb(var(--ink-rgb) / 0.25);
+  --hairline: rgb(var(--ink-rgb) / 0.12);
+
+  /* ---- channels ----
+     Plenty of places need a palette colour at some other alpha: a scrim, one layer of a shadow,
+     a tinted fill behind a status pill. Restating the colour at the call site is exactly how the
+     previous palette drifted, so the channels are published here and composed on demand with
+     `rgb(var(--x) / a)`. That syntax is also what lets the token guard tell a legitimate alpha
+     from a pasted brand colour: a literal starts with a digit, this does not. */
+  --canvas-rgb: 245 246 241;
+  --ink-rgb: 18 21 15;
+  --accent-mid-rgb: 86 121 75;
+  --accent-deep-rgb: 58 87 52;
+  --accent-warm-rgb: 204 214 143;
+  /* mid sage for translucent fills — --accent-mid goes muddy rather than pale below ~0.3 alpha */
+  --accent-veil-rgb: 120 150 105;
+  /* the green-grey every ambient shadow is tinted with, and one step deeper for contact layers */
+  --shadow-rgb: 44 56 40;
+  --shadow-contact-rgb: 30 46 28;
+
+  /* ---- semantic ----
+     Colours that carry a meaning rather than a place in the ramp, and so must NOT track it.
+     The liveness dot stays green because "up is green" is worth more than novelty, but it sits
+     far outside the palette in saturation: against a desaturated sage brand, merely being green
+     no longer separates a signal from the furniture — chroma does. Sand does the same job for
+     "held", which had to leave the accent once the accent started meaning "redeemed". */
+  --status-live: #17a05e;
+  --status-live-rgb: 23 160 94;
+  --status-held-bg: rgb(206 190 140 / 0.4);
+  --status-held-ink: #6b5c2a;
+
+  /* ---- the projected device ----
+     Only the mobile client draws a phone, but it is still paint and it still has to agree with
+     the palette: a warm titanium body around a sage screen reads as a photograph of someone
+     else's app. Cool, near-neutral, with a green cast like everything else. */
+  --device-shell-hi: #343a31;
+  --device-shell-mid: #262b23;
+  --device-shell-lo: #101310;
+  --device-button-lo: #242a22;
+  --device-button-hi: #414a3b;
+  --device-island: #0b0d0a;
+
+  /* glass */
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-bg-strong: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.75);
+  /* unglazed controls — inputs, slots, ghost buttons */
+  --control-bg: rgba(255, 255, 255, 0.5);
+  --control-bg-hover: rgba(255, 255, 255, 0.78);
+  /* Spread 0 (see --lift-* below for why), tinted with the canvas's own green rather than the
+     brown it used to be — a warm shadow under a sage panel is the fastest way to make one
+     palette look like two. */
+  --glass-shadow: 0 14px 40px rgba(44, 56, 40, 0.12), 0 3px 10px rgba(44, 56, 40, 0.07);
+
+  /* ---- solid-control elevation ----
+     Three layers (contact, mid, ambient) and every spread stays at 0.
+
+     The spread is the whole point. A negative spread shrinks a shadow's corner radius along with
+     its box, so on a pill (radius 999 → clamped to half the height) a -10px spread drops the
+     shadow's radius to well under the button's. The result is a visibly rectangular glow sitting
+     behind a round button — not a clipping container, a mismatched radius. At spread 0 the shadow
+     inherits the pill exactly. If a shadow needs to be tighter, lower the alpha or shorten the
+     blur; never reach for spread on anything with a radius. */
+  --lift-ink: 0 1px 2px rgba(18, 21, 15, 0.16), 0 6px 14px rgba(18, 21, 15, 0.13),
+    0 16px 30px rgba(18, 21, 15, 0.09);
+  --lift-ink-hover: 0 1px 2px rgba(18, 21, 15, 0.18), 0 10px 22px rgba(18, 21, 15, 0.16),
+    0 22px 42px rgba(18, 21, 15, 0.12);
+  --lift-accent: 0 1px 2px rgba(30, 46, 28, 0.2), 0 6px 14px rgba(58, 87, 52, 0.24),
+    0 16px 30px rgba(58, 87, 52, 0.16);
+  --lift-accent-hover: 0 1px 2px rgba(30, 46, 28, 0.22), 0 10px 22px rgba(58, 87, 52, 0.3),
+    0 22px 42px rgba(58, 87, 52, 0.2);
+  /* two layers instead of three, for chips and small selected states — at that size the ambient
+     layer is only noise */
+  --lift-accent-sm: 0 1px 2px rgba(30, 46, 28, 0.16), 0 4px 10px rgba(58, 87, 52, 0.22);
+
+  --r-lg: 28px;
+  --r-md: 20px;
+  --r-pill: 999px;
+
+  /* The one shared easing curve, matching EASE in @ttr/design/ease so a CSS hover and a Framer
+     entrance on the same element decelerate identically.
+
+     The --t-* durations are deliberately NOT here. They are tuned per input modality — a thumb
+     and a pointer want different response windows — so each app sets its own and says why. */
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);
+
+  --font-display: 'Archivo', system-ui, sans-serif;
+  --font-ui: 'Inter', system-ui, sans-serif;
+  --font-script: 'Reenie Beanie', cursive;
+}

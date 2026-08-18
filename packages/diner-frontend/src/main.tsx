@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { UnifoldProvider } from '@unifold/connect-react';
 import '@unifold/connect-react/styles.css';
 import App from './App';
+// the shared design system: tokens, wash, glass, type ramp
+import '@ttr/design/base.css';
 import './styles.css';
 import { UNIFOLD_PUBLISHABLE_KEY, unifoldEnabled } from './unifold';
 

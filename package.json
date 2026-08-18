@@ -2,16 +2,17 @@
   "name": "tokenized-reservations",
   "private": true,
   "version": "0.0.0",
-  "description": "Tokenized restaurant reservations — AMM bonding curve. Monorepo per BUILD_SPEC.md §8.",
+  "description": "Tokenized restaurant reservations \u2014 AMM bonding curve. Monorepo per BUILD_SPEC.md \u00a78.",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspace @ttr/shared-types && npm run build --workspace @ttr/chain-services && npm run build --workspace @ttr/app-services && npm run build --workspace @ttr/decay-lab --workspace @ttr/diner-frontend --workspace @ttr/launcher --workspace @ttr/mobile-diner --workspace @ttr/restaurant-frontend",
-    "typecheck": "npm run build --workspace @ttr/shared-types && npm run build --workspace @ttr/chain-services && npm run typecheck --workspaces --if-present",
+    "build": "npm run build --workspace @ttr/shared-types --workspace @ttr/design && npm run build --workspace @ttr/chain-services && npm run build --workspace @ttr/app-services && npm run build --workspace @ttr/decay-lab --workspace @ttr/diner-frontend --workspace @ttr/launcher --workspace @ttr/mobile-diner --workspace @ttr/restaurant-frontend",
+    "typecheck": "npm run build --workspace @ttr/shared-types --workspace @ttr/design && npm run build --workspace @ttr/chain-services && npm run typecheck --workspaces --if-present",
     "test": "npm run build && npm test --workspace @ttr/app-services",
     "contract:build": "npm run build --workspace @ttr/contract",
-    "contract:test": "npm test --workspace @ttr/contract"
+    "contract:test": "npm test --workspace @ttr/contract",
+    "lint:tokens": "node scripts/lint-tokens.mjs"
   },
   "devDependencies": {
     "@fontsource/archivo": "^5.2.8",

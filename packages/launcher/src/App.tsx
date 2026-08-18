@@ -7,14 +7,22 @@
  * pulling in a routing library to keep that promise. `vercel.json` already rewrites every path
  * to index.html, so a cold load of /demo lands here and reads the pathname.
  */
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { AnimatePresence, MotionConfig } from 'framer-motion';
 import Home from './Home';
 import Roles from './Roles';
 
-type Route = 'home' | 'demo';
+/**
+ * The write-up is its own route and carries a page of build-time-typeset equations (~90kB of SVG),
+ * which nobody who came to see the demo needs on first paint. Split out, it loads only when the
+ * "Read the Devpost" button is clicked — the same reasoning that lazy-loads the decay demo.
+ */
+const Writeup = lazy(() => import('./Writeup'));
 
-const routeOf = (path: string): Route => (path.startsWith('/demo') ? 'demo' : 'home');
+type Route = 'home' | 'demo' | 'writeup';
+
+const routeOf = (path: string): Route =>
+  path.startsWith('/demo') ? 'demo' : path.startsWith('/writeup') ? 'writeup' : 'home';
 
 export default function App() {
   const [route, setRoute] = useState<Route>(() => routeOf(window.location.pathname));
@@ -42,7 +50,7 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="orbs">
+      <div className="orbs orbs--poster orbs--drift">
         <div className="orb orb--1" />
         <div className="orb orb--2" />
       </div>
@@ -51,7 +59,13 @@ export default function App() {
           full-page layouts on top of each other just reads as a flash */}
       <AnimatePresence mode="wait">
         {route === 'home' ? (
-          <Home key="home" onEnter={go('demo', '/demo')} />
+          <Home key="home" onEnter={go('demo', '/demo')} onWriteup={go('writeup', '/writeup')} />
+        ) : route === 'writeup' ? (
+          // fallback is the empty reading column, so the page's width is reserved while the chunk
+          // arrives and there is no layout jump when the text lands
+          <Suspense key="writeup" fallback={<div className="writeup" aria-busy="true" />}>
+            <Writeup onHome={go('home', '/')} onDemo={go('demo', '/demo')} />
+          </Suspense>
         ) : (
           <Roles key="demo" onHome={go('home', '/')} />
         )}

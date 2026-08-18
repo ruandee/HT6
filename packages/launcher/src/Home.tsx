@@ -24,10 +24,6 @@ import { group, reveal, inView, hoverLift, tapPress, ease, EASE } from './motion
  */
 const DecayDemo = lazy(() => import('./DecayDemo'));
 
-/** Devpost lives outside this repo, so it's env-driven like the three app URLs. */
-const DEVPOST_URL =
-  import.meta.env.VITE_DEVPOST_URL ?? 'https://devpost.com/software/hora';
-
 /* ---- the opening ----
    The two dots arrive alone and oversized in the middle of the screen — ink first, then coral —
    then retreat into their resting place at the top of the wordmark, and the rest of the hero
@@ -171,7 +167,13 @@ const SIDES: Side[] = [
   },
 ];
 
-export default function Home({ onEnter }: { onEnter: (e: React.MouseEvent) => void }) {
+export default function Home({
+  onEnter,
+  onWriteup,
+}: {
+  onEnter: (e: React.MouseEvent) => void;
+  onWriteup: (e: React.MouseEvent) => void;
+}) {
   const reduceMotion = Boolean(useReducedMotion());
   const disclose = useMemo(() => reveal(reduceMotion), [reduceMotion]);
   const { scrollYProgress } = useScroll();
@@ -289,17 +291,16 @@ export default function Home({ onEnter }: { onEnter: (e: React.MouseEvent) => vo
           <motion.div className="ctas" variants={disclose}>
             <motion.a
               className="cta cta--ink"
-              href={DEVPOST_URL}
-              target="_blank"
-              rel="noreferrer"
+              href="/writeup"
+              onClick={onWriteup}
               whileHover={reduceMotion ? undefined : hoverLift}
               whileTap={reduceMotion ? undefined : tapPress}
             >
               Read the Devpost
-              <span className="cta__arrow">&#8599;</span>
+              <span className="cta__arrow">&#8594;</span>
             </motion.a>
             <motion.a
-              className="cta cta--coral"
+              className="cta cta--accent"
               href="/demo"
               onClick={onEnter}
               whileHover={reduceMotion ? undefined : hoverLift}

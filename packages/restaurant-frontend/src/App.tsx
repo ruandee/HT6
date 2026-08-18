@@ -159,7 +159,7 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="orbs">
+      <div className="orbs orbs--drift">
         <div className="orb orb--1" />
         <div className="orb orb--2" />
       </div>
