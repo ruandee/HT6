@@ -1,0 +1,18 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build:web",
+  "outputDirectory": "dist",
+  "installCommand": "npm install",
+  "github": { "silent": true },
+  "rewrites": [
+    { "source": "/diner", "destination": "/diner/index.html" },
+    { "source": "/diner/:path*", "destination": "/diner/index.html" },
+    { "source": "/mobile", "destination": "/mobile/index.html" },
+    { "source": "/mobile/:path*", "destination": "/mobile/index.html" },
+    { "source": "/restaurant", "destination": "/restaurant/index.html" },
+    { "source": "/restaurant/:path*", "destination": "/restaurant/index.html" },
+    { "source": "/lab", "destination": "/lab/index.html" },
+    { "source": "/lab/:path*", "destination": "/lab/index.html" },
+    { "source": "/:path*", "destination": "/index.html" }
+  ]
+}

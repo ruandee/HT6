@@ -6,16 +6,23 @@ What to check before putting this on Vercel, and why. Written against the repo a
 unfailability beats everything, and it needs no changes. Deploy so that a judge or a Devpost
 visitor has a **link** to click later; free tiers are fine for that.
 
-**The shape of the deploy:** the four Vite apps (launcher, diner, mobile, restaurant) are static
-builds and go to Vercel cleanly. **app-services does not**, and cannot without a rewrite — see §1.
+**The shape of the deploy:** the five Vite apps are static builds and go to Vercel as **one
+project**. **app-services does not**, and cannot without a rewrite — see §1.
 
 ```
-Vercel (static, free)                    Cloud Run (scale-to-zero, max-instances=1)
-  launcher      ──┐
-  diner-frontend  ├──  VITE_API_URL  ──▶   app-services (Express)
-  mobile-diner    │                          └── MockChainAdapter + StubGateway, all in memory
-  restaurant    ──┘
+Vercel — ONE project, one domain              Cloud Run (scale-to-zero, max-instances=1)
+  /            launcher       ──┐
+  /diner/      diner-frontend   │
+  /mobile/     mobile-diner     ├── VITE_API_URL ──▶ app-services (Express)
+  /restaurant/ operator console │                      └── MockChainAdapter + StubGateway,
+  /lab/        pricing lab    ──┘                          all in process memory
 ```
+
+It used to be five separate Vercel projects. They were never independent — they share a design
+system, a types package and a backend — so every cross-app link was a hardcoded `*.vercel.app`
+hostname, and any shared-code change meant five deploys that could each half-fail. One project
+means one build, one domain, one set of environment variables, and links between the apps that
+are just paths.
 
 ---
 
@@ -64,46 +71,34 @@ allow-origin header for an allowlisted origin and omits it for one that isn't.
 
 ---
 
-## 3. Vercel project setup — one project per app
+## 3. Vercel project setup — one project, five mount points
 
-Four projects off the same repo. For each:
+- [ ] **One project, root directory = repo root.** Not `packages/<app>`. The root
+      [vercel.json](vercel.json) does the rest: `buildCommand: npm run build:web`,
+      `outputDirectory: dist`.
 
-- [ ] **Root Directory** = `packages/<app>`. That is the whole setup — leave everything else alone.
+- [ ] **`npm run build:web`** ([scripts/build-web.mjs](scripts/build-web.mjs)) builds each client
+      in turn into one tree. Order matters: the launcher writes to `dist/` itself and goes first,
+      so its `emptyOutDir` cannot delete the sub-apps.
 
-      There is **no "Include files outside root directory" checkbox** in current Vercel. It existed
-      in the older dashboard and is gone; Vercel now detects npm workspaces natively from the
-      lockfile and the root `workspaces` key (this repo has `["packages/*"]`) and installs at the
-      workspace root on its own. Don't go hunting for it.
-- [x] **`@ttr/shared-types` must be built before its consumers** — fixed in
-      [restaurant-frontend/vercel.json](packages/restaurant-frontend/vercel.json) and
-      [launcher/vercel.json](packages/launcher/vercel.json), which now run
-      `cd ../shared-types && npm run build` first.
+      Each client is built with a `base` matching its mount point, passed as `VITE_BASE` and read
+      in its `vite.config.ts`. **Env, not a `--base=` CLI flag** — MSYS rewrites a bare `/`
+      argument to a Windows path when the build is driven from Git Bash, which silently produces
+      asset URLs pointing at `C:/Program Files/Git/`.
 
-      Three things combine to cause this, and it only shows up on a clean clone:
-      shared-types resolves through `"types": "./dist/index.d.ts"`; `packages/shared-types/dist`
-      is **gitignored**, so Vercel never receives it; and the consuming tsconfigs have **no TS
-      project references**, so `tsc -b` does not build it for them. Locally it works only because
-      a root build left a `dist` on disk. Symptom is
-      `TS2307: Cannot find module '@ttr/shared-types'`.
+- [ ] **Rewrites are per mount point,** longest-prefix first, with the launcher's catch-all last.
+      Vercel checks the filesystem before applying rewrites, so real assets still serve. Both the
+      bare (`/diner`) and slashed (`/diner/:path*`) forms are listed — do not rely on
+      path-to-regexp treating them as the same thing.
 
-      Only restaurant and launcher import it — diner and mobile don't, which is why those two
-      deployed fine. Verified by deleting `packages/shared-types/dist` and rebuilding both.
-- [ ] Each app's `vercel.json` is committed (SPA rewrite is required or deep links 404).
+- [ ] **Workspace packages need no build step.** `@ttr/design` ships raw source and its `exports`
+      map points at `src/*.ts`; Vite transpiles it like any other module. Pointing it at `dist/`
+      is what broke every deploy after the design system landed:
+      `[vite]: Rollup failed to resolve import "@ttr/design/chart"` — `dist/` is gitignored, so
+      Vercel never received it and nothing in the per-app build ever created it.
 
-**Environment variables:**
-
-| Project | Var | Value |
-|---|---|---|
-| diner, mobile, restaurant | `VITE_API_URL` | deployed app-services origin, no trailing slash |
-| launcher | `VITE_DINER_URL`, `VITE_MOBILE_URL`, `VITE_RESTAURANT_URL`, `VITE_LAB_URL` | the deployed app URLs |
-
-- [ ] Remember Vite **inlines `VITE_*` at build time** — changing one in the dashboard does
-      nothing until you **redeploy**.
-- [ ] The launcher's `/up/*` liveness probes are dev-proxy-only and already guarded by
-      `if (!import.meta.env.DEV) return` ([Roles.tsx:47](packages/launcher/src/Roles.tsx#L47)) —
-      nothing to do, just don't be surprised the cards don't probe in production.
-
----
+- [ ] **Delete or pause the five old projects** once this one is live, so a stale deploy can't
+      answer on an old URL.
 
 ## 4. app-services host
 

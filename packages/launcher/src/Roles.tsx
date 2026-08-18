@@ -2,9 +2,9 @@
  * The "who are you" screen: one question, three doors into the demo.
  *
  * Why this exists as its own package rather than a route inside an app: the three surfaces are
- * three separate origins, each with its own identity on the x-user-id stub. A shared landing page
- * that navigates between them is the only thing that can sit above all three, and keeping it
- * dependency-free means it can't break the apps it launches.
+ * three separate Vite builds, each with its own identity on the x-user-id stub. They now deploy
+ * to one domain under different paths, but they are still built and bundled independently — a
+ * landing page that can't break the apps it launches is the whole point.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
@@ -12,16 +12,21 @@ import { fadeUp, group } from './motion';
 import { Desktop, Phone, Counter } from './Glyphs';
 
 /**
- * Targets are env-driven so a build can be pointed elsewhere; the fallbacks are the deployed
- * hosts, so the landing page works without any env set. Point these at the local dev ports
- * (5173/5175/5174) to drive a local stack. Vite inlines VITE_* at build time, so a changed URL
- * needs a redeploy, not just an env edit.
+ * Where the three apps live.
+ *
+ * Paths, not origins. All five clients are one Vercel project served from one domain — the diner
+ * is /diner/, this page is /, and a link between them is just a link. That is the whole reason to
+ * fold them together: these used to be hardcoded `*.vercel.app` hostnames that had to be edited
+ * and redeployed whenever a preview URL changed.
+ *
+ * Still env-driven so a build can be pointed elsewhere. scripts/build-web.mjs sets these from the
+ * same table that decides each app's Vite `base`, so the link and the mount point cannot disagree.
+ * Point them at the local dev ports (5173/5175/5174) to drive a local stack instead.
  */
 const URLS = {
-  diner: import.meta.env.VITE_DINER_URL ?? 'https://ht-6-diner-frontend-xzc7.vercel.app/',
-  mobile: import.meta.env.VITE_MOBILE_URL ?? 'https://ht-6-mobile-diner.vercel.app/',
-  restaurant:
-    import.meta.env.VITE_RESTAURANT_URL ?? 'https://ht-6-restaurant-frontend-three.vercel.app/',
+  diner: import.meta.env.VITE_DINER_URL ?? '/diner/',
+  mobile: import.meta.env.VITE_MOBILE_URL ?? '/mobile/',
+  restaurant: import.meta.env.VITE_RESTAURANT_URL ?? '/restaurant/',
 };
 
 interface Role {
