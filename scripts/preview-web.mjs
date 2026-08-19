@@ -1,12 +1,10 @@
 /**
- * Serves the merged dist/ the way Vercel will, so `npm run build:web` can be checked before it
- * is pushed.
+ * Serves the merged dist/ the way Vercel will, so `npm run build:web` can be checked locally.
  *
  * The rewrite behaviour is the part worth reproducing: static file first, and only if nothing is
- * on disk does the request fall back to an index.html — the sub-app's own, if the first path
- * segment is one of the mount points, otherwise the launcher's. Get that wrong and every deep
- * link either 404s or quietly serves the wrong app, which is exactly the failure a plain static
- * server cannot show you.
+ * on disk does the request fall back to an index.html - the sub-app's own, if the first path
+ * segment is a mount point, otherwise the launcher's. Get that wrong and every deep link either
+ * 404s or quietly serves the wrong app, which a plain static server cannot show you.
  *
  *   npm run build:web && npm run preview:web
  */
@@ -27,15 +25,13 @@ const TYPES = {
 };
 
 if (!existsSync(join(DIST, 'index.html'))) {
-  console.error('
-  dist/ is empty or missing - run `npm run build:web` first.
-');
+  console.error('\n  dist/ is empty or missing - run `npm run build:web` first.\n');
   process.exit(1);
 }
 
 createServer((req, res) => {
   const url = decodeURIComponent((req.url ?? '/').split('?')[0]);
-  // normalize + strip any '..' so a crafted path cannot escape dist/
+  // normalize, then strip any '..' so a crafted path cannot escape dist/
   let file = join(DIST, normalize(url).split('..').join(''));
 
   if (!existsSync(file) || statSync(file).isDirectory()) {
@@ -50,9 +46,7 @@ createServer((req, res) => {
     res.end('not found');
   }
 }).listen(PORT, () => {
-  console.log(`
-  dist/ on http://localhost:${PORT}
-`);
+  console.log(`\n  dist/ on http://localhost:${PORT}\n`);
   for (const m of ['', ...MOUNTS]) console.log(`    http://localhost:${PORT}/${m}`);
   console.log('');
 });
