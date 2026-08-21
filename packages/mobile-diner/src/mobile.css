@@ -286,6 +286,14 @@ body {
   justify-content: space-between;
   gap: 12px;
 }
+/* 371px of screen already carrying a wordmark and an avatar — the escape hatch gets the
+   smallest type in the app and loses its padding so it reads as a margin note, not a button. */
+.mhead__row .backlink {
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  padding: 5px 6px 5px 4px;
+  margin-left: -4px;
+}
 .mtitle {
   font-family: var(--font-display);
   font-weight: 600;

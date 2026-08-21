@@ -27,6 +27,16 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'new', label: 'New pool' },
 ];
 
+/**
+ * Back to the role picker.
+ *
+ * A path in production (all five clients are one Vercel project), an absolute URL in dev where the
+ * launcher is a separate server on :5170. Without the dev branch this link would resolve against
+ * this app's own origin and get swallowed by its SPA rewrite.
+ */
+const LAUNCHER_URL =
+  import.meta.env.VITE_LAUNCHER_URL ?? (import.meta.env.DEV ? 'http://localhost:5170/demo' : '/demo');
+
 export default function App() {
   const [pools, setPools] = useState<IssuerPoolRow[]>([]);
   const [selected, setSelected] = useState('');
@@ -187,6 +197,9 @@ export default function App() {
         animate="show"
       >
         <motion.header className="topbar" variants={fadeUp} style={{ marginBottom: 28 }}>
+          <a className="backlink" href={LAUNCHER_URL}>
+            <span aria-hidden>&#8592;</span> All demos
+          </a>
           <div className="brand">
             <span className="brand-dots">
               <i />

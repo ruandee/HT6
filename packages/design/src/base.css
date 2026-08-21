@@ -233,6 +233,40 @@ body {
   opacity: 0.6;
 }
 
+/* The way back to the role picker, in every client the picker can open.
+   
+   Deliberately quiet — smaller than the wordmark, no fill, no border. A visitor who wants it will
+   find it in the corner they already look at; a visitor who doesn't should never notice it. It is
+   an escape hatch, not navigation, because each of these apps is meant to be the whole screen
+   while you are in it. */
+.backlink {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-display);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-45);
+  text-decoration: none;
+  padding: 7px 12px 7px 10px;
+  border-radius: var(--r-pill);
+  transition: color 0.16s, background 0.16s;
+}
+.backlink:hover {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.55);
+}
+.backlink span {
+  font-size: 12px;
+  line-height: 1;
+  transition: transform 0.16s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.backlink:hover span {
+  transform: translateX(-2px);
+}
+
 /* ============================================================
    the type ramp
 

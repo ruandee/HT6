@@ -211,41 +211,81 @@
    product, and the fastest way to break that is a second set of shadows.
    ============================================================ */
 
-/* Long page, so anchor-ish jumps and the browser's own scrolling should ease rather than snap.
-   The reduced-motion block at the bottom of this file turns it back off. */
-html {
-  scroll-behavior: smooth;
-}
+/* ============================================================
+   the deck
 
+   Six full-screen slides on one horizontal track. Native overflow with scroll snapping rather
+   than a transform carousel: trackpad, touch, scrollbar, Home/End and find-in-page all keep
+   working, and with JavaScript off it is still a scroller rather than a blank page.
+   ============================================================ */
 .home {
   position: relative;
   z-index: 1;
+  height: 100svh;
+  overflow: hidden;
 }
 
-/* reading position. Transform-only (scaleX), so it costs nothing to animate every frame. */
-.progress {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  z-index: 10;
-  transform-origin: 0 50%;
-  background: linear-gradient(90deg, var(--accent-warm), var(--accent-mid), var(--accent-deep));
+.track {
+  display: flex;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  /* No `scroll-behavior: smooth` here. It applies to programmatic scrolling too, so every
+     `scrollLeft +=` became an animation that the next one restarted from a barely-moved base, and
+     the deck sat still. Home.tsx asks for smooth explicitly, per jump, where it is wanted. */
+  /* the deck is the page; its scrollbar would be a second one running along the bottom */
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+.track::-webkit-scrollbar {
+  display: none;
+}
+
+.slide {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  /* a slide that genuinely cannot fit scrolls itself rather than truncating; the wheel handler
+     in Home.tsx yields to this before it takes the wheel for the track */
+  overflow-y: auto;
+  padding: 72px 0;
+}
+.slide__inner {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0 clamp(24px, 5vw, 64px);
+}
+/* The rail sits in the right margin, so the content has to stop short of it. Reserving the gutter
+   here rather than narrowing the content means the slides keep their measure and simply sit a
+   little left of centre — which is what a deck with a rail should look like anyway. */
+@media (min-width: 901px) {
+  .slide__inner {
+    padding-right: clamp(150px, 13vw, 210px);
+  }
+  /* The hero is a centred composition and nothing in it reaches the rail, so it keeps the full
+     width — reserving the gutter here would just shove the wordmark off the middle of the screen
+     for no reason. */
+  .slide--hero .slide__inner {
+    padding-right: clamp(24px, 5vw, 64px);
+  }
+}
+/* the card grids want the full measure; the prose slides are better off narrower */
+.slide--wide .slide__inner {
+  max-width: 1180px;
+}
+.slide--hero .slide__inner {
+  text-align: center;
 }
 
 /* ---- hero ---- */
-.hero {
-  position: relative;
-  min-height: 100svh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 24px;
-  text-align: center;
-}
 .hero__inner {
   max-width: 820px;
+  margin: 0 auto;
 }
 .hero__eyebrow {
   font-family: var(--font-display);
@@ -365,24 +405,92 @@ html {
   box-shadow: var(--lift-ink-hover), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
-/* scroll cue */
-.cue {
-  position: absolute;
-  bottom: 34px;
-  left: 50%;
-  transform: translateX(-50%);
+/* ============================================================
+   the rail
+
+   Down the right edge: just the six names, small. The current one carries the logo's accent dot —
+   the same mark as the wordmark's second dot — so where you are is signalled by the brand rather
+   than by a scrollbar or a row of anonymous pips. The rest underline on hover, which is all the
+   affordance a word needs to read as reachable.
+   ============================================================ */
+.rail {
+  position: fixed;
+  top: 50%;
+  right: clamp(16px, 2.6vw, 40px);
+  transform: translateY(-50%);
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+.rail__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   color: var(--ink-25);
-  font-size: 20px;
-  pointer-events: none;
+  transition: color 0.2s;
+}
+.rail__item--on {
+  color: var(--ink);
+}
+/* The dot occupies its slot at every state so the labels never shift sideways as you move
+   through the deck — it simply stops being drawn. */
+.rail__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+  background: transparent;
+  transition: background 0.2s, transform 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+  transform: scale(0.6);
+}
+.rail__item--on .rail__dot {
+  background: var(--accent-mid);
+  transform: scale(1);
+}
+/* the underline is drawn under the label only, not the dot's slot */
+.rail__label {
+  position: relative;
+}
+.rail__label::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.rail__item:hover {
+  color: var(--ink-70);
+}
+.rail__item:hover .rail__label::after {
+  transform: scaleX(1);
+}
+.rail__item--on:hover .rail__label::after {
+  transform: scaleX(0);
+}
+.rail__item:focus-visible {
+  outline: 2px solid var(--accent-deep);
+  outline-offset: 4px;
+  border-radius: 4px;
 }
 
-/* ---- sections ---- */
-.sec {
-  position: relative;
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 0 32px 120px;
-}
+/* ---- slide typography ---- */
 .sec__title {
   font-family: var(--font-display);
   font-weight: 600;
@@ -391,6 +499,11 @@ html {
   letter-spacing: -0.02em;
   text-transform: uppercase;
   margin: 18px 0 0;
+}
+/* the demo slide is the tightest on the deck, so its lede runs on one line and closer in */
+.sec__lede--tight {
+  margin-top: 14px;
+  max-width: 78ch;
 }
 .sec__lede {
   margin: 24px 0 0;
@@ -505,8 +618,15 @@ html {
   /* fixed width so the label swapping between Play/Pause/Again doesn't shove the slider around */
   min-width: 148px;
   justify-content: center;
+  /* the icon is a drawn SVG on its own box, so it needs no baseline correction — but it must not
+     be allowed to stretch with the flex line */
+  line-height: 1;
   box-shadow: var(--lift-accent), inset 0 1px 0 rgba(255, 255, 255, 0.22);
   transition: box-shadow 0.24s cubic-bezier(0.23, 1, 0.32, 1), filter 0.24s;
+}
+.decay__play svg {
+  flex: none;
+  display: block;
 }
 .decay__play:hover {
   filter: brightness(1.04);
@@ -697,13 +817,38 @@ html {
   .tech {
     grid-template-columns: 1fr;
   }
-  .sec {
-    padding: 0 20px 84px;
-  }
   .cta {
     /* one per row on a phone, rather than two cramped pills that wrap mid-label */
     flex: 1 1 100%;
     justify-content: center;
+  }
+  /* ---- the deck on a phone ----
+     No room for a rail in the margin, so it lies along the bottom edge and scrolls with the deck.
+     The labels stay: a row of anonymous pips tells you how many slides there are and nothing about
+     what is on them, which is the opposite of the point. */
+  .rail {
+    top: auto;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    transform: none;
+    flex-direction: row;
+    gap: 16px;
+    align-items: center;
+    padding: 12px 18px calc(12px + env(safe-area-inset-bottom, 0px));
+    overflow-x: auto;
+    scrollbar-width: none;
+    background: linear-gradient(180deg, transparent, rgb(var(--canvas-rgb) / 0.92) 45%);
+  }
+  .rail::-webkit-scrollbar {
+    display: none;
+  }
+  .rail__item {
+    flex: none;
+    font-size: 9.5px;
+  }
+  .slide {
+    padding: 56px 0 84px;
   }
 
   /* The demo survives a phone, but only by unstacking. The clock moves under the caption, the
@@ -752,8 +897,14 @@ html {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
+  /* Snapping is momentum the visitor did not ask for, and smooth paging is the same animation
+     twice. Both off; the deck becomes a plain horizontal scroller. */
+  .track {
+    scroll-snap-type: none;
+  }
+  .rail__dot,
+  .rail__label::after {
+    transition: none;
   }
 }
 
@@ -769,11 +920,14 @@ html {
 .writeup {
   position: relative;
   z-index: 1;
-  /* A reading measure, not a layout width. 780px was the claim; measured against the body size
-     below it was running 88 characters a line, which is past the point where the eye starts
-     losing its place on the return sweep. 700px lands at ~78 — still generous, because the
-     column also has to hold code and a two-column table without either of them wrapping. */
-  max-width: 700px;
+  /* A reading measure that grows with the screen instead of a fixed one.
+   
+     A flat 700px is right on a laptop and looks like a mobile layout stranded in the middle of a
+     27" monitor — all margin, no page. But simply widening it makes the lines too long to track,
+     because measure is characters, not pixels. So both scale together: the column grows with the
+     viewport to a 920px ceiling, and the body size below grows with it, which holds the line at
+     roughly 85 characters at every width rather than letting it stretch to 110. */
+  max-width: min(92vw, 920px);
   margin: 0 auto;
   padding: 28px 28px 96px;
 }
@@ -858,10 +1012,11 @@ html {
 
 /* ---- prose ---- */
 .writeup__body p {
-  margin: 18px 0 0;
+  margin: 20px 0 0;
   color: var(--ink-70);
-  font-size: 16.5px;
-  line-height: 1.72;
+  /* scales with the column above, so the character count stays put as the page widens */
+  font-size: clamp(16.5px, 1.2vw, 19px);
+  line-height: 1.7;
 }
 .writeup__body strong {
   color: var(--ink);
@@ -901,7 +1056,7 @@ html {
   position: relative;
   padding-left: 40px;
   color: var(--ink-70);
-  font-size: 16.5px;
+  font-size: clamp(16.5px, 1.2vw, 19px);
   line-height: 1.62;
   counter-increment: watch;
 }

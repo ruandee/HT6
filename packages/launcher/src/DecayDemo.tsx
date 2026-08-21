@@ -159,6 +159,40 @@ function Chart({ at }: { at: DecayPoint }) {
   );
 }
 
+/**
+ * Transport icons.
+ *
+ * SVG on a fixed 14x14 box, not the text glyphs (▶ ‖ ↻) this used to carry. Those are three
+ * different characters from three different parts of the font, with three different advance
+ * widths and side bearings — so the pause bars rendered visibly larger than the play triangle and
+ * neither sat on the button's optical centre. A glyph is typeset; an icon is drawn. These are
+ * drawn, on a shared viewBox, so they are the same weight and the same centre by construction.
+ */
+function TransportIcon({ kind }: { kind: 'play' | 'pause' | 'again' }) {
+  const common = { width: 14, height: 14, viewBox: '0 0 14 14', 'aria-hidden': true } as const;
+  if (kind === 'pause') {
+    return (
+      <svg {...common} fill="currentColor">
+        <rect x="3.5" y="2.5" width="2.6" height="9" rx="1.1" />
+        <rect x="7.9" y="2.5" width="2.6" height="9" rx="1.1" />
+      </svg>
+    );
+  }
+  if (kind === 'again') {
+    return (
+      <svg {...common} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+        <path d="M12 7a5 5 0 1 1-1.6-3.7" />
+        <path d="M12.2 1.6v3.2H9" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  return (
+    <svg {...common} fill="currentColor">
+      <path d="M4.2 2.6a.6.6 0 0 1 .93-.5l6 4.4a.6.6 0 0 1 0 1l-6 4.4a.6.6 0 0 1-.93-.5V2.6Z" />
+    </svg>
+  );
+}
+
 export default function DecayDemo() {
   const [tau, setTau] = useState(START_HOURS);
   const [playing, setPlaying] = useState(false);
@@ -261,7 +295,7 @@ export default function DecayDemo() {
           whileTap={reduceMotion ? undefined : tapPress}
           aria-label={playing ? 'Pause' : 'Play the night'}
         >
-          <span aria-hidden>{playing ? '‖' : atDoor ? '↻' : '▶'}</span>
+          <TransportIcon kind={playing ? 'pause' : atDoor ? 'again' : 'play'} />
           {playing ? 'Pause' : atDoor ? 'Again' : 'Play the night'}
         </motion.button>
 

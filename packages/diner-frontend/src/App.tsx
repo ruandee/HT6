@@ -18,6 +18,16 @@ const BAND_PARAMS: Record<number, { p0: string; k: string }> = {
   4: { p0: '80000000', k: '6000000' },
 };
 
+/**
+ * Back to the role picker.
+ *
+ * A path in production (all five clients are one Vercel project), an absolute URL in dev where the
+ * launcher is a separate server on :5170. Without the dev branch this link would resolve against
+ * this app's own origin and get swallowed by its SPA rewrite.
+ */
+const LAUNCHER_URL =
+  import.meta.env.VITE_LAUNCHER_URL ?? (import.meta.env.DEV ? 'http://localhost:5170/demo' : '/demo');
+
 export default function App() {
   const [poolId, setPoolId] = useState('');
   const [pools, setPools] = useState<PoolSummary[]>([]);
@@ -226,6 +236,9 @@ export default function App() {
 
       <motion.div className="shell" variants={group(0.07)} initial="hidden" animate="show">
         <motion.header className="topbar" variants={fadeUp}>
+          <a className="backlink" href={LAUNCHER_URL}>
+            <span aria-hidden>&#8592;</span> All demos
+          </a>
           {/* the wordmark is the way back out of the wallet, as on the launcher */}
           <a className="brand brand--link" href="#" onClick={goBooking}>
             <span className="brand-dots">
