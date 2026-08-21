@@ -38,14 +38,32 @@ export const group = (staggerChildren = 0.05, delayChildren = 0): Variants => ({
  * Springs rather than durations. A spring settles instead of arriving on a schedule, so a pointer
  * that leaves halfway through reverses from wherever the lift got to instead of snapping back to
  * the start. That continuity is most of what makes a hover feel like a physical object.
+ *
+ * ---- why these are `y` and `scale`, not `transform` strings ----
+ *
+ * They used to be `transform: 'translateY(-2px)'` and `transform: 'scale(0.97)'`. Both wrote the
+ * same CSS property, with different functions in it — so pressing a button that was already
+ * hovered asked Framer to interpolate the string `translateY(-2px)` into the string
+ * `scale(0.97)`. It does that positionally: it walks the numbers, -2 toward 0.97, and swaps the
+ * function name partway. Sampling the inline transform through a press caught it going
+ *
+ *     translateY(-2px) -> translateY(-0.27px) -> scale(0.58) -> scale(0.97)
+ *
+ * so the control collapsed to 58% of its size and sprang back. On a small button with an icon in
+ * it that reads as a spin rather than a press, which is exactly how it was reported.
+ *
+ * Given as separate motion values, hover owns `y` and press owns `scale`. They are different
+ * transform channels, composed rather than interpolated between, so neither can turn into the
+ * other on the way. It also lets <MotionConfig reducedMotion="user"> recognise both as spatial
+ * and drop them, which a raw string hides from it.
  */
 export const hoverLift = {
-  transform: 'translateY(-2px)',
+  y: -2,
   transition: { type: 'spring', stiffness: 220, damping: 24, mass: 1 },
 } as const;
 
 export const tapPress = {
-  transform: 'scale(0.97)',
+  scale: 0.97,
   transition: { type: 'spring', stiffness: 700, damping: 36, mass: 0.6 },
 } as const;
 
