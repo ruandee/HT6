@@ -102,8 +102,52 @@ for (const rel of FILES) {
   });
 }
 
+/* ---- second check: every var(--x) must resolve ----
+
+   The literal check above cannot see a token that has been RENAMED. When the palette moved from
+   coral to sage, `--coral-deep` was renamed to `--accent-deep` across the stylesheets by search
+   and replace - but eleven inline styles in TSX (`style={{ color: 'var(--coral-deep)' }}`) were
+   missed, and CSS fails silently: an undefined custom property is not an error, the declaration
+   is simply dropped and the element inherits. Every one of those accents rendered as plain body
+   text for days without a single warning anywhere.
+
+   So: collect every custom property anyone DEFINES, then check every one anyone USES exists. */
+const DEFINED = new Set();
+const defRe = /(--[a-zA-Z0-9_-]+)\s*:/g;
+for (const rel of [...FILES, 'packages/design/src/tokens.css', 'packages/design/src/base.css']) {
+  const text = readFileSync(`${ROOT}/${rel}`, 'utf8');
+  let m;
+  while ((m = defRe.exec(text))) DEFINED.add(m[1]);
+}
+
+const useRe = /var\(\s*(--[a-zA-Z0-9_-]+)/g;
+let unknown = 0;
+for (const rel of FILES) {
+  const lines = readFileSync(`${ROOT}/${rel}`, 'utf8').split(/\r?\n/);
+  lines.forEach((line, i) => {
+    let m;
+    useRe.lastIndex = 0;
+    while ((m = useRe.exec(line))) {
+      if (DEFINED.has(m[1])) continue;
+      unknown++;
+      console.error(`  ${rel.split(sep).join('/')}:${i + 1}  var(${m[1]}) is not defined anywhere`);
+    }
+  });
+}
+if (unknown) {
+  console.error(
+    `\ntoken guard: ${unknown} reference(s) to a custom property that does not exist.\n` +
+      'CSS drops an undefined var() silently, so these render as inherited values rather than\n' +
+      'failing - check for a rename.\n',
+  );
+  process.exit(1);
+}
+
 if (violations === 0) {
-  console.log(`token guard: ${FILES.length} files clean — every colour comes from @ttr/design`);
+  console.log(
+    `token guard: ${FILES.length} files clean — every colour comes from @ttr/design,` +
+      ` and all ${DEFINED.size} custom properties resolve`,
+  );
   process.exit(0);
 }
 

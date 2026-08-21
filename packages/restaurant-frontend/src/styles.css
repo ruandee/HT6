@@ -62,6 +62,12 @@
   padding: 16px 30px;
   border: 1px solid transparent;
   cursor: pointer;
+  /* .btn is used on <a> as well as <button> (the offline state's escape hatches), and an
+     underlined pill reads as a mistake */
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition: transform 0.18s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.18s,
     filter 0.18s;
 }

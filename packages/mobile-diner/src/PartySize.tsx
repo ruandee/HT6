@@ -68,7 +68,7 @@ export function PartySize({ bands, guests, onGuests }: Props) {
       <div className="psize__routed" style={{ minHeight: 20 }}>
         {chosen &&
           (left <= 0 ? (
-            <span style={{ color: 'var(--coral-deep)', fontWeight: 600 }}>
+            <span style={{ color: 'var(--accent-deep)', fontWeight: 600 }}>
               The {chosen.party_size}-top is fully booked.
             </span>
           ) : (

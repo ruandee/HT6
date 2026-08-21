@@ -1,9 +1,13 @@
 /**
- * The wallet, brought over from the phone (mobile-diner's Wallet tab).
+ * The wallet, matching the phone's Wallet tab (mobile-diner).
  *
- * On the phone it's a tab because a phone can only show one thing. A desktop can show two, so
- * there is no tab and no navigation: your tables live at the bottom of the same page you book
- * from, and the summary in the top bar scrolls you to them. Nothing to open, nothing to close.
+ * It used to be a section wedged under the buy panel, and the top-bar pill scrolled you to it.
+ * That worked while it held one ticket and stopped working the moment it held three: a column
+ * 260px wide is not where you review what you own. It is its own route now — `#wallet` — for the
+ * same reason the phone gives it a tab. Booking and reviewing are two different jobs.
+ *
+ * A hash route rather than a path: this is a static SPA behind a catch-all rewrite, and `#wallet`
+ * needs no server rule, no history shim, and survives being pasted to someone.
  *
  * The ticket is the phone's ticket — same perforation, same "sell back for" figure, same words —
  * so a diner who used one recognises the other. Selling still asks once, because it's the one
@@ -21,105 +25,134 @@ interface Props {
   onSell: (h: Holding) => void;
 }
 
-export function Wallet({ holdings, pools, viewingPoolId, onSell }: Props) {
-  const total = holdings.reduce((n, h) => n + BigInt(h.recover_value), 0n).toString();
-
+/** One ticket. Identical on the phone and here, deliberately. */
+function Ticket({
+  holding,
+  pool,
+  badge,
+  onSell,
+}: {
+  holding: Holding;
+  pool?: PoolSummary;
+  badge: string;
+  onSell: (h: Holding) => void;
+}) {
+  const when = pool ? new Date(pool.service_time * 1000) : null;
+  const v = splitUsdc(holding.recover_value);
   return (
-    <section id="wallet" className="wallet">
-      <div className="eyebrow" style={{ marginBottom: 16, flex: '0 0 auto' }}>
-        Your tables
+    <motion.article
+      className="glass glass--strong ticket"
+      variants={fadeUp}
+      layout
+      transition={{ duration: 0.24, ease: EASE }}
+    >
+      <div className="ticket__top">
+        <div>
+          <div className="ticket__when">{pool?.label ?? 'Your table'}</div>
+          <div className="ticket__meta">
+            {pool?.venue_name ?? 'Your table'}
+            {pool ? ` · table for ${pool.party_size}` : ''}
+            {when
+              ? ` · ${when.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+              : ''}
+          </div>
+        </div>
+        <span className="badge badge--live">{badge}</span>
       </div>
 
-      {holdings.length === 0 ? (
-        <div className="wallet__empty">
-          <span className="empty__mark">nothing yet</span>
-          <p className="muted" style={{ marginTop: 6, fontSize: 13, maxWidth: 300 }}>
-            Claim a table and it shows up here — with what it&apos;s worth back, any time before
-            service.
-          </p>
-        </div>
-      ) : (
-        <>
-          <motion.div className="wallet__grid" variants={group(0.06)} initial="hidden" animate="show">
-            {holdings.map((h) => {
-              const pool = pools.find((p) => p.pool_id === h.pool_id);
-              const when = pool ? new Date(pool.service_time * 1000) : null;
-              const v = splitUsdc(h.recover_value);
-              return (
-                <motion.article
-                  key={h.pool_id}
-                  className="glass glass--strong ticket"
-                  variants={fadeUp}
-                  layout
-                  transition={{ duration: 0.24, ease: EASE }}
-                >
-                  <div className="ticket__top">
-                    <div>
-                      <div className="ticket__when">{pool?.label ?? 'Your table'}</div>
-                      <div className="ticket__meta">
-                        {pool?.venue_name ?? 'Your table'}
-                        {pool ? ` · table for ${pool.party_size}` : ''}
-                        {when
-                          ? ` · ${when.toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                            })}`
-                          : ''}
-                      </div>
-                    </div>
-                    <span className="badge badge--live">
-                      {h.pool_id === viewingPoolId ? 'Viewing' : 'Booked'}
-                    </span>
-                  </div>
+      <div className="ticket__perf" aria-hidden>
+        <span />
+        <i />
+        <span />
+      </div>
 
-                  <div className="ticket__perf" aria-hidden>
-                    <span />
-                    <i />
-                    <span />
-                  </div>
+      <div className="stat-label">Sell back for</div>
+      <div className="price ticket__price">
+        <span>${v.dollars}</span>
+        <span className="price__cents">.{v.cents}</span>
+      </div>
 
-                  <div className="stat-label">Sell back for</div>
-                  <div className="price ticket__price">
-                    <span>${v.dollars}</span>
-                    <span className="price__cents">.{v.cents}</span>
-                  </div>
-
-                  <button className="btn btn--ghost ticket__sell" onClick={() => onSell(h)}>
-                    Can&apos;t make it? Sell it back
-                  </button>
-                </motion.article>
-              );
-            })}
-          </motion.div>
-
-          <div className="wallet__foot muted">
-            {holdings.length} {holdings.length === 1 ? 'table' : 'tables'} ·{' '}
-            <strong style={{ color: 'var(--ink)' }}>{usdc(total)}</strong> recoverable right now
-          </div>
-        </>
-      )}
-    </section>
+      <button className="btn btn--ghost ticket__sell" onClick={() => onSell(holding)}>
+        Can&apos;t make it? Sell it back
+      </button>
+    </motion.article>
   );
 }
 
 /**
- * Top-bar summary. Not a menu — a press scrolls to the wallet, so nothing overlays the page.
+ * The wallet route.
+ *
+ * Same content the phone's tab shows, laid out for a screen that has room: the tickets flow into
+ * as many columns as fit rather than stacking in a 260px gutter. The empty state carries the way
+ * out, because a diner who lands here with nothing came looking for something to do.
  */
-export function WalletPill({ holdings }: { holdings: Holding[] }) {
+export function WalletPage({
+  holdings,
+  pools,
+  viewingPoolId,
+  onSell,
+  onBrowse,
+}: Props & { onBrowse: () => void }) {
   const total = holdings.reduce((n, h) => n + BigInt(h.recover_value), 0n).toString();
+
   return (
-    <button
-      className="wpill"
-      onClick={() =>
-        document.getElementById('wallet')?.scrollIntoView({ block: 'start' })
-      }
-    >
+    <motion.section className="walletpage" variants={group(0.07)} initial="hidden" animate="show">
+      <motion.header variants={fadeUp}>
+        <h1 className="headline">Your tables</h1>
+        <p className="muted lede walletpage__sub">
+          Show this at the door. Plans changed? Sell it back in a tap.
+        </p>
+      </motion.header>
+
+      {holdings.length === 0 ? (
+        <motion.div className="walletpage__empty" variants={fadeUp}>
+          <span className="empty__mark">nothing yet</span>
+          <p className="muted walletpage__emptynote">
+            Claim a table and it shows up here — with what it&apos;s worth back, any time before
+            service.
+          </p>
+          <button className="btn btn--primary" onClick={onBrowse}>
+            Find a table
+          </button>
+        </motion.div>
+      ) : (
+        <>
+          <motion.div className="walletpage__grid" variants={group(0.06)}>
+            {holdings.map((h) => (
+              <Ticket
+                key={h.pool_id}
+                holding={h}
+                pool={pools.find((p) => p.pool_id === h.pool_id)}
+                badge={h.pool_id === viewingPoolId ? 'Viewing' : 'Booked'}
+                onSell={onSell}
+              />
+            ))}
+          </motion.div>
+
+          <motion.p className="walletpage__foot muted" variants={fadeUp}>
+            {holdings.length} {holdings.length === 1 ? 'table' : 'tables'} ·{' '}
+            <strong style={{ color: 'var(--ink)' }}>{usdc(total)}</strong> recoverable right now
+          </motion.p>
+        </>
+      )}
+    </motion.section>
+  );
+}
+
+/**
+ * Top-bar wallet button.
+ *
+ * Reads "Wallet", not "0 tables · $0.00". The old label put a running total in the corner of every
+ * screen, which made the top bar a readout rather than a way to get somewhere — and at zero it
+ * announced nothing twice. The count rides along as a badge only when there is one.
+ */
+export function WalletPill({ holdings, active }: { holdings: Holding[]; active: boolean }) {
+  return (
+    <a className={`wpill${active ? ' wpill--on' : ''}`} href="#wallet" aria-current={active || undefined}>
       <TicketIcon />
-      <span className="wpill__n">
-        {holdings.length} {holdings.length === 1 ? 'table' : 'tables'}
-      </span>
-      {holdings.length > 0 && <span className="wpill__v">{usdc(total)}</span>}
-    </button>
+      <span className="wpill__n">Wallet</span>
+      {holdings.length > 0 && <span className="wpill__badge">{holdings.length}</span>}
+    </a>
   );
 }
 

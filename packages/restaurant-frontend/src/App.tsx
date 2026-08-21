@@ -11,7 +11,7 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion, MotionConfig } from 'framer-motion';
-import { api, usdc, type CreatePoolRequest, type IssuerPoolDetail, type IssuerPoolRow } from './api';
+import { api, bootstrap, usdc, type CreatePoolRequest, type IssuerPoolDetail, type IssuerPoolRow } from './api';
 import { PoolGrid } from './PoolGrid';
 import { PoolDetail } from './PoolDetail';
 import { DemoClock } from './DemoClock';
@@ -52,9 +52,25 @@ export default function App() {
     }
   }, []);
 
+  /**
+   * First load. Retries through the backend's cold start rather than dropping straight into an
+   * error toast — on the deployed demo, a slow first request is the expected case, not a fault.
+   */
+  const [boot, setBoot] = useState<'loading' | 'waking' | 'ready' | 'offline'>('loading');
+  const [bootNonce, setBootNonce] = useState(0);
   useEffect(() => {
-    refresh().catch((e) => say(String(e instanceof Error ? e.message : e)));
-  }, [refresh, say]);
+    let alive = true;
+    setBoot('loading');
+    bootstrap(
+      () => refresh(),
+      () => alive && setBoot('waking'),
+    )
+      .then(() => alive && setBoot('ready'))
+      .catch(() => alive && setBoot('offline'));
+    return () => {
+      alive = false;
+    };
+  }, [refresh, bootNonce]);
 
   // poll so fill/reserve/royalties move live while diners trade in the other browser session
   // (§11 steps 2 and 3: the curve ticking up and the royalty accruing on stage)
@@ -196,6 +212,11 @@ export default function App() {
           </div>
         </motion.header>
 
+        {boot !== 'ready' ? (
+          <BootScreen state={boot} onRetry={() => setBootNonce((n) => n + 1)} />
+        ) : (
+          <>
+
         {/* venue-wide KPI strip. This is the top of the page now: the numbers are the headline,
             and a slogan above them only pushed them below the fold. */}
         <motion.div className="kpis" variants={group(0.055)} style={{ marginTop: 8 }}>
@@ -305,6 +326,8 @@ export default function App() {
             )}
           </AnimatePresence>
         </motion.div>
+          </>
+        )}
       </motion.div>
 
       <AnimatePresence>
@@ -340,7 +363,7 @@ export default function App() {
 function MoneyKpi({ base, accent }: { base: string; accent?: boolean }) {
   const [d, c] = usdc(base).replace('$', '').split('.');
   return (
-    <div className="kpi__value" style={accent ? { color: 'var(--coral-deep)' } : undefined}>
+    <div className="kpi__value" style={accent ? { color: 'var(--accent-deep)' } : undefined}>
       <span>${d}</span>
       <span className="kpi__cents">.{c}</span>
     </div>
@@ -349,4 +372,56 @@ function MoneyKpi({ base, accent }: { base: string; accent?: boolean }) {
 
 function msg(e: unknown): string {
   return String(e instanceof Error ? e.message : e).replace(/^Error:\s*/, '');
+}
+
+
+/**
+ * What a visitor sees before the backend answers.
+ *
+ * `waking` is the common case on the deployed demo — Cloud Run sleeps when idle — and is
+ * deliberately unalarmed. `offline` has exhausted the retries and owes the visitor somewhere else
+ * to go, so it points at the surfaces that need no server at all.
+ */
+function BootScreen({
+  state,
+  onRetry,
+}: {
+  state: 'loading' | 'waking' | 'offline';
+  onRetry: () => void;
+}) {
+  if (state !== 'offline') {
+    return (
+      <div className="boot">
+        <div className="boot__dots" aria-hidden>
+          <i />
+          <i />
+          <i />
+        </div>
+        <p className="boot__note">
+          {state === 'waking'
+            ? 'Waking the demo backend — it sleeps when nobody is using it. A few seconds.'
+            : 'Loading…'}
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="boot">
+      <span className="boot__mark">not tonight</span>
+      <h2 className="boot__title">The demo backend isn&apos;t answering.</h2>
+      <p className="boot__note">
+        This part of the demo needs a live server for pricing and holdings, and it can&apos;t be
+        reached right now. The pricing model itself runs entirely in your browser — that page works
+        regardless.
+      </p>
+      <div className="boot__actions">
+        <button className="btn btn--primary" onClick={onRetry}>
+          Try again
+        </button>
+        <a className="btn btn--ghost" href="/lab/">
+          Open the pricing lab
+        </a>
+      </div>
+    </div>
+  );
 }

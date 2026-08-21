@@ -6,16 +6,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, MotionConfig } from 'framer-motion';
-import {
-  api,
-  bandParams,
-  errText,
-  splitUsdc,
-  usdc,
-  type Holding,
-  type PoolSummary,
-  type Quote,
-} from './api';
+import { api, bandParams, bootstrap, errText, splitUsdc, usdc, type Holding, type PoolSummary, type Quote } from './api';
 import { Num, Price } from './num';
 import { CurveChart } from './CurveChart';
 import { BuySheet } from './BuySheet';
@@ -60,14 +51,33 @@ export default function App() {
   }, []);
 
   // first load: land on the headline demo pool
+  /**
+   * First load. The old version caught into a toast, which left the app rendered but empty behind
+   * a message that vanished after four seconds — so a visitor who looked away came back to a blank
+   * phone with no explanation. It now retries through the backend's cold start and holds an honest
+   * state if it never arrives.
+   */
+  const [boot, setBoot] = useState<'loading' | 'waking' | 'ready' | 'offline'>('loading');
+  const [bootNonce, setBootNonce] = useState(0);
   useEffect(() => {
-    (async () => {
-      const [{ pool_id }, ps] = await Promise.all([api.demoPoolId(), api.pools()]);
-      setPools(ps);
-      setPoolId(pool_id);
-      await refresh(pool_id);
-    })().catch((e) => flash(errText(e)));
-  }, [refresh, flash]);
+    let alive = true;
+    setBoot('loading');
+    bootstrap(
+      () => Promise.all([api.demoPoolId(), api.pools()]),
+      () => alive && setBoot('waking'),
+    )
+      .then(async ([{ pool_id }, ps]) => {
+        if (!alive) return;
+        setPools(ps);
+        setPoolId(pool_id);
+        await refresh(pool_id);
+        if (alive) setBoot('ready');
+      })
+      .catch(() => alive && setBoot('offline'));
+    return () => {
+      alive = false;
+    };
+  }, [refresh, bootNonce]);
 
   // poll so the curve moves when the other session buys (the §11 "ticks up" moment)
   useEffect(() => {
@@ -196,13 +206,17 @@ export default function App() {
               style={{
                 opacity: Math.min(1, ptr.pull / 40),
                 transform: ptr.spinning ? undefined : `rotate(${ptr.pull * 4}deg)`,
-                borderTopColor: ptr.armed ? 'var(--coral-deep)' : 'var(--ink-25)',
+                borderTopColor: ptr.armed ? 'var(--accent-deep)' : 'var(--ink-25)',
               }}
             />
           </div>
 
           {/* Primary navigation is immediate; frequent tab changes should never wait on motion. */}
-          {tab === 'wallet' ? (
+          {boot !== 'ready' ? (
+            <div style={{ padding: '8px 2px' }}>
+              <BootScreen state={boot} onRetry={() => setBootNonce((n) => n + 1)} />
+            </div>
+          ) : tab === 'wallet' ? (
             <WalletTab
               holdings={allHeld}
               pools={pools}
@@ -392,8 +406,11 @@ export default function App() {
         </AnimatePresence>
       </div>
 
-      {/* ---- thumb-reachable primary action ---- */}
-      {tab !== 'wallet' && (
+      {/* ---- thumb-reachable primary action ----
+           Hidden until the backend has answered: with no quote to price it, the button can only
+           render as a disabled "Fully booked", which is both wrong and the loudest thing on an
+           otherwise honest error screen. */}
+      {tab !== 'wallet' && boot === 'ready' && (
         <div className="dock">
           <button
             className="btn btn--primary btn--block"
@@ -586,5 +603,57 @@ function SellSheet({
         Keep it
       </button>
     </Sheet>
+  );
+}
+
+
+/**
+ * What a visitor sees before the backend answers.
+ *
+ * `waking` is the common case on the deployed demo — Cloud Run sleeps when idle — and is
+ * deliberately unalarmed. `offline` has exhausted the retries and owes the visitor somewhere else
+ * to go, so it points at the surfaces that need no server at all.
+ */
+function BootScreen({
+  state,
+  onRetry,
+}: {
+  state: 'loading' | 'waking' | 'offline';
+  onRetry: () => void;
+}) {
+  if (state !== 'offline') {
+    return (
+      <div className="boot">
+        <div className="boot__dots" aria-hidden>
+          <i />
+          <i />
+          <i />
+        </div>
+        <p className="boot__note">
+          {state === 'waking'
+            ? 'Waking the demo backend — it sleeps when nobody is using it. A few seconds.'
+            : 'Loading…'}
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="boot">
+      <span className="boot__mark">not tonight</span>
+      <h2 className="boot__title">The demo backend isn&apos;t answering.</h2>
+      <p className="boot__note">
+        This part of the demo needs a live server for pricing and holdings, and it can&apos;t be
+        reached right now. The pricing model itself runs entirely in your browser — that page works
+        regardless.
+      </p>
+      <div className="boot__actions">
+        <button className="btn btn--primary" onClick={onRetry}>
+          Try again
+        </button>
+        <a className="btn btn--ghost" href="/lab/">
+          Open the pricing lab
+        </a>
+      </div>
+    </div>
   );
 }

@@ -9,6 +9,22 @@
 
    Everything here is this app's own furniture.
    ============================================================ */
+/* ---- interaction timing ----
+   App-local on purpose, which is why these are not in @ttr/design: a thumb and a pointer want
+   different response windows, so each surface tunes its own. --ease IS shared, because a CSS
+   hover and a Framer entrance landing on the same element must decelerate identically.
+
+   The split matters more than the numbers: arriving under the pointer is slower than leaving it,
+   and a press is faster than both. Hover is ambient and should never feel like it is reacting to
+   you; a click is a commitment and should answer at once. */
+:root {
+  /* touch: no hover to arrive from, and a thumb covers the control - leaving is as slow as
+     arriving so the state change is still visible once the finger lifts */
+  --t-enter: 0.16s;
+  --t-leave: 0.16s;
+  --t-press: 0.12s;
+}
+
 
 .shell {
   position: relative;
@@ -62,6 +78,12 @@
   padding: 16px 30px;
   border: 1px solid transparent;
   cursor: pointer;
+  /* .btn is used on <a> as well as <button> (the offline state's escape hatches), and an
+     underlined pill reads as a mistake */
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition: transform var(--t-leave) var(--ease);
 }
 /* later than the :hover rule and equally specific, so the press wins while held */

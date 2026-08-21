@@ -131,7 +131,7 @@ function PoolCard({
         </span>
         <span style={{ color: 'var(--ink-45)' }}>
           Royalties{' '}
-          <strong style={{ color: 'var(--coral-deep)', fontVariantNumeric: 'tabular-nums' }}>
+          <strong style={{ color: 'var(--accent-deep)', fontVariantNumeric: 'tabular-nums' }}>
             {usdc(pool.royalties_accrued)}
           </strong>
         </span>

@@ -96,6 +96,34 @@ export function errText(e: unknown, fallback = 'Something went wrong.'): string 
   return fallback;
 }
 
+/**
+ * Bootstrap with retry.
+ *
+ * The deployed backend is Cloud Run with scale-to-zero, so the very first request after an idle
+ * period pays a cold start — about a second in practice, occasionally longer if the platform is
+ * slow to schedule. Without a retry, that lands as a hard failure on the one request that was
+ * always going to be the slowest one, and the visitor sees a dead page.
+ *
+ * `onWaking` fires from the second attempt onward, so the UI can stop saying "loading" and start
+ * saying "waking up". That distinction is most of the value here: a visitor who knows a machine
+ * is starting will wait a few seconds; a visitor looking at a stalled spinner leaves.
+ */
+export async function bootstrap<T>(fn: () => Promise<T>, onWaking?: () => void): Promise<T> {
+  const backoff = [600, 1500, 3000, 6000];
+  let last: unknown;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      last = e;
+      const wait = backoff[attempt];
+      if (wait == null) throw last;
+      if (attempt === 0) onWaking?.();
+      await new Promise((r) => setTimeout(r, wait));
+    }
+  }
+}
+
 async function j<T>(r: Response): Promise<T> {
   if (!r.ok) {
     const body = await r.json().catch(() => ({}));

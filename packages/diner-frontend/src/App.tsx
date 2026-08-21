@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, MotionConfig } from 'framer-motion';
-import { api, errText, usdc, type Holding, type PoolSummary, type Quote } from './api';
+import { api, bootstrap, errText, usdc, type Holding, type PoolSummary, type Quote } from './api';
 import { Num, Price } from './num';
 import { CurveChart } from './CurveChart';
 import { BuySheet } from './BuySheet';
 import { Calendar } from './Calendar';
-import { SellSheet, Wallet, WalletPill } from './Wallet';
+import { SellSheet, WalletPage, WalletPill } from './Wallet';
 import { PartySize, bandFor } from './PartySize';
 import { ease, fadeUp, group } from './motion';
 import { venueState } from './venue';
@@ -52,12 +52,35 @@ export default function App() {
     return quote;
   }, []);
 
+  /**
+   * First load, and the only place the backend being asleep is survivable.
+   *
+   * It used to be `api.demoPoolId().then(...)` with no catch: a rejected promise left the page on
+   * "Loading tonight" forever with nothing but an unhandled rejection in the console. Deployed,
+   * against a scale-to-zero backend, that is the single most likely thing a first-time visitor
+   * ever sees — so it now retries through the cold start and, if it truly cannot reach the API,
+   * says so and offers somewhere to go.
+   */
+  const [boot, setBoot] = useState<'loading' | 'waking' | 'ready' | 'offline'>('loading');
+  const [bootNonce, setBootNonce] = useState(0);
   useEffect(() => {
-    api.demoPoolId().then(({ pool_id }) => {
-      setPoolId(pool_id);
-      refresh(pool_id);
-    });
-  }, [refresh]);
+    let alive = true;
+    setBoot('loading');
+    bootstrap(
+      () => api.demoPoolId(),
+      () => alive && setBoot('waking'),
+    )
+      .then(async ({ pool_id }) => {
+        if (!alive) return;
+        setPoolId(pool_id);
+        await refresh(pool_id);
+        if (alive) setBoot('ready');
+      })
+      .catch(() => alive && setBoot('offline'));
+    return () => {
+      alive = false;
+    };
+  }, [refresh, bootNonce]);
 
   function selectPool(id: string) {
     setPoolId(id);
@@ -170,6 +193,24 @@ export default function App() {
     return () => clearTimeout(t);
   }, [settling, heldThisWindow.length, currentPool?.label]);
 
+  /**
+   * Two routes, on the hash. `#wallet` is your tables; anything else is the booking screen.
+   *
+   * The hash and not the path because this ships as a static bundle behind a catch-all rewrite —
+   * a hash costs no server rule and no history shim, and still survives a reload or a paste. The
+   * listener is what makes the browser Back button work, which is the whole reason not to hold
+   * this in a plain piece of state.
+   */
+  const [onWallet, setOnWallet] = useState(() => window.location.hash === '#wallet');
+  useEffect(() => {
+    const sync = () => setOnWallet(window.location.hash === '#wallet');
+    window.addEventListener('hashchange', sync);
+    return () => window.removeEventListener('hashchange', sync);
+  }, []);
+  const goBooking = () => {
+    window.location.hash = '';
+  };
+
   const venue = venueState(bandsTonight);
   const left = q ? q.n_max - q.n_sold : 0;
   const floorP0 = currentPool
@@ -185,20 +226,32 @@ export default function App() {
 
       <motion.div className="shell" variants={group(0.07)} initial="hidden" animate="show">
         <motion.header className="topbar" variants={fadeUp}>
-          <div className="brand">
+          {/* the wordmark is the way back out of the wallet, as on the launcher */}
+          <a className="brand brand--link" href="#" onClick={goBooking}>
             <span className="brand-dots">
               <i />
               <i />
             </span>
             hora
-          </div>
-          <WalletPill holdings={allHeld} />
+          </a>
+          <WalletPill holdings={allHeld} active={onWallet} />
         </motion.header>
 
         {/* ---- main grid ----
             The rail leads: the room's name, what it's doing tonight, and the month you pick from,
             all unglazed so they read as the canvas rather than as cards. The night is settled
             there before either glass panel asks you to pay for it. */}
+        {boot !== 'ready' ? (
+          <BootScreen state={boot} onRetry={() => setBootNonce((n) => n + 1)} />
+        ) : onWallet ? (
+          <WalletPage
+            holdings={allHeld}
+            pools={pools}
+            viewingPoolId={poolId}
+            onSell={setSellFor}
+            onBrowse={goBooking}
+          />
+        ) : (
         <motion.div className="grid" variants={group(0.08)}>
           <motion.div className="rail" variants={fadeUp}>
             {/* Names the room and reports what it's doing, in the same shape the phone uses. The
@@ -279,7 +332,7 @@ export default function App() {
               {left > 0 && left <= 5 && (
                 <>
                   {' '}
-                  <strong style={{ color: 'var(--coral-deep)' }}>
+                  <strong style={{ color: 'var(--accent-deep)' }}>
                     <Num value={left} /> left.
                   </strong>
                 </>
@@ -319,18 +372,9 @@ export default function App() {
               )}
             </div>
           </section>
-
-            {/* Selling used to live in the buy panel, which meant the panel changed shape
-                depending on what you held and could only ever offer back the night you happened
-                to be looking at. It's the wallet's job, and the wallet holds every night. */}
-            <Wallet
-              holdings={allHeld}
-              pools={pools}
-              viewingPoolId={poolId}
-              onSell={setSellFor}
-            />
           </motion.div>
         </motion.div>
+        )}
       </motion.div>
 
       {/* AnimatePresence so the sheet can animate OUT on cancel/confirm, not just in */}
@@ -416,5 +460,51 @@ export default function App() {
         )}
       </AnimatePresence>
     </MotionConfig>
+  );
+}
+
+
+/**
+ * What a visitor sees before the backend answers.
+ *
+ * `waking` is the common case on a deployed demo and is deliberately unalarmed — a machine is
+ * starting, it will be a second. `offline` has exhausted the retries and owes the visitor
+ * something better than an apology, so it points at the two surfaces that need no server at all.
+ */
+function BootScreen({ state, onRetry }: { state: 'loading' | 'waking' | 'offline'; onRetry: () => void }) {
+  if (state !== 'offline') {
+    return (
+      <div className="boot">
+        <div className="boot__dots" aria-hidden>
+          <i />
+          <i />
+          <i />
+        </div>
+        <p className="boot__note">
+          {state === 'waking'
+            ? 'Waking the demo backend — it sleeps when nobody is using it. A few seconds.'
+            : 'Loading tonight…'}
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="boot">
+      <span className="boot__mark">not tonight</span>
+      <h2 className="boot__title">The demo backend isn&apos;t answering.</h2>
+      <p className="boot__note">
+        This part of the demo needs a live server for pricing and holdings, and it can&apos;t be
+        reached right now. The pricing model itself runs entirely in your browser — that page works
+        regardless.
+      </p>
+      <div className="boot__actions">
+        <button className="btn btn--primary" onClick={onRetry}>
+          Try again
+        </button>
+        <a className="btn btn--ghost" href="/lab/">
+          Open the pricing lab
+        </a>
+      </div>
+    </div>
   );
 }

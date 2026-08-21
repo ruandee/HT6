@@ -51,7 +51,7 @@ export function SweepPanel({ pool, onSweep, onFreeze, busy }: Props) {
               fontSize: 'clamp(96px, 14vw, 180px)',
               lineHeight: 0.82,
               letterSpacing: '-0.05em',
-              color: 'var(--coral-deep)',
+              color: 'var(--accent-deep)',
               fontVariantNumeric: 'tabular-nums',
             }}
           >
@@ -115,7 +115,7 @@ export function SweepPanel({ pool, onSweep, onFreeze, busy }: Props) {
         </div>
         <div className="sweep-cell">
           <div className="stat-label">Forfeited</div>
-          <div className="sweep-cell__value" style={{ color: 'var(--coral-deep)' }}>
+          <div className="sweep-cell__value" style={{ color: 'var(--accent-deep)' }}>
             {s.forfeited_count}
           </div>
           <div className="kpi__sub">You keep what they paid.</div>

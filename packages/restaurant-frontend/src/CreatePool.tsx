@@ -283,7 +283,7 @@ export function CreatePool({ onCreate, busy }: Props) {
         </div>
         <div>
           <div className="stat-label">Reserve at full</div>
-          <div className="pool-card__price" style={{ marginTop: 6, color: 'var(--coral-deep)' }}>
+          <div className="pool-card__price" style={{ marginTop: 6, color: 'var(--accent-deep)' }}>
             {usdc(lockedAtFull)}
           </div>
         </div>
@@ -293,7 +293,7 @@ export function CreatePool({ onCreate, busy }: Props) {
       </p>
 
       {err && (
-        <div style={{ color: 'var(--coral-deep)', fontSize: 13, marginTop: 16 }}>{err}</div>
+        <div style={{ color: 'var(--accent-deep)', fontSize: 13, marginTop: 16 }}>{err}</div>
       )}
 
       <button

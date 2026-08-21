@@ -562,9 +562,11 @@ html {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
-  margin-top: 24px;
-  padding-top: 22px;
-  border-top: 1px solid var(--hairline);
+  /* No rule above the readout. The gap does the separating, and a line here would cut the card
+     in half at exactly the moment the eye is meant to travel from the chart down to the numbers
+     the chart is producing. */
+  margin-top: 28px;
+  padding-top: 0;
 }
 .decay__value {
   margin-top: 7px;
@@ -658,10 +660,10 @@ html {
   font-size: 15px;
   line-height: 1.55;
 }
+/* Spacing, not rules. Four short lines with a hairline between each read as a table of data;
+   the same four with air between them read as a list of claims, which is what they are. */
 .side__list li + li {
-  margin-top: 15px;
-  padding-top: 15px;
-  border-top: 1px solid var(--hairline);
+  margin-top: 18px;
 }
 /* a dot from the logo, reused as the bullet */
 .side__list li::before {
@@ -674,25 +676,12 @@ html {
   border-radius: 50%;
   background: var(--accent-mid);
 }
-.side__list li + li::before {
-  top: calc(15px + 0.6em);
-}
-
 .home__footer {
   margin: 44px auto 0;
   text-align: center;
   max-width: none;
 }
 
-/* the wordmark in the demo header, once it doubles as a link home */
-.brand--link {
-  text-decoration: none;
-  color: inherit;
-  transition: opacity 0.2s;
-}
-.brand--link:hover {
-  opacity: 0.6;
-}
 
 /* four tech columns are already tight at 1180px; drop to two before the step/side cards need
    to change at all */

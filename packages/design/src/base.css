@@ -220,6 +220,19 @@ body {
   background: var(--accent-mid);
 }
 
+/* The wordmark doubling as a link home — the launcher's role picker and write-up, the diner's
+   wallet route. Anchor defaults (blue, underlined) would be loud enough to read as an error on a
+   mark that is otherwise pure typography, so they are cleared here rather than in each app that
+   happens to need it. */
+.brand--link {
+  text-decoration: none;
+  color: inherit;
+  transition: opacity 0.2s;
+}
+.brand--link:hover {
+  opacity: 0.6;
+}
+
 /* ============================================================
    the type ramp
 
@@ -228,23 +241,23 @@ body {
    overrides the one or two properties that differ, not the block.
    ============================================================ */
 
-/* small-caps label + hairline rule */
+/* Small-caps section label.
+   
+   No trailing hairline rule. It used to carry one — a 1px line running off to the right of every
+   label — and once the page had five of them they read as a form's fieldsets rather than as a
+   composition. The label already does the separating: it is a different size, weight, colour and
+   case from everything near it. A rule on top of that is saying the same thing twice, and the
+   second time in the loudest available way. Whitespace separates; lines are for when whitespace
+   genuinely cannot. */
 .eyebrow {
   display: flex;
   align-items: center;
-  gap: 14px;
   font-family: var(--font-display);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--ink-45);
-}
-.eyebrow::after {
-  content: '';
-  height: 1px;
-  flex: 1;
-  background: var(--hairline);
 }
 
 .headline {
@@ -295,6 +308,92 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+
+/* ============================================================
+   backend boot state
+
+   The three clients that need app-services share this. The deployed backend is Cloud Run with
+   scale-to-zero, so the first request after an idle period pays a cold start — about a second,
+   occasionally longer. Without a state for that, a visitor's first impression of the product is
+   a page that says "Loading" and never stops, which reads as broken rather than as waking.
+
+   Two states, and the distinction is the whole point: "waking" is patient and expects success;
+   "offline" has given up and owes the visitor somewhere else to go.
+   ============================================================ */
+.boot {
+  position: relative;
+  z-index: 1;
+  min-height: 60svh;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 18px;
+  max-width: 46ch;
+}
+.boot__mark {
+  font-family: var(--font-script);
+  font-size: 40px;
+  line-height: 0.9;
+  color: var(--accent-deep);
+}
+.boot__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 26px;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.boot__note {
+  margin: 0;
+  color: var(--ink-70);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.boot__actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+/* a slow pulse, not a spinner: this is a wait measured in seconds, and a spinner at that
+   duration reads as a hang */
+.boot__dots {
+  display: flex;
+  gap: 7px;
+}
+.boot__dots i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent-mid);
+  display: block;
+  animation: bootpulse 1.4s ease-in-out infinite;
+}
+.boot__dots i:nth-child(2) {
+  animation-delay: 0.18s;
+}
+.boot__dots i:nth-child(3) {
+  animation-delay: 0.36s;
+}
+@keyframes bootpulse {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .boot__dots i {
+    animation: none;
+    opacity: 0.7;
+  }
 }
 
 } /* @layer base */

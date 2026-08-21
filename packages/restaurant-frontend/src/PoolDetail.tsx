@@ -99,7 +99,7 @@ export function PoolDetail({ pool, onCheckin, busy }: Props) {
               fontFamily: 'var(--font-display)',
               fontWeight: 700,
               fontSize: 24,
-              color: 'var(--coral-deep)',
+              color: 'var(--accent-deep)',
               letterSpacing: '-0.03em',
             }}
           >

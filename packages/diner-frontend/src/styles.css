@@ -9,6 +9,20 @@
 
    Everything here is this app's own furniture.
    ============================================================ */
+/* ---- interaction timing ----
+   App-local on purpose, which is why these are not in @ttr/design: a thumb and a pointer want
+   different response windows, so each surface tunes its own. --ease IS shared, because a CSS
+   hover and a Framer entrance landing on the same element must decelerate identically.
+
+   The split matters more than the numbers: arriving under the pointer is slower than leaving it,
+   and a press is faster than both. Hover is ambient and should never feel like it is reacting to
+   you; a click is a commitment and should answer at once. */
+:root {
+  --t-enter: 0.16s;
+  --t-leave: 0.12s;
+  --t-press: 0.1s;
+}
+
 
 .shell {
   position: relative;
@@ -154,10 +168,11 @@
 .panel--buy .eyebrow {
   margin-bottom: 16px;
 }
+/* Was a 1px hairline across the buy panel. Now just the space where it used to be: the panel
+   already changes gear from "how many people" to "what it costs" through type size alone. */
 .rule {
-  height: 1px;
-  background: var(--hairline);
-  margin: 24px 0 22px;
+  height: 0;
+  margin: 22px 0 0;
 }
 .buy__note {
   margin-top: 14px;
@@ -354,6 +369,12 @@
   padding: 16px 30px;
   border: 1px solid transparent;
   cursor: pointer;
+  /* .btn is used on <a> as well as <button> (the offline state's escape hatches), and an
+     underlined pill reads as a mistake */
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   /* background-color is in here deliberately. It used to be missing, so every tint change
      snapped while the shadow underneath it faded. */
   transition: transform var(--t-leave) var(--ease);
@@ -566,9 +587,8 @@
   min-height: 246px;
 }
 .cal__slots {
-  margin-top: 20px;
-  padding-top: 18px;
-  border-top: 1px solid var(--hairline);
+  margin-top: 22px;
+  padding-top: 0;
 }
 
 /* ---- service windows for the chosen night ----
@@ -833,6 +853,26 @@
   transform: scale(0.97);
   transition-duration: var(--t-press);
 }
+.wpill__badge {
+  font-family: var(--font-display);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1;
+  min-width: 18px;
+  padding: 4px 5px;
+  border-radius: var(--r-pill);
+  text-align: center;
+  color: #fff;
+  background: linear-gradient(180deg, var(--accent-mid) 0%, var(--accent-deep) 100%);
+}
+/* the current route, marked on the control that leads to it */
+.wpill--on {
+  background: var(--control-bg-hover);
+  border-color: var(--accent-mid);
+}
+.wpill {
+  text-decoration: none;
+}
 .wpill__n {
   font-family: var(--font-display);
   font-size: 11px;
@@ -934,4 +974,65 @@
     --control-bg: #fff;
     --control-bg-hover: #fff;
   }
+}
+
+/* ============================================================
+   the wallet route (#wallet)
+
+   Its own screen rather than a column, because reviewing what you hold and choosing a night are
+   two different jobs and the second one was winning. No rules anywhere in here: the ticket edges
+   and the space between them do all the separating this needs.
+   ============================================================ */
+.walletpage {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding-top: 6px;
+}
+.walletpage__sub {
+  margin-top: 12px;
+  max-width: 46ch;
+}
+/* As many columns as fit, at the ticket's natural width. On a wide monitor that is four across,
+   which is the point — the column version could only ever show one and a half.
+
+   320px, not the 248px the old column used: at that width the service label wrapped mid-name
+   ("THU 10–" / "12PM") and the sell button broke across two lines. The ticket was only ever that
+   narrow because the column was, and the column is gone. The grid is capped so a wide monitor
+   adds columns rather than stretching four tickets to the width of a desk. */
+.walletpage__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  max-width: 1400px;
+  gap: 18px;
+  margin-top: 30px;
+  overflow-y: auto;
+  min-height: 0;
+  /* the tickets lift on hover; without this the top row clips against the scroll container */
+  padding: 4px;
+  margin-left: -4px;
+  margin-right: -4px;
+}
+.walletpage__foot {
+  margin-top: 22px;
+  font-size: 13px;
+  flex: 0 0 auto;
+}
+
+/* Empty is a real state here, not an afterthought: arriving with nothing held is the common case
+   for a first-time visitor, so it carries the way out rather than just an apology. */
+.walletpage__empty {
+  margin-top: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+}
+.walletpage__emptynote {
+  margin: 0;
+  max-width: 42ch;
+  font-size: 13.5px;
 }
