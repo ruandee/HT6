@@ -335,8 +335,27 @@ export default function Home({
 
   return (
     <div className="home">
+      {/* Two ways on, on every slide. The hero's CTAs are the full-size version of these; a deck
+          can be entered at any slide, so the same two doors have to be permanently reachable. */}
+      <nav className="topnav" aria-label="Primary">
+        <a className="topnav__link" href="/demo" onClick={onEnter}>
+          See the demo
+        </a>
+        <a className="topnav__link" href="/writeup" onClick={onWriteup}>
+          Read the Devpost
+        </a>
+      </nav>
+
+      {/* A blurred, fading band under the rail.
+          
+          Without it, slides arrive from the edge and are briefly legible *behind* the rail's
+          labels — two sets of words on top of each other for a frame or two on every move. The
+          band blurs whatever passes beneath and fades out before it reaches the content, so the
+          rail always has its own ground to sit on. Inert to the pointer. */}
+      <div className="rail-scrim" aria-hidden />
+
       {/* ============ the rail ============
-          Just the names, down the right edge. The one that is current carries the logo's accent
+          Just the names, down the left edge. The one that is current carries the logo's accent
           dot — the same mark as the wordmark's second dot, so position is indicated by the brand
           rather than by a scrollbar. The rest underline on hover, which is the only affordance
           they need to read as reachable. */}

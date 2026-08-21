@@ -265,13 +265,13 @@
    little left of centre — which is what a deck with a rail should look like anyway. */
 @media (min-width: 901px) {
   .slide__inner {
-    padding-right: clamp(150px, 13vw, 210px);
+    padding-left: clamp(150px, 13vw, 210px);
   }
   /* The hero is a centred composition and nothing in it reaches the rail, so it keeps the full
      width — reserving the gutter here would just shove the wordmark off the middle of the screen
      for no reason. */
   .slide--hero .slide__inner {
-    padding-right: clamp(24px, 5vw, 64px);
+    padding-left: clamp(24px, 5vw, 64px);
   }
 }
 /* the card grids want the full measure; the prose slides are better off narrower */
@@ -416,13 +416,44 @@
 .rail {
   position: fixed;
   top: 50%;
-  right: clamp(16px, 2.6vw, 40px);
+  left: clamp(20px, 3vw, 46px);
   transform: translateY(-50%);
   z-index: 8;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 14px;
+}
+
+/* The band the rail sits on.
+ 
+   Slides arrive from the edge, and for a frame or two on every move their headings were legible
+   directly behind the rail's labels — two sets of words in the same place. This blurs whatever
+   passes underneath and fades to nothing before it reaches the content, so the rail always has
+   ground of its own. The mask fades the backdrop-filter along with the tint, which is what keeps
+   the right-hand edge from ending on a visible seam. */
+.rail-scrim {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: clamp(150px, 20vw, 300px);
+  z-index: 7;
+  pointer-events: none;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  /* Held near-opaque across the width the labels actually occupy, then released. Anything less
+     and a heading sliding past is still readable *through* the rail, which is the exact thing
+     this exists to stop. */
+  background: linear-gradient(
+    90deg,
+    rgb(var(--canvas-rgb) / 0.94) 0%,
+    rgb(var(--canvas-rgb) / 0.9) 42%,
+    rgb(var(--canvas-rgb) / 0.5) 72%,
+    rgb(var(--canvas-rgb) / 0) 100%
+  );
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 55%, transparent 100%);
+  mask-image: linear-gradient(90deg, #000 0%, #000 55%, transparent 100%);
 }
 .rail__item {
   position: relative;
@@ -488,6 +519,60 @@
   outline: 2px solid var(--accent-deep);
   outline-offset: 4px;
   border-radius: 4px;
+}
+
+/* ============================================================
+   the top links
+
+   The hero's two CTAs, kept permanently reachable. A deck can be entered at any slide and read in
+   any order, so the two doors out of it cannot live only on the first one. Set as quiet text
+   rather than pills: they are always on screen, and two filled buttons floating over every slide
+   would be shouting at a reader who is in the middle of something.
+   ============================================================ */
+.topnav {
+  position: fixed;
+  top: clamp(18px, 2.4vw, 30px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  gap: clamp(18px, 3vw, 34px);
+}
+.topnav__link {
+  position: relative;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-70);
+  text-decoration: none;
+  padding: 4px 0;
+  transition: color 0.2s;
+}
+.topnav__link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.topnav__link:hover {
+  color: var(--ink);
+}
+.topnav__link:hover::after {
+  transform: scaleX(1);
+}
+.topnav__link:focus-visible {
+  outline: 2px solid var(--accent-deep);
+  outline-offset: 4px;
+  border-radius: 3px;
 }
 
 /* ---- slide typography ---- */
@@ -826,6 +911,25 @@
      No room for a rail in the margin, so it lies along the bottom edge and scrolls with the deck.
      The labels stay: a row of anonymous pips tells you how many slides there are and nothing about
      what is on them, which is the opposite of the point. */
+  /* the band follows the rail to the bottom edge */
+  .rail-scrim {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    height: 96px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: linear-gradient(
+      0deg,
+      rgb(var(--canvas-rgb) / 0.9) 0%,
+      rgb(var(--canvas-rgb) / 0.6) 50%,
+      rgb(var(--canvas-rgb) / 0) 100%
+    );
+    -webkit-mask-image: linear-gradient(0deg, #000 0%, #000 45%, transparent 100%);
+    mask-image: linear-gradient(0deg, #000 0%, #000 45%, transparent 100%);
+  }
   .rail {
     top: auto;
     bottom: 0;
@@ -838,7 +942,6 @@
     padding: 12px 18px calc(12px + env(safe-area-inset-bottom, 0px));
     overflow-x: auto;
     scrollbar-width: none;
-    background: linear-gradient(180deg, transparent, rgb(var(--canvas-rgb) / 0.92) 45%);
   }
   .rail::-webkit-scrollbar {
     display: none;
@@ -848,7 +951,14 @@
     font-size: 9.5px;
   }
   .slide {
-    padding: 56px 0 84px;
+    padding: 68px 0 84px;
+  }
+  .topnav {
+    gap: 18px;
+  }
+  .topnav__link {
+    font-size: 9.5px;
+    letter-spacing: 0.12em;
   }
 
   /* The demo survives a phone, but only by unstacking. The clock moves under the caption, the

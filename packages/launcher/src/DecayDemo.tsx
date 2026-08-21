@@ -179,10 +179,14 @@ function TransportIcon({ kind }: { kind: 'play' | 'pause' | 'again' }) {
     );
   }
   if (kind === 'again') {
+    // A rewind-to-start bar-and-triangle, not a circular arrow. Nothing here spins — but a ring
+    // with an arrowhead on it is the universal loading spinner, and a static one sitting on a
+    // button reads as a request that never finished. This says "back to the beginning", which is
+    // what the button actually does.
     return (
-      <svg {...common} fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
-        <path d="M12 7a5 5 0 1 1-1.6-3.7" />
-        <path d="M12.2 1.6v3.2H9" strokeLinejoin="round" />
+      <svg {...common} fill="currentColor">
+        <rect x="2.6" y="2.6" width="2.1" height="8.8" rx="1" />
+        <path d="M11.9 3.1a.6.6 0 0 0-.94-.49l-4.6 3.4a.6.6 0 0 0 0 .98l4.6 3.4a.6.6 0 0 0 .94-.49V3.1Z" />
       </svg>
     );
   }
